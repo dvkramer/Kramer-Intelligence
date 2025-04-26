@@ -10,14 +10,13 @@ const MAX_HISTORY_CHARS = 1000000;
 // --- End Configuration ---
 
 // Start with an empty history
-let conversationHistory = []; // MODIFIED HERE
+let conversationHistory = [];
 
 // --- Event Listeners ---
 chatForm.addEventListener('submit', handleSendMessage);
 
 // --- Functions ---
 
-// ... (Rest of the handleSendMessage function remains the same) ...
 async function handleSendMessage(event) {
     event.preventDefault(); // Prevent default page reload
 
@@ -30,7 +29,7 @@ async function handleSendMessage(event) {
     hideError();
     showLoading();
 
-    // Display user message immediately
+    // Display user message immediately (using plain text)
     displayMessage('user', userMessageText);
     scrollChatToBottom();
 
@@ -74,7 +73,7 @@ async function handleSendMessage(event) {
         const data = await response.json();
         const aiResponseText = data.text;
 
-        // Add AI response to history and display it
+        // Add AI response to history and display it (will be parsed by displayMessage)
         conversationHistory.push({
             role: 'model',
             parts: [{ text: aiResponseText }]
@@ -97,19 +96,52 @@ async function handleSendMessage(event) {
 }
 
 
-// ... (displayMessage function remains the same) ...
+/**
+ * Displays a message in the chat history UI.
+ * Parses Markdown for AI messages using marked and DOMPurify.
+ * @param {'user' | 'ai'} role The role of the message sender ('user' or 'ai').
+ * @param {string} text The message text content.
+ */
 function displayMessage(role, text) {
     const messageDiv = document.createElement('div');
     messageDiv.classList.add('message', role === 'user' ? 'user-message' : 'ai-message');
 
-    const paragraph = document.createElement('p');
-    paragraph.textContent = text; // Using textContent is safer against XSS
-    messageDiv.appendChild(paragraph);
+    const paragraph = document.createElement('p'); // Use a <p> tag as the main container
 
+    if (role === 'ai' && typeof marked !== 'undefined' && typeof DOMPurify !== 'undefined') {
+        // AI message: Parse Markdown and sanitize
+        try {
+            // Configure marked to handle line breaks correctly (like GitHub)
+            marked.setOptions({
+                breaks: true, // Convert single newlines in source to <br>
+                gfm: true,    // Use GitHub Flavored Markdown spec
+            });
+
+            // 1. Use marked to convert Markdown string to raw HTML string
+            const rawHtml = marked.parse(text);
+
+            // 2. Use DOMPurify to sanitize the raw HTML string
+            //    This removes potential XSS vectors (<script>, onerror, etc.)
+            const sanitizedHtml = DOMPurify.sanitize(rawHtml);
+
+            // 3. Set the sanitized HTML to the paragraph's innerHTML
+            paragraph.innerHTML = sanitizedHtml;
+
+        } catch (error) {
+            console.error("Error parsing or sanitizing Markdown:", error);
+            // Fallback to textContent if parsing/sanitizing fails
+            paragraph.textContent = text;
+        }
+    } else {
+        // User message or if libraries failed to load: Display as plain text for safety
+        paragraph.textContent = text;
+    }
+
+    messageDiv.appendChild(paragraph);
     chatHistory.appendChild(messageDiv);
 }
 
-// ... (truncateHistory function remains the same - NOTE: logic adjusted slightly for empty start) ...
+
 /**
  * Checks the total character count of the history and removes oldest messages if over limit.
  */
@@ -145,7 +177,7 @@ function truncateHistory() {
      }
 }
 
-// ... (scrollChatToBottom, showLoading, hideLoading, showError, hideError remain the same) ...
+
 /** Scrolls the chat history container to the bottom. */
 function scrollChatToBottom() {
     // Use setTimeout to allow the DOM to update before scrolling
@@ -179,5 +211,4 @@ function hideError() {
 
 
 // --- Initial Setup ---
-// scrollChatToBottom(); // No need to scroll initially if empty
 messageInput.focus(); // Focus the input field on load

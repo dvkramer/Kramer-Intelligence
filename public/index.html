@@ -8,14 +8,19 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500&display=swap" rel="stylesheet">
+
+    <!-- ADDED LIBRARIES -->
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js" defer></script>
+    <script src="https://cdn.jsdelivr.net/npm/dompurify@latest/dist/purify.min.js" defer></script>
+    <!-- END ADDED LIBRARIES -->
+
 </head>
 <body>
-    <!-- Container div is removed -->
     <h1>Kramer Intelligence</h1>
 
     <div id="chat-container">
         <div id="chat-history">
-            <!-- Initial AI message REMOVED from here -->
+            <!-- Chat messages will appear here -->
         </div>
     </div>
 
@@ -26,8 +31,9 @@
         <input type="text" id="message-input" placeholder="Type your message..." autocomplete="off" required>
         <button type="submit" id="send-button">Send</button>
     </form>
-    <!-- Container div is removed -->
 
-    <script src="script.js"></script>
+    <!-- Your script MUST come AFTER the libraries if not using defer/modules properly -->
+    <script src="script.js" defer></script>
+    <!-- Note: Added 'defer' to all scripts to ensure order and non-blocking load -->
 </body>
 </html>
