@@ -1,7 +1,7 @@
 {
-  "name": "kramer-intelligence", // Corrected name
+  "name": "kramer-intelligence",
   "version": "1.0.0",
-  "description": "Kramer Intelligence - Free AI Chat interface", // Updated description
+  "description": "Kramer Intelligence - AI Chat interface using Gemini API",
   "main": "api/chat.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1"
@@ -11,11 +11,9 @@
     "chat",
     "gemini",
     "vercel",
-    "kramer" // Added keyword
+    "kramer"
   ],
-  "author": "Daniel Vincent Kramer", // Optional: Change this
+  "author": "Your Name",
   "license": "ISC",
-  "dependencies": {
-     // No external dependencies needed for this basic version
-  }
+  "dependencies": {}
 }
