@@ -23,10 +23,8 @@ async function handleSendMessage(event) {
     const userMessageText = messageInput.value.trim();
     if (!userMessageText) return; // Do nothing if input is empty
 
-    // --- MODIFIED: Disable only the Send button ---
+    // Disable only the Send button
     sendButton.disabled = true;
-    // messageInput remains enabled
-    // --- END MODIFIED ---
 
     hideError();
     showLoading(); // Show loading for this specific request
@@ -58,47 +56,43 @@ async function handleSendMessage(event) {
             headers: {
                 'Content-Type': 'application/json',
             },
-            // Send the captured history state
             body: JSON.stringify({ history: historyForThisRequest }),
         });
 
-        // Hide loading indicator *for this specific request*
         hideLoading();
 
         if (!response.ok) {
-            // Try to parse error JSON, otherwise use status text
             let errorMsg = `API Error: ${response.statusText} (${response.status})`;
             try {
                 const errorData = await response.json();
                 errorMsg = errorData.error || errorMsg;
-            } catch (e) {
-                 // Ignore if response isn't valid JSON
-            }
+            } catch (e) { /* Ignore */ }
             throw new Error(errorMsg);
         }
 
+        // --- MODIFIED: Expect new response format ---
         const data = await response.json();
         const aiResponseText = data.text;
+        const searchSuggestionHtml = data.searchSuggestionHtml; // Get suggestion HTML (can be null)
 
-        // Add AI response to the *shared* history and display it
+        // Add AI response text part to history
         conversationHistory.push({
             role: 'model',
-            parts: [{ text: aiResponseText }]
+            parts: [{ text: aiResponseText }] // History only stores the core text
         });
-        displayMessage('ai', aiResponseText);
+
+        // Display AI message, passing the suggestion HTML along
+        displayMessage('ai', aiResponseText, searchSuggestionHtml);
         scrollChatToBottom();
+        // --- END MODIFIED ---
 
     } catch (err) {
         console.error("Error fetching AI response:", err);
         showError(err.message || "Failed to get response from AI. Please try again.");
-        // If an error occurs for one request, we might still want to hide its loading indicator
         hideLoading();
     } finally {
-        // --- MODIFIED: Re-enable only the Send button ---
+        // Re-enable only the Send button
         sendButton.disabled = false;
-        // messageInput was never disabled
-        // messageInput.focus(); // Focus is already handled after clearing input
-        // --- END MODIFIED ---
     }
 }
 
@@ -106,44 +100,44 @@ async function handleSendMessage(event) {
 /**
  * Displays a message in the chat history UI.
  * Parses Markdown for AI messages using marked and DOMPurify.
+ * Renders Google Search Suggestion if provided.
  * @param {'user' | 'ai'} role The role of the message sender ('user' or 'ai').
  * @param {string} text The message text content.
+ * @param {string | null} [searchSuggestionHtml=null] Optional HTML string for the Google Search Suggestion chip.
  */
-function displayMessage(role, text) {
+function displayMessage(role, text, searchSuggestionHtml = null) { // MODIFIED: Added parameter
     const messageDiv = document.createElement('div');
     messageDiv.classList.add('message', role === 'user' ? 'user-message' : 'ai-message');
 
-    const paragraph = document.createElement('p'); // Use a <p> tag as the main container
+    const paragraph = document.createElement('p');
 
     if (role === 'ai' && typeof marked !== 'undefined' && typeof DOMPurify !== 'undefined') {
-        // AI message: Parse Markdown and sanitize
         try {
-            // Configure marked to handle line breaks correctly (like GitHub)
-            marked.setOptions({
-                breaks: true, // Convert single newlines in source to <br>
-                gfm: true,    // Use GitHub Flavored Markdown spec
-            });
-
-            // 1. Use marked to convert Markdown string to raw HTML string
+            marked.setOptions({ breaks: true, gfm: true });
             const rawHtml = marked.parse(text);
-
-            // 2. Use DOMPurify to sanitize the raw HTML string
             const sanitizedHtml = DOMPurify.sanitize(rawHtml);
-
-            // 3. Set the sanitized HTML to the paragraph's innerHTML
             paragraph.innerHTML = sanitizedHtml;
-
         } catch (error) {
             console.error("Error parsing or sanitizing Markdown:", error);
-            // Fallback to textContent if parsing/sanitizing fails
-            paragraph.textContent = text;
+            paragraph.textContent = text; // Fallback
         }
     } else {
-        // User message or if libraries failed to load: Display as plain text for safety
+        // User message or if libraries failed
         paragraph.textContent = text;
     }
 
     messageDiv.appendChild(paragraph);
+
+    // --- ADDED: Render Search Suggestion Chip ---
+    if (role === 'ai' && searchSuggestionHtml) {
+        const suggestionContainer = document.createElement('div');
+        suggestionContainer.classList.add('search-suggestion-container');
+        // Directly insert the HTML provided by Google API (assumed safe per their docs)
+        suggestionContainer.innerHTML = searchSuggestionHtml;
+        messageDiv.appendChild(suggestionContainer); // Append below the message paragraph
+    }
+    // --- END ADDED ---
+
     chatHistory.appendChild(messageDiv);
 }
 
@@ -159,26 +153,16 @@ function truncateHistory() {
         }
     }
 
-    // Remove oldest messages (user/model pairs)
     while (totalChars > MAX_HISTORY_CHARS && conversationHistory.length >= 2) {
-         // Remove the first two messages (oldest user/model pair)
-        const removedUserMsg = conversationHistory.shift(); // Remove oldest (user)
-        const removedModelMsg = conversationHistory.shift(); // Remove next oldest (model)
-
-         if (removedUserMsg?.parts?.[0]?.text) {
-             totalChars -= removedUserMsg.parts[0].text.length;
-        }
-         if (removedModelMsg?.parts?.[0]?.text) {
-             totalChars -= removedModelMsg.parts[0].text.length;
-        }
+        const removedUserMsg = conversationHistory.shift();
+        const removedModelMsg = conversationHistory.shift();
+         if (removedUserMsg?.parts?.[0]?.text) { totalChars -= removedUserMsg.parts[0].text.length; }
+         if (removedModelMsg?.parts?.[0]?.text) { totalChars -= removedModelMsg.parts[0].text.length; }
         console.log("Truncated history. New char count:", totalChars);
     }
-     // Safety check if only one message remains and it's somehow too long (unlikely)
      if (totalChars > MAX_HISTORY_CHARS && conversationHistory.length === 1) {
          const removedMsg = conversationHistory.shift();
-          if (removedMsg?.parts?.[0]?.text) {
-             totalChars -= removedMsg.parts[0].text.length;
-         }
+          if (removedMsg?.parts?.[0]?.text) { totalChars -= removedMsg.parts[0].text.length; }
          console.log("Truncated history (single msg). New char count:", totalChars);
      }
 }
@@ -186,7 +170,6 @@ function truncateHistory() {
 
 /** Scrolls the chat history container to the bottom. */
 function scrollChatToBottom() {
-    // Use setTimeout to allow the DOM to update before scrolling
     setTimeout(() => {
         const chatContainer = document.getElementById('chat-container');
         chatContainer.scrollTop = chatContainer.scrollHeight;

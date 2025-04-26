@@ -19,13 +19,10 @@ body {
     padding: 0;
     display: flex;
     flex-direction: column; /* Stack elements vertically */
-
-    /* --- MODIFIED LINES FOR VIEWPORT HEIGHT FIX --- */
     height: 100vh; /* Strict height, not min-height */
     /* Add for iOS Safari height issues */
     height: -webkit-fill-available;
     overflow: hidden; /* Prevent body itself from scrolling */
-    /* --- END MODIFIED LINES --- */
 }
 
 /* Header Styling */
@@ -66,6 +63,10 @@ h1 {
     max-width: 80%; /* Max width of individual bubble relative to history column */
     line-height: 1.4;
     word-wrap: break-word;
+    /* Make message a flex container to position suggestion below */
+    display: flex;
+    flex-direction: column;
+    gap: 8px; /* Add space between paragraph and suggestion chip */
 }
 
 .message p {
@@ -86,101 +87,32 @@ h1 {
     border-bottom-left-radius: 5px;
 }
 
+
+/* --- ADDED: Search Suggestion Styling --- */
+.search-suggestion-container {
+    /* Container itself doesn't need much style if the inner HTML handles it */
+    margin-top: 5px; /* Add some space above the chip */
+    /* The renderedContent HTML should handle its own width/appearance */
+    width: 100%; /* Ensure container allows chip to be full width of bubble */
+}
+/* --- END Search Suggestion Styling --- */
+
+
 /* --- Markdown Element Styling --- */
-
-/* Styling for code blocks (```code```) */
-.message pre {
-    background-color: rgba(0, 0, 0, 0.2); /* Darker background for code */
-    padding: 10px;
-    border-radius: 4px;
-    overflow-x: auto; /* Allow horizontal scrolling for long code lines */
-    border: 1px solid #444;
-    margin-top: 8px; /* Space above code block */
-    margin-bottom: 8px; /* Space below code block */
-}
-
-.message code { /* Applies to both inline and block code */
-    font-family: Consolas, Monaco, 'Andale Mono', 'Ubuntu Mono', monospace;
-    font-size: 0.9em;
-}
-
-/* Inline code (`code`) - target code tags directly within paragraphs */
-.message p > code {
-    background-color: rgba(255, 255, 255, 0.1);
-    padding: 0.2em 0.4em;
-    border-radius: 3px;
-    font-size: 0.85em;
-}
-
-/* Ensure code within pre blocks doesn't get the inline background */
-.message pre code {
-    background-color: transparent;
-    padding: 0;
-    font-size: inherit; /* Inherit pre's font size */
-    border-radius: 0; /* Remove rounded corners inside pre */
-}
-
-/* Styling for lists (ul, ol) */
-.message ul,
-.message ol {
-    padding-left: 25px; /* Indent lists */
-    margin-top: 8px; /* Space above list */
-    margin-bottom: 8px; /* Space below list */
-}
-
-.message li {
-    margin-bottom: 4px; /* Space between list items */
-}
-
-/* Styling for blockquotes (> quote) */
-.message blockquote {
-    border-left: 3px solid #555;
-    padding-left: 10px;
-    margin-left: 0;
-    margin-top: 8px;
-    margin-bottom: 8px;
-    color: #bbb; /* Slightly dimmer text for quotes */
-    font-style: italic;
-}
-/* Ensure paragraphs inside blockquotes don't add extra margins */
-.message blockquote p {
-    margin: 0;
-}
-
-
-/* Links */
-.message a {
-    color: #64b5f6; /* Light blue for links */
-    text-decoration: underline;
-}
-
-.message a:hover {
-    color: #90caf9;
-}
-
-/* Headings (less common in chat, but good to have) */
-.message h1, .message h2, .message h3, .message h4, .message h5, .message h6 {
-    margin-top: 1em;
-    margin-bottom: 0.5em;
-    font-weight: 500;
-    color: #ffffff; /* White headings */
-}
-
-.message h1 { font-size: 1.5em; }
-.message h2 { font-size: 1.3em; }
-.message h3 { font-size: 1.15em; }
-.message h4 { font-size: 1em; }
-.message h5 { font-size: 0.9em; }
-.message h6 { font-size: 0.85em; color: #ccc;}
-
-/* Horizontal Rule --- */
-.message hr {
-    border: 0;
-    border-top: 1px solid #444;
-    margin: 1em 0;
-}
-
-
+/* (Keep all the existing Markdown styles: pre, code, ul, ol, etc.) */
+.message pre { background-color: rgba(0, 0, 0, 0.2); padding: 10px; border-radius: 4px; overflow-x: auto; border: 1px solid #444; margin-top: 8px; margin-bottom: 8px; }
+.message code { font-family: Consolas, Monaco, 'Andale Mono', 'Ubuntu Mono', monospace; font-size: 0.9em; }
+.message p > code { background-color: rgba(255, 255, 255, 0.1); padding: 0.2em 0.4em; border-radius: 3px; font-size: 0.85em; }
+.message pre code { background-color: transparent; padding: 0; font-size: inherit; border-radius: 0; }
+.message ul, .message ol { padding-left: 25px; margin-top: 8px; margin-bottom: 8px; }
+.message li { margin-bottom: 4px; }
+.message blockquote { border-left: 3px solid #555; padding-left: 10px; margin-left: 0; margin-top: 8px; margin-bottom: 8px; color: #bbb; font-style: italic; }
+.message blockquote p { margin: 0; }
+.message a { color: #64b5f6; text-decoration: underline; }
+.message a:hover { color: #90caf9; }
+.message h1, .message h2, .message h3, .message h4, .message h5, .message h6 { margin-top: 1em; margin-bottom: 0.5em; font-weight: 500; color: #ffffff; }
+.message h1 { font-size: 1.5em; } .message h2 { font-size: 1.3em; } .message h3 { font-size: 1.15em; } .message h4 { font-size: 1em; } .message h5 { font-size: 0.9em; } .message h6 { font-size: 0.85em; color: #ccc;}
+.message hr { border: 0; border-top: 1px solid #444; margin: 1em 0; }
 /* --- End Markdown Element Styling --- */
 
 
@@ -228,10 +160,14 @@ h1 {
     transition: background-color 0.2s ease;
     flex-shrink: 0; /* Prevent button from shrinking */
 }
-
-#send-button:hover {
+#send-button:disabled { /* Style for disabled button */
+    background-color: #004a9e; /* Darker blue */
+    cursor: not-allowed;
+}
+#send-button:hover:not(:disabled) { /* Only hover when enabled */
     background-color: #0056b3;
 }
+
 
 /* Loading / Error Indicators */
 #loading, #error {
@@ -258,53 +194,18 @@ h1 {
 }
 
 /* Responsive adjustments */
-@media (max-width: 850px) { /* Adjust breakpoint for history max-width */
-     #chat-history {
-        max-width: 95%; /* Allow history column to be wider on smaller screens */
-    }
-     #message-input {
-         max-width: none; /* Allow input to fill more space */
-     }
+@media (max-width: 850px) {
+     #chat-history { max-width: 95%; }
+     #message-input { max-width: none; }
 }
 
 @media (max-width: 600px) {
-    /* Body/HTML height fix already applied above */
-
-    h1 {
-        font-size: 1.2rem;
-        padding: 12px 15px;
-    }
-
-    #chat-container {
-        padding: 15px;
-    }
-
-     #chat-history {
-        gap: 12px;
-    }
-
-    .message {
-        max-width: 85%; /* Slightly wider bubbles on small screens */
-        font-size: 0.95rem;
-        padding: 8px 12px;
-    }
-
-    #chat-form {
-        padding: 10px 15px;
-    }
-
-    #message-input {
-        padding: 8px 12px;
-        font-size: 0.95rem;
-    }
-
-    #send-button {
-        padding: 8px 15px;
-        font-size: 0.95rem;
-    }
-
-     #loading, #error {
-        max-width: 95%;
-        font-size: 0.9rem;
-     }
+    h1 { font-size: 1.2rem; padding: 12px 15px; }
+    #chat-container { padding: 15px; }
+     #chat-history { gap: 12px; }
+    .message { max-width: 85%; font-size: 0.95rem; padding: 8px 12px; }
+    #chat-form { padding: 10px 15px; }
+    #message-input { padding: 8px 12px; font-size: 0.95rem; }
+    #send-button { padding: 8px 15px; font-size: 0.95rem; }
+     #loading, #error { max-width: 95%; font-size: 0.9rem; }
 }
