@@ -33,21 +33,22 @@
     <div id="loading" class="hidden">Thinking...</div>
     <div id="error" class="hidden"></div>
 
-    <!-- REMOVED Image Preview Area -->
-    <!--
-    <div id="image-preview-container" class="hidden">
-        <img id="image-preview" src="#" alt="Image preview"/>
-        <button id="remove-image-button" title="Remove image">×</button>
+    <!-- Image Preview Area - Ensure 'hidden' class is present by default -->
+    <div id="image-preview-container" class="hidden"> <!-- <<< THIS CLASS HIDES IT INITIALLY -->
+        <!-- The wrapper div helps with centering and positioning the remove button relative to the image -->
+        <div>
+             <img id="image-preview" src="#" alt="Image preview"/>
+             <button id="remove-image-button" title="Remove image">×</button>
+        </div>
     </div>
-    -->
-    <!-- END REMOVED -->
+    <!-- END Image Preview Area -->
 
     <form id="chat-form">
         <!-- Hidden file input -->
         <input type="file" id="image-upload-input" accept="image/png, image/jpeg, image/webp, image/heic, image/heif" style="display: none;">
         <!-- Button to trigger file input -->
         <button type="button" id="attach-button" title="Attach Image">
-            📎 <!-- Clip emoji or an icon -->
+            📎
         </button>
         <input type="text" id="message-input" placeholder="Type your message or add an image..." autocomplete="off">
         <button type="submit" id="send-button">Send</button>

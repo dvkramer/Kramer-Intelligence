@@ -9,11 +9,11 @@ const errorDisplay = document.getElementById('error');
 // Elements for image handling
 const attachButton = document.getElementById('attach-button');
 const imageUploadInput = document.getElementById('image-upload-input');
-// --- REMOVED: Elements for separate image preview banner ---
-// const imagePreviewContainer = document.getElementById('image-preview-container');
-// const imagePreview = document.getElementById('image-preview');
-// const removeImageButton = document.getElementById('remove-image-button');
-// --- END REMOVED ---
+// --- RE-ADDED: Elements for separate image preview banner ---
+const imagePreviewContainer = document.getElementById('image-preview-container');
+const imagePreview = document.getElementById('image-preview');
+const removeImageButton = document.getElementById('remove-image-button');
+// --- END RE-ADDED ---
 
 // --- Configuration ---
 const MAX_HISTORY_CHARS = 1000000;
@@ -23,29 +23,24 @@ const MAX_IMAGE_SIZE_MB = 15;
 
 // --- State Variables ---
 let conversationHistory = [];
-let selectedFile = null; // Store the File object
-let selectedFileBase64 = null; // Store the Base64 data URL
+let selectedFile = null;
+let selectedFileBase64 = null;
 // --- End State Variables ---
-
 
 // --- Event Listeners ---
 chatForm.addEventListener('submit', handleSendMessage);
 
 // Listeners for image handling
 attachButton.addEventListener('click', () => {
-    // --- ADDED: Clear previous selection before opening dialog ---
-    // This ensures 'change' event fires even if the same file is selected again
-    // after being programmatically cleared (e.g., after sending).
     resetFileInput();
-    // --- END ADDED ---
     imageUploadInput.click();
 });
 
 imageUploadInput.addEventListener('change', handleFileSelect);
 
-// --- REMOVED: Listener for remove button ---
-// removeImageButton.addEventListener('click', handleRemoveImage);
-// --- END REMOVED ---
+// --- RE-ADDED: Listener for remove button ---
+removeImageButton.addEventListener('click', handleRemoveImage);
+// --- END RE-ADDED ---
 
 
 // --- Functions ---
@@ -71,39 +66,33 @@ function handleFileSelect(event) {
     const reader = new FileReader();
     reader.onload = (e) => {
         selectedFileBase64 = e.target.result;
-        // --- REMOVED: Logic to show separate preview banner ---
-        // imagePreview.src = selectedFileBase64;
-        // imagePreviewContainer.classList.remove('hidden');
-        // --- END REMOVED ---
+        // --- RE-ADDED: Logic to show separate preview banner ---
+        imagePreview.src = selectedFileBase64;
+        imagePreviewContainer.classList.remove('hidden');
+        // --- END RE-ADDED ---
         hideError();
-        // --- ADDED: Optionally change attach button style/indicator ---
-        // Example: make attach button brighter or add a badge (requires CSS)
-        attachButton.style.color = '#64b5f6'; // Indicate file selected
-        // --- END ADDED ---
+        attachButton.classList.add('has-file'); // Add class to change style
     };
     reader.onerror = (e) => {
         console.error("FileReader error:", e);
         showError("Error reading file.");
-        clearSelectedFileState(); // Clear selection on error
+        handleRemoveImage(); // Use the full remove handler
     };
     reader.readAsDataURL(file);
 }
 
-// --- RENAMED/MODIFIED: Function to clear state without touching UI elements ---
-function clearSelectedFileState() {
+// --- RENAMED back to handleRemoveImage and RE-ADD logic ---
+function handleRemoveImage() { // Renamed back
     selectedFile = null;
     selectedFileBase64 = null;
-    // --- REMOVED: Logic to hide separate preview banner ---
-    // imagePreview.src = '#';
-    // imagePreviewContainer.classList.add('hidden');
-    // --- END REMOVED ---
+    // --- RE-ADDED: Logic to hide separate preview banner ---
+    imagePreview.src = '#'; // Clear preview src
+    imagePreviewContainer.classList.add('hidden');
+    // --- END RE-ADDED ---
     resetFileInput();
-     // --- ADDED: Reset attach button style ---
-     attachButton.style.color = '#aaa'; // Reset attach button color
-     // --- END ADDED ---
+    attachButton.classList.remove('has-file'); // Remove class
 }
-// --- END RENAMED/MODIFIED ---
-
+// --- END RENAMED/RE-ADD ---
 
 function resetFileInput() {
     imageUploadInput.value = null;
@@ -112,14 +101,8 @@ function resetFileInput() {
 
 async function handleSendMessage(event) {
     event.preventDefault();
-
     const userMessageText = messageInput.value.trim();
-
-    if (!userMessageText && !selectedFileBase64) {
-        // Don't show error if they just haven't typed/selected yet
-        // showError("Please type a message or attach an image.");
-        return; // Just do nothing if both are empty
-    }
+    if (!userMessageText && !selectedFileBase64) { return; }
 
     sendButton.disabled = true;
     hideError();
@@ -130,10 +113,7 @@ async function handleSendMessage(event) {
 
     if (selectedFileBase64 && selectedFile) {
         messageParts.push({
-            inlineData: {
-                mimeType: selectedFile.type,
-                data: selectedFileBase64
-            }
+            inlineData: { mimeType: selectedFile.type, data: selectedFileBase64 }
         });
         currentImageDataUrl = selectedFileBase64;
     }
@@ -141,19 +121,13 @@ async function handleSendMessage(event) {
         messageParts.push({ text: userMessageText });
     }
 
-    // Display user message (with image if present)
     displayMessage('user', userMessageText || '', currentImageDataUrl);
     scrollChatToBottom();
 
-    // Add user message parts to history
-    conversationHistory.push({
-        role: 'user',
-        parts: messageParts
-    });
+    conversationHistory.push({ role: 'user', parts: messageParts });
 
-    // Clear inputs AFTER processing
     messageInput.value = '';
-    clearSelectedFileState(); // Use the modified function to clear state
+    handleRemoveImage(); // Use the restored function to clear state AND preview
 
     messageInput.focus();
 
@@ -181,13 +155,7 @@ async function handleSendMessage(event) {
         const aiResponseText = data.text;
         const searchSuggestionHtml = data.searchSuggestionHtml;
 
-        // Add AI response to history
-        conversationHistory.push({
-            role: 'model',
-            parts: [{ text: aiResponseText }]
-        });
-
-        // Display AI message
+        conversationHistory.push({ role: 'model', parts: [{ text: aiResponseText }] });
         displayMessage('ai', aiResponseText, null, searchSuggestionHtml);
         scrollChatToBottom();
 
@@ -200,19 +168,11 @@ async function handleSendMessage(event) {
     }
 }
 
-
-/**
- * Displays a message in the chat history UI. Handles text, images, and search suggestions.
- * @param {'user' | 'ai'} role The role of the message sender.
- * @param {string} text The message text content (can be empty string).
- * @param {string | null} [imageDataUrl=null] Optional Base64 data URL for an image to display.
- * @param {string | null} [searchSuggestionHtml=null] Optional HTML string for Google Search Suggestion.
- */
+// displayMessage remains the same as the previous version (already handles image display in bubble)
 function displayMessage(role, text, imageDataUrl = null, searchSuggestionHtml = null) {
     const messageDiv = document.createElement('div');
     messageDiv.classList.add('message', role === 'user' ? 'user-message' : 'ai-message');
 
-    // Display Image if provided
     if (imageDataUrl) {
         const imgElement = document.createElement('img');
         imgElement.classList.add('message-image');
@@ -221,7 +181,6 @@ function displayMessage(role, text, imageDataUrl = null, searchSuggestionHtml = 
         messageDiv.appendChild(imgElement);
     }
 
-    // Display Text if provided
     if (text) {
         const paragraph = document.createElement('p');
         if (role === 'ai' && typeof marked !== 'undefined' && typeof DOMPurify !== 'undefined') {
@@ -232,7 +191,7 @@ function displayMessage(role, text, imageDataUrl = null, searchSuggestionHtml = 
                 paragraph.innerHTML = sanitizedHtml;
             } catch (error) {
                 console.error("Error parsing or sanitizing Markdown:", error);
-                paragraph.textContent = text; // Fallback
+                paragraph.textContent = text;
             }
         } else {
             paragraph.textContent = text;
@@ -240,7 +199,6 @@ function displayMessage(role, text, imageDataUrl = null, searchSuggestionHtml = 
         messageDiv.appendChild(paragraph);
     }
 
-    // Render Search Suggestion Chip if provided (for AI messages)
     if (role === 'ai' && searchSuggestionHtml) {
         const suggestionContainer = document.createElement('div');
         suggestionContainer.classList.add('search-suggestion-container');
@@ -252,28 +210,20 @@ function displayMessage(role, text, imageDataUrl = null, searchSuggestionHtml = 
 }
 
 
-/**
- * Checks the total character count of the history (incl. images) and removes oldest messages if over limit.
- */
+// truncateHistory remains the same
 function truncateHistory() {
     let totalChars = 0;
     for (const message of conversationHistory) {
         if (message.parts && Array.isArray(message.parts)) {
             for (const part of message.parts) {
-                if (part.text) {
-                    totalChars += part.text.length;
-                } else if (part.inlineData) {
-                    totalChars += IMAGE_CHAR_EQUIVALENT;
-                }
+                if (part.text) { totalChars += part.text.length; }
+                else if (part.inlineData) { totalChars += IMAGE_CHAR_EQUIVALENT; }
             }
         }
     }
-
-    // Remove oldest messages (user/model pairs)
     while (totalChars > MAX_HISTORY_CHARS && conversationHistory.length >= 2) {
         const removedUserMsg = conversationHistory.shift();
         const removedModelMsg = conversationHistory.shift();
-
         let removedChars = 0;
         [removedUserMsg, removedModelMsg].forEach(msg => {
              if (msg?.parts && Array.isArray(msg.parts)) {
@@ -284,42 +234,16 @@ function truncateHistory() {
             }
         });
         totalChars -= removedChars;
-
         console.log("Truncated history. New char count:", totalChars);
     }
 }
 
-
-/** Scrolls the chat history container to the bottom. */
-function scrollChatToBottom() {
-    setTimeout(() => {
-        const chatContainer = document.getElementById('chat-container');
-        chatContainer.scrollTop = chatContainer.scrollHeight;
-    }, 0);
-}
-
-/** Shows the loading indicator. */
-function showLoading() {
-    loadingIndicator.classList.remove('hidden');
-}
-
-/** Hides the loading indicator. */
-function hideLoading() {
-    loadingIndicator.classList.add('hidden');
-}
-
-/** Shows an error message. */
-function showError(message) {
-    errorDisplay.textContent = message;
-    errorDisplay.classList.remove('hidden');
-    setTimeout(hideError, 5000);
-}
-
-/** Hides the error message. */
-function hideError() {
-    errorDisplay.classList.add('hidden');
-    errorDisplay.textContent = '';
-}
+// scrollChatToBottom, showLoading, hideLoading, showError, hideError remain the same
+function scrollChatToBottom() { setTimeout(() => { const chatContainer = document.getElementById('chat-container'); chatContainer.scrollTop = chatContainer.scrollHeight; }, 0); }
+function showLoading() { loadingIndicator.classList.remove('hidden'); }
+function hideLoading() { loadingIndicator.classList.add('hidden'); }
+function showError(message) { errorDisplay.textContent = message; errorDisplay.classList.remove('hidden'); setTimeout(hideError, 5000); }
+function hideError() { errorDisplay.classList.add('hidden'); errorDisplay.textContent = ''; }
 
 // --- Initial Setup ---
 messageInput.focus();
