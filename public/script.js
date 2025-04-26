@@ -23,11 +23,13 @@ async function handleSendMessage(event) {
     const userMessageText = messageInput.value.trim();
     if (!userMessageText) return; // Do nothing if input is empty
 
-    // Disable input and button during processing
-    messageInput.disabled = true;
+    // --- MODIFIED: Disable only the Send button ---
     sendButton.disabled = true;
+    // messageInput remains enabled
+    // --- END MODIFIED ---
+
     hideError();
-    showLoading();
+    showLoading(); // Show loading for this specific request
 
     // Display user message immediately (using plain text)
     displayMessage('user', userMessageText);
@@ -39,12 +41,16 @@ async function handleSendMessage(event) {
         parts: [{ text: userMessageText }]
     });
 
-    // Clear the input field
+    // Clear the input field *after* adding to history and displaying
     messageInput.value = '';
+    messageInput.focus(); // Keep focus on input after sending
 
     try {
         // Truncate history if it exceeds the character limit
         truncateHistory();
+
+        // Capture the history state *for this specific request*
+        const historyForThisRequest = [...conversationHistory];
 
         // Send history to backend API
         const response = await fetch('/api/chat', {
@@ -52,9 +58,11 @@ async function handleSendMessage(event) {
             headers: {
                 'Content-Type': 'application/json',
             },
-            body: JSON.stringify({ history: conversationHistory }),
+            // Send the captured history state
+            body: JSON.stringify({ history: historyForThisRequest }),
         });
 
+        // Hide loading indicator *for this specific request*
         hideLoading();
 
         if (!response.ok) {
@@ -69,11 +77,10 @@ async function handleSendMessage(event) {
             throw new Error(errorMsg);
         }
 
-
         const data = await response.json();
         const aiResponseText = data.text;
 
-        // Add AI response to history and display it (will be parsed by displayMessage)
+        // Add AI response to the *shared* history and display it
         conversationHistory.push({
             role: 'model',
             parts: [{ text: aiResponseText }]
@@ -84,14 +91,14 @@ async function handleSendMessage(event) {
     } catch (err) {
         console.error("Error fetching AI response:", err);
         showError(err.message || "Failed to get response from AI. Please try again.");
-        // Optional: Remove the user's last message from history if the API call failed
-        // conversationHistory.pop();
-        hideLoading(); // Ensure loading is hidden on error
+        // If an error occurs for one request, we might still want to hide its loading indicator
+        hideLoading();
     } finally {
-        // Re-enable input and button
-        messageInput.disabled = false;
+        // --- MODIFIED: Re-enable only the Send button ---
         sendButton.disabled = false;
-        messageInput.focus(); // Put cursor back in input field
+        // messageInput was never disabled
+        // messageInput.focus(); // Focus is already handled after clearing input
+        // --- END MODIFIED ---
     }
 }
 
@@ -121,7 +128,6 @@ function displayMessage(role, text) {
             const rawHtml = marked.parse(text);
 
             // 2. Use DOMPurify to sanitize the raw HTML string
-            //    This removes potential XSS vectors (<script>, onerror, etc.)
             const sanitizedHtml = DOMPurify.sanitize(rawHtml);
 
             // 3. Set the sanitized HTML to the paragraph's innerHTML
