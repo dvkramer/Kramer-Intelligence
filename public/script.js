@@ -6,49 +6,46 @@ const chatHistory = document.getElementById('chat-history');
 const loadingIndicator = document.getElementById('loading');
 const errorDisplay = document.getElementById('error');
 
-// --- ADDED: Elements for image handling ---
+// --- MODIFIED: Remove preview elements ---
 const attachButton = document.getElementById('attach-button');
 const imageUploadInput = document.getElementById('image-upload-input');
-const imagePreviewContainer = document.getElementById('image-preview-container');
-const imagePreview = document.getElementById('image-preview');
-const removeImageButton = document.getElementById('remove-image-button');
-// --- END ADDED ---
+// const imagePreviewContainer = document.getElementById('image-preview-container'); // REMOVED
+// const imagePreview = document.getElementById('image-preview'); // REMOVED
+// const removeImageButton = document.getElementById('remove-image-button'); // REMOVED
+// --- END MODIFIED ---
 
 // --- Configuration ---
 const MAX_HISTORY_CHARS = 1000000;
-const IMAGE_CHAR_EQUIVALENT = 1000; // Heuristic for truncation
-const MAX_IMAGE_SIZE_MB = 15; // Max image size in MB
+const IMAGE_CHAR_EQUIVALENT = 1000;
+const MAX_IMAGE_SIZE_MB = 15;
 // --- End Configuration ---
 
 // --- State Variables ---
 let conversationHistory = [];
-let selectedFile = null; // Store the File object
-let selectedFileBase64 = null; // Store the Base64 data URL
+let selectedFile = null;
+let selectedFileBase64 = null;
 // --- End State Variables ---
 
 
 // --- Event Listeners ---
 chatForm.addEventListener('submit', handleSendMessage);
 
-// --- ADDED: Listeners for image handling ---
 attachButton.addEventListener('click', () => {
-    imageUploadInput.click(); // Trigger hidden file input
+    imageUploadInput.click();
 });
 
 imageUploadInput.addEventListener('change', handleFileSelect);
 
-removeImageButton.addEventListener('click', handleRemoveImage);
-// --- END ADDED ---
+// removeImageButton.addEventListener('click', handleRemoveImage); // REMOVED listener
 
 
 // --- Functions ---
 
-// --- ADDED: Image Handling Functions ---
+// --- Image Handling Functions (Modified) ---
 function handleFileSelect(event) {
     const file = event.target.files[0];
     if (!file) return;
 
-    // Basic validation
     if (!file.type.startsWith('image/')) {
         showError('Please select an image file.');
         resetFileInput();
@@ -60,36 +57,41 @@ function handleFileSelect(event) {
         return;
     }
 
-    selectedFile = file; // Store the file object
+    selectedFile = file;
 
     const reader = new FileReader();
     reader.onload = (e) => {
-        selectedFileBase64 = e.target.result; // Store Base64 Data URL
-        imagePreview.src = selectedFileBase64;
-        imagePreviewContainer.classList.remove('hidden');
-        hideError(); // Clear any previous errors
+        selectedFileBase64 = e.target.result;
+        // imagePreview.src = selectedFileBase64; // REMOVED preview update
+        // imagePreviewContainer.classList.remove('hidden'); // REMOVED preview show
+        hideError();
     };
     reader.onerror = (e) => {
         console.error("FileReader error:", e);
         showError("Error reading file.");
-        handleRemoveImage(); // Clear selection on error
+        // Still clear selection on error, even without preview
+        selectedFile = null;
+        selectedFileBase64 = null;
+        resetFileInput();
     };
-    reader.readAsDataURL(file); // Read as Data URL for preview and easy sending
+    reader.readAsDataURL(file);
 }
 
-function handleRemoveImage() {
+// --- MODIFIED: Simplified handleRemoveImage (though not directly called by button anymore) ---
+// This might still be useful internally if needed later, e.g., after sending
+function clearSelectedImage() {
     selectedFile = null;
     selectedFileBase64 = null;
-    imagePreview.src = '#'; // Clear preview src
-    imagePreviewContainer.classList.add('hidden');
+    // imagePreview.src = '#'; // REMOVED preview clear
+    // imagePreviewContainer.classList.add('hidden'); // REMOVED preview hide
     resetFileInput();
 }
+// --- END MODIFIED ---
 
 function resetFileInput() {
-    // Reset file input so the same file can be selected again after removal
     imageUploadInput.value = null;
 }
-// --- END ADDED ---
+// --- END Image Handling Functions ---
 
 
 async function handleSendMessage(event) {
@@ -97,7 +99,6 @@ async function handleSendMessage(event) {
 
     const userMessageText = messageInput.value.trim();
 
-    // Require either text or an image to send
     if (!userMessageText && !selectedFileBase64) {
         showError("Please type a message or attach an image.");
         return;
@@ -107,52 +108,41 @@ async function handleSendMessage(event) {
     hideError();
     showLoading();
 
-    // --- Prepare message parts (text and/or image) ---
     const messageParts = [];
-    let currentImageDataUrl = null; // Store image data for displayMessage
+    let currentImageDataUrl = null;
 
     if (selectedFileBase64 && selectedFile) {
         messageParts.push({
             inlineData: {
                 mimeType: selectedFile.type,
-                // Send the full Data URL; backend will strip prefix if needed
                 data: selectedFileBase64
             }
         });
-        currentImageDataUrl = selectedFileBase64; // Pass for immediate display
+        currentImageDataUrl = selectedFileBase64;
     }
     if (userMessageText) {
         messageParts.push({ text: userMessageText });
     }
-    // --- End Prepare message parts ---
 
-    // Display user message (with image preview if applicable)
-    displayMessage('user', userMessageText || '', currentImageDataUrl); // Pass image for display
+    displayMessage('user', userMessageText || '', currentImageDataUrl);
     scrollChatToBottom();
 
-    // Add user message parts to history object
     conversationHistory.push({
         role: 'user',
-        parts: messageParts // Store potentially multi-part message
+        parts: messageParts
     });
 
-    // --- Clear inputs AFTER processing ---
+    // Clear inputs AFTER processing
     messageInput.value = '';
-    handleRemoveImage(); // Clear selected image state and preview
+    clearSelectedImage(); // Use the new function name to clear internal state
     // --- End Clear inputs ---
 
-    messageInput.focus(); // Keep focus on input
+    messageInput.focus();
 
     try {
         truncateHistory();
-
         const historyForThisRequest = [...conversationHistory];
-
-        // --- Prepare payload for backend ---
-        // Send the full history array
         const payload = { history: historyForThisRequest };
-        // --- End Prepare payload ---
-
 
         const response = await fetch('/api/chat', {
             method: 'POST',
@@ -173,14 +163,12 @@ async function handleSendMessage(event) {
         const aiResponseText = data.text;
         const searchSuggestionHtml = data.searchSuggestionHtml;
 
-        // Add AI response text part to history
         conversationHistory.push({
             role: 'model',
-            parts: [{ text: aiResponseText }] // Assume AI only sends text for now
+            parts: [{ text: aiResponseText }]
         });
 
-        // Display AI message
-        displayMessage('ai', aiResponseText, null, searchSuggestionHtml); // Pass search suggestion
+        displayMessage('ai', aiResponseText, null, searchSuggestionHtml);
         scrollChatToBottom();
 
     } catch (err) {
@@ -199,22 +187,19 @@ async function handleSendMessage(event) {
  * @param {string | null} [imageDataUrl=null] Optional Base64 data URL for an image to display.
  * @param {string | null} [searchSuggestionHtml=null] Optional HTML string for Google Search Suggestion.
  */
-function displayMessage(role, text, imageDataUrl = null, searchSuggestionHtml = null) { // MODIFIED: Added imageDataUrl
+function displayMessage(role, text, imageDataUrl = null, searchSuggestionHtml = null) {
     const messageDiv = document.createElement('div');
     messageDiv.classList.add('message', role === 'user' ? 'user-message' : 'ai-message');
 
-    // --- ADDED: Display Image if provided ---
     if (imageDataUrl) {
         const imgElement = document.createElement('img');
         imgElement.classList.add('message-image');
         imgElement.src = imageDataUrl;
-        imgElement.alt = "User uploaded image"; // Simple alt text
-        messageDiv.appendChild(imgElement); // Append image first for user messages
+        imgElement.alt = "User uploaded image";
+        messageDiv.appendChild(imgElement);
     }
-    // --- END ADDED ---
 
-    // Display Text if provided
-    if (text) { // Only create paragraph if text exists
+    if (text) {
         const paragraph = document.createElement('p');
         if (role === 'ai' && typeof marked !== 'undefined' && typeof DOMPurify !== 'undefined') {
             try {
@@ -224,16 +209,14 @@ function displayMessage(role, text, imageDataUrl = null, searchSuggestionHtml = 
                 paragraph.innerHTML = sanitizedHtml;
             } catch (error) {
                 console.error("Error parsing or sanitizing Markdown:", error);
-                paragraph.textContent = text; // Fallback
+                paragraph.textContent = text;
             }
         } else {
-            // User text or if libraries failed
             paragraph.textContent = text;
         }
         messageDiv.appendChild(paragraph);
     }
 
-    // Render Search Suggestion Chip if provided (for AI messages)
     if (role === 'ai' && searchSuggestionHtml) {
         const suggestionContainer = document.createElement('div');
         suggestionContainer.classList.add('search-suggestion-container');
@@ -243,6 +226,7 @@ function displayMessage(role, text, imageDataUrl = null, searchSuggestionHtml = 
 
     chatHistory.appendChild(messageDiv);
 }
+
 
 /**
  * Checks the total character count of the history (incl. images) and removes oldest messages if over limit.
@@ -255,20 +239,15 @@ function truncateHistory() {
                 if (part.text) {
                     totalChars += part.text.length;
                 } else if (part.inlineData) {
-                    // --- ADDED: Count characters for images ---
                     totalChars += IMAGE_CHAR_EQUIVALENT;
-                    // --- END ADDED ---
                 }
             }
         }
     }
 
-    // Remove oldest messages (user/model pairs)
     while (totalChars > MAX_HISTORY_CHARS && conversationHistory.length >= 2) {
         const removedUserMsg = conversationHistory.shift();
         const removedModelMsg = conversationHistory.shift();
-
-        // Recalculate removed characters accurately
         let removedChars = 0;
         [removedUserMsg, removedModelMsg].forEach(msg => {
              if (msg?.parts && Array.isArray(msg.parts)) {
@@ -279,7 +258,6 @@ function truncateHistory() {
             }
         });
         totalChars -= removedChars;
-
         console.log("Truncated history. New char count:", totalChars);
     }
 }
@@ -307,7 +285,6 @@ function hideLoading() {
 function showError(message) {
     errorDisplay.textContent = message;
     errorDisplay.classList.remove('hidden');
-    // Hide error after a few seconds
     setTimeout(hideError, 5000);
 }
 
