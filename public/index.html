@@ -4,15 +4,21 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Kramer Intelligence</title>
+
+    <!-- SEO Meta Tags -->
+    <meta name="description" content="Chat with Kramer Intelligence, an AI assistant created by Daniel Vincent Kramer. Get answers you can trust.">
+    <link rel="canonical" href="https://kramer-intelligence.vercel.app/">
+    <!-- End SEO Meta Tags -->
+
     <link rel="stylesheet" href="style.css">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500&display=swap" rel="stylesheet">
 
-    <!-- ADDED LIBRARIES -->
+    <!-- Added Libraries for Markdown/Sanitization -->
     <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js" defer></script>
     <script src="https://cdn.jsdelivr.net/npm/dompurify@latest/dist/purify.min.js" defer></script>
-    <!-- END ADDED LIBRARIES -->
+    <!-- End Added Libraries -->
 
 </head>
 <body>
@@ -32,8 +38,6 @@
         <button type="submit" id="send-button">Send</button>
     </form>
 
-    <!-- Your script MUST come AFTER the libraries if not using defer/modules properly -->
     <script src="script.js" defer></script>
-    <!-- Note: Added 'defer' to all scripts to ensure order and non-blocking load -->
 </body>
 </html>
