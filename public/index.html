@@ -6,7 +6,7 @@
     <title>Kramer Intelligence</title>
 
     <!-- SEO Meta Tags -->
-    <meta name="description" content="Chat with Kramer Intelligence, an AI assistant created by Daniel Vincent Kramer. Get answers you can trust.">
+    <meta name="description" content="Chat with Kramer Intelligence, an AI assistant created by Daniel Vincent Kramer. Get answers, engage in conversation, and even upload images.">
     <link rel="canonical" href="https://kramer-intelligence.vercel.app/">
     <!-- End SEO Meta Tags -->
 
@@ -33,8 +33,21 @@
     <div id="loading" class="hidden">Thinking...</div>
     <div id="error" class="hidden"></div>
 
+    <!-- Image Preview Area -->
+    <div id="image-preview-container" class="hidden">
+        <img id="image-preview" src="#" alt="Image preview"/>
+        <button id="remove-image-button" title="Remove image">×</button>
+    </div>
+    <!-- End Image Preview Area -->
+
     <form id="chat-form">
-        <input type="text" id="message-input" placeholder="Type your message..." autocomplete="off" required>
+        <!-- Hidden file input -->
+        <input type="file" id="image-upload-input" accept="image/png, image/jpeg, image/webp, image/heic, image/heif" style="display: none;">
+        <!-- Button to trigger file input -->
+        <button type="button" id="attach-button" title="Attach Image">
+            📎 <!-- Clip emoji or an icon -->
+        </button>
+        <input type="text" id="message-input" placeholder="Type your message or add an image..." autocomplete="off">
         <button type="submit" id="send-button">Send</button>
     </form>
 
