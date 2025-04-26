@@ -6,29 +6,18 @@ const loadingIndicator = document.getElementById('loading');
 const errorDisplay = document.getElementById('error');
 
 // --- Configuration ---
-// Using 1M character limit as requested (~ corresponds to a large token count)
 const MAX_HISTORY_CHARS = 1000000;
 // --- End Configuration ---
 
-// Stores the conversation history in the format expected by the Gemini API
-// We initialize with the first AI message shown in index.html
-let conversationHistory = [
-    {
-        role: 'model',
-        parts: [{ text: 'Hello! How can I help you today?' }]
-    }
-];
+// Start with an empty history
+let conversationHistory = []; // MODIFIED HERE
 
 // --- Event Listeners ---
-
 chatForm.addEventListener('submit', handleSendMessage);
 
 // --- Functions ---
 
-/**
- * Handles the form submission event.
- * @param {Event} event The form submission event.
- */
+// ... (Rest of the handleSendMessage function remains the same) ...
 async function handleSendMessage(event) {
     event.preventDefault(); // Prevent default page reload
 
@@ -70,9 +59,17 @@ async function handleSendMessage(event) {
         hideLoading();
 
         if (!response.ok) {
-            const errorData = await response.json();
-            throw new Error(errorData.error || `API Error: ${response.statusText} (${response.status})`);
+            // Try to parse error JSON, otherwise use status text
+            let errorMsg = `API Error: ${response.statusText} (${response.status})`;
+            try {
+                const errorData = await response.json();
+                errorMsg = errorData.error || errorMsg;
+            } catch (e) {
+                 // Ignore if response isn't valid JSON
+            }
+            throw new Error(errorMsg);
         }
+
 
         const data = await response.json();
         const aiResponseText = data.text;
@@ -99,11 +96,8 @@ async function handleSendMessage(event) {
     }
 }
 
-/**
- * Displays a message in the chat history UI.
- * @param {'user' | 'ai'} role The role of the message sender ('user' or 'ai').
- * @param {string} text The message text content.
- */
+
+// ... (displayMessage function remains the same) ...
 function displayMessage(role, text) {
     const messageDiv = document.createElement('div');
     messageDiv.classList.add('message', role === 'user' ? 'user-message' : 'ai-message');
@@ -115,6 +109,7 @@ function displayMessage(role, text) {
     chatHistory.appendChild(messageDiv);
 }
 
+// ... (truncateHistory function remains the same - NOTE: logic adjusted slightly for empty start) ...
 /**
  * Checks the total character count of the history and removes oldest messages if over limit.
  */
@@ -126,18 +121,13 @@ function truncateHistory() {
         }
     }
 
-    // Remove oldest messages (keeping the first AI greeting might be desirable,
-    // so we check length > 2 instead of > 1)
-    while (totalChars > MAX_HISTORY_CHARS && conversationHistory.length > 2) {
-        // Remove the second message (the first user message after the initial AI greeting)
-        // and the third message (its corresponding AI response) to keep pairs.
-        // If we only remove one, the roles might get misaligned. A simpler
-        // approach is just removing the oldest (index 1, the first *real* user msg).
-        // Let's remove the oldest user/model pair after the initial greeting.
-        const removedUserMsg = conversationHistory.splice(1, 1)[0]; // Remove oldest user msg (index 1)
-        const removedModelMsg = conversationHistory.splice(1, 1)[0]; // Remove oldest model msg (now at index 1)
+    // Remove oldest messages (user/model pairs)
+    while (totalChars > MAX_HISTORY_CHARS && conversationHistory.length >= 2) {
+         // Remove the first two messages (oldest user/model pair)
+        const removedUserMsg = conversationHistory.shift(); // Remove oldest (user)
+        const removedModelMsg = conversationHistory.shift(); // Remove next oldest (model)
 
-        if (removedUserMsg?.parts?.[0]?.text) {
+         if (removedUserMsg?.parts?.[0]?.text) {
              totalChars -= removedUserMsg.parts[0].text.length;
         }
          if (removedModelMsg?.parts?.[0]?.text) {
@@ -145,17 +135,17 @@ function truncateHistory() {
         }
         console.log("Truncated history. New char count:", totalChars);
     }
-     // Fallback if somehow only one message left after initial
-     if (totalChars > MAX_HISTORY_CHARS && conversationHistory.length === 2) {
-        const removedMsg = conversationHistory.splice(1, 1)[0];
-         if (removedMsg?.parts?.[0]?.text) {
+     // Safety check if only one message remains and it's somehow too long (unlikely)
+     if (totalChars > MAX_HISTORY_CHARS && conversationHistory.length === 1) {
+         const removedMsg = conversationHistory.shift();
+          if (removedMsg?.parts?.[0]?.text) {
              totalChars -= removedMsg.parts[0].text.length;
-        }
+         }
          console.log("Truncated history (single msg). New char count:", totalChars);
      }
 }
 
-
+// ... (scrollChatToBottom, showLoading, hideLoading, showError, hideError remain the same) ...
 /** Scrolls the chat history container to the bottom. */
 function scrollChatToBottom() {
     // Use setTimeout to allow the DOM to update before scrolling
@@ -187,6 +177,7 @@ function hideError() {
     errorDisplay.textContent = '';
 }
 
+
 // --- Initial Setup ---
-scrollChatToBottom(); // Scroll down initially if content exists
+// scrollChatToBottom(); // No need to scroll initially if empty
 messageInput.focus(); // Focus the input field on load
