@@ -1,3 +1,5 @@
+/* public/style.css */
+
 /* General Reset / Base Styles */
 * {
     box-sizing: border-box; /* Better box model */
@@ -5,6 +7,8 @@
 
 html {
     height: 100%; /* Ensure html takes full height */
+    /* Add for iOS Safari height issues */
+    height: -webkit-fill-available;
 }
 
 body {
@@ -15,7 +19,13 @@ body {
     padding: 0;
     display: flex;
     flex-direction: column; /* Stack elements vertically */
-    min-height: 100vh; /* Full viewport height */
+
+    /* --- MODIFIED LINES FOR VIEWPORT HEIGHT FIX --- */
+    height: 100vh; /* Strict height, not min-height */
+    /* Add for iOS Safari height issues */
+    height: -webkit-fill-available;
+    overflow: hidden; /* Prevent body itself from scrolling */
+    /* --- END MODIFIED LINES --- */
 }
 
 /* Header Styling */
@@ -33,7 +43,7 @@ h1 {
 /* Chat Area Styling */
 #chat-container {
     flex-grow: 1; /* Takes up available vertical space */
-    overflow-y: auto; /* Allows scrolling for content */
+    overflow-y: auto; /* Allows scrolling for content inside */
     padding: 20px; /* Padding around the centered chat history */
     width: 100%;
     display: flex; /* Use flexbox to help center the history */
@@ -49,7 +59,7 @@ h1 {
     margin: 0 auto; /* CENTER the column of bubbles */
 }
 
-/* Message Bubble Styling (Mostly Unchanged) */
+/* Message Bubble Styling */
 .message {
     padding: 10px 15px;
     border-radius: 18px;
@@ -59,7 +69,7 @@ h1 {
 }
 
 .message p {
-    margin: 0;
+    margin: 0; /* Reset paragraph margin inside bubble */
 }
 
 .user-message {
@@ -76,6 +86,104 @@ h1 {
     border-bottom-left-radius: 5px;
 }
 
+/* --- Markdown Element Styling --- */
+
+/* Styling for code blocks (```code```) */
+.message pre {
+    background-color: rgba(0, 0, 0, 0.2); /* Darker background for code */
+    padding: 10px;
+    border-radius: 4px;
+    overflow-x: auto; /* Allow horizontal scrolling for long code lines */
+    border: 1px solid #444;
+    margin-top: 8px; /* Space above code block */
+    margin-bottom: 8px; /* Space below code block */
+}
+
+.message code { /* Applies to both inline and block code */
+    font-family: Consolas, Monaco, 'Andale Mono', 'Ubuntu Mono', monospace;
+    font-size: 0.9em;
+}
+
+/* Inline code (`code`) - target code tags directly within paragraphs */
+.message p > code {
+    background-color: rgba(255, 255, 255, 0.1);
+    padding: 0.2em 0.4em;
+    border-radius: 3px;
+    font-size: 0.85em;
+}
+
+/* Ensure code within pre blocks doesn't get the inline background */
+.message pre code {
+    background-color: transparent;
+    padding: 0;
+    font-size: inherit; /* Inherit pre's font size */
+    border-radius: 0; /* Remove rounded corners inside pre */
+}
+
+/* Styling for lists (ul, ol) */
+.message ul,
+.message ol {
+    padding-left: 25px; /* Indent lists */
+    margin-top: 8px; /* Space above list */
+    margin-bottom: 8px; /* Space below list */
+}
+
+.message li {
+    margin-bottom: 4px; /* Space between list items */
+}
+
+/* Styling for blockquotes (> quote) */
+.message blockquote {
+    border-left: 3px solid #555;
+    padding-left: 10px;
+    margin-left: 0;
+    margin-top: 8px;
+    margin-bottom: 8px;
+    color: #bbb; /* Slightly dimmer text for quotes */
+    font-style: italic;
+}
+/* Ensure paragraphs inside blockquotes don't add extra margins */
+.message blockquote p {
+    margin: 0;
+}
+
+
+/* Links */
+.message a {
+    color: #64b5f6; /* Light blue for links */
+    text-decoration: underline;
+}
+
+.message a:hover {
+    color: #90caf9;
+}
+
+/* Headings (less common in chat, but good to have) */
+.message h1, .message h2, .message h3, .message h4, .message h5, .message h6 {
+    margin-top: 1em;
+    margin-bottom: 0.5em;
+    font-weight: 500;
+    color: #ffffff; /* White headings */
+}
+
+.message h1 { font-size: 1.5em; }
+.message h2 { font-size: 1.3em; }
+.message h3 { font-size: 1.15em; }
+.message h4 { font-size: 1em; }
+.message h5 { font-size: 0.9em; }
+.message h6 { font-size: 0.85em; color: #ccc;}
+
+/* Horizontal Rule --- */
+.message hr {
+    border: 0;
+    border-top: 1px solid #444;
+    margin: 1em 0;
+}
+
+
+/* --- End Markdown Element Styling --- */
+
+
 /* Input Form Styling */
 #chat-form {
     display: flex;
@@ -84,15 +192,7 @@ h1 {
     background-color: #1f1f1f; /* Match header background */
     flex-shrink: 0; /* Prevent form from shrinking */
     width: 100%; /* Ensure form spans width */
-    /* Center the input/button group within the form area */
     justify-content: center;
-}
-
-/* Wrapper for input and button to control their max-width and centering */
-#chat-form > input,
-#chat-form > button {
-   /* Remove direct centering from form items, apply to a wrapper if needed,
-      or give them max-width directly. Let's try flexible input */
 }
 
 #message-input {
@@ -150,6 +250,7 @@ h1 {
     background-color: rgba(255, 77, 77, 0.1); /* Subtle red background */
     border-radius: 4px;
     border: 1px solid rgba(255, 77, 77, 0.3);
+    padding: 10px 15px; /* Add some padding to error box */
 }
 
 .hidden {
@@ -167,13 +268,7 @@ h1 {
 }
 
 @media (max-width: 600px) {
-    body {
-        min-height: -webkit-fill-available; /* iOS viewport height fix */
-        min-height: 100vh;
-    }
-     html {
-        height: -webkit-fill-available;
-    }
+    /* Body/HTML height fix already applied above */
 
     h1 {
         font-size: 1.2rem;
@@ -196,8 +291,6 @@ h1 {
 
     #chat-form {
         padding: 10px 15px;
-        /* Consider stacking input/button on very small screens if needed */
-        /* flex-direction: column; gap: 5px; */
     }
 
     #message-input {
