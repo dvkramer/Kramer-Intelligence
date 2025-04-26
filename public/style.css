@@ -88,14 +88,19 @@ h1 {
 }
 
 
-/* --- ADDED: Search Suggestion Styling --- */
+/* Search Suggestion Styling */
 .search-suggestion-container {
-    /* Container itself doesn't need much style if the inner HTML handles it */
-    margin-top: 5px; /* Add some space above the chip */
-    /* The renderedContent HTML should handle its own width/appearance */
-    width: 100%; /* Ensure container allows chip to be full width of bubble */
+    margin-top: 5px;
+    width: 100%;
 }
-/* --- END Search Suggestion Styling --- */
+
+/* --- ADDED: Override link style within suggestion chip --- */
+.search-suggestion-container a {
+    color: inherit !important; /* Inherit text color (use !important if needed to override inline styles) */
+    text-decoration: none !important; /* Remove underline */
+    /* The chip background/border hover effects are likely handled by Google's CSS */
+}
+/* --- END ADDED --- */
 
 
 /* --- Markdown Element Styling --- */
@@ -108,8 +113,9 @@ h1 {
 .message li { margin-bottom: 4px; }
 .message blockquote { border-left: 3px solid #555; padding-left: 10px; margin-left: 0; margin-top: 8px; margin-bottom: 8px; color: #bbb; font-style: italic; }
 .message blockquote p { margin: 0; }
-.message a { color: #64b5f6; text-decoration: underline; }
-.message a:hover { color: #90caf9; }
+/* General links *outside* the suggestion chip should still look like links */
+.message p a { color: #64b5f6; text-decoration: underline; }
+.message p a:hover { color: #90caf9; }
 .message h1, .message h2, .message h3, .message h4, .message h5, .message h6 { margin-top: 1em; margin-bottom: 0.5em; font-weight: 500; color: #ffffff; }
 .message h1 { font-size: 1.5em; } .message h2 { font-size: 1.3em; } .message h3 { font-size: 1.15em; } .message h4 { font-size: 1em; } .message h5 { font-size: 0.9em; } .message h6 { font-size: 0.85em; color: #ccc;}
 .message hr { border: 0; border-top: 1px solid #444; margin: 1em 0; }
