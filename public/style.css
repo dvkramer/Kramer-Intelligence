@@ -63,68 +63,73 @@ h1 {
     padding-bottom: 10px; /* Space at the very end of the scroll */
 }
 
-/* Individual Message Bubble Styling */
+/* Individual Message Bubble Styling - ESSENTIAL FOR BUBBLES */
 .message {
-    padding: 10px 15px; /* Internal padding */
-    border-radius: 18px; /* Rounded corners */
-    max-width: 80%; /* Limit bubble width */
-    line-height: 1.4; /* Base text line spacing */
-    overflow-wrap: break-word; /* Break long words/URLs */
-    display: flex; /* Use flex for internal alignment if needed */
-    flex-direction: column; /* Stack image/text/suggestions */
-    gap: 8px; /* Consistent small gap between direct children (like text block and suggestions) */
+    padding: 10px 15px;
+    border-radius: 18px;
+    max-width: 80%;
+    line-height: 1.4; /* Base line height */
+    overflow-wrap: break-word;
+    display: flex; /* Ensures bubble structure */
+    flex-direction: column;
+    gap: 8px; /* Base gap between elements inside bubble */
 }
 
-/* --- START: CORRECTED PARAGRAPH & BLOCK SPACING --- */
-
-/* Base reset for paragraphs within messages */
+/* Base reset for paragraphs within ALL messages */
 .message p {
     margin: 0; /* Remove ALL default margins first */
     overflow-wrap: break-word;
     white-space: pre-wrap; /* Preserve explicit newlines (\n -> <br>) AND wrap text */
 }
 
-/* User message paragraphs (usually don't need extra spacing) */
-.user-message p {
-    /* white-space: pre-wrap; is inherited or set above */
+/* User message specific styles */
+.user-message {
+    background-color: #007bff;
+    color: white;
+    align-self: flex-end; /* Positions bubble right */
+    border-bottom-right-radius: 5px;
 }
+/* User message paragraphs inherit base styles */
+/* .user-message p { white-space: pre-wrap; is set by .message p */ }
 
-/* AI message paragraph spacing */
-/* Add top margin ONLY to a paragraph that directly follows another paragraph */
+
+/* AI message specific styles */
+.ai-message {
+    background-color: #333333;
+    color: #e0e0e0;
+    align-self: flex-start; /* Positions bubble left */
+    border-bottom-left-radius: 5px;
+}
+/* AI message paragraphs inherit base styles */
+/* .ai-message p { white-space: pre-wrap; is set by .message p */ }
+
+/* --- START: CORRECTED PARAGRAPH SPACING FOR AI MESSAGES --- */
+/* Add top margin ONLY to a paragraph that directly follows another paragraph INSIDE an AI message */
 .ai-message p + p {
    margin-top: 0.5em; /* Adjust this value for desired gap size (e.g., 0.4em, 6px) */
                        /* This creates the extra space for intentional paragraph breaks (\n\n) */
 }
 
-/* Add spacing between paragraphs and other common block elements */
+/* Optional: Add spacing between paragraphs and other common block elements for consistency */
 .ai-message p + ul,
 .ai-message p + ol,
 .ai-message p + pre,
 .ai-message p + blockquote,
 .ai-message p + hr,
-.ai-message p + h1, /* Add for all heading levels if needed */
-.ai-message p + h2,
-.ai-message p + h3,
-.ai-message p + h4,
-.ai-message p + h5,
-.ai-message p + h6 {
-    margin-top: 0.8em; /* Adjust spacing between paragraph and other blocks */
+.ai-message p + h1, .ai-message p + h2, .ai-message p + h3, .ai-message p + h4, .ai-message p + h5, .ai-message p + h6 {
+    margin-top: 0.8em; /* Space before lists, code blocks etc. after a paragraph */
 }
 
-/* Add spacing AFTER common block elements before a paragraph */
 .ai-message ul + p,
 .ai-message ol + p,
 .ai-message pre + p,
 .ai-message blockquote + p,
 .ai-message hr + p,
-.ai-message h1 + p, /* Add for all heading levels if needed */
-.ai-message h2 + p,
-.ai-message h3 + p,
-.ai-message h4 + p,
-.ai-message h5 + p,
-.ai-message h6 + p {
-     margin-top: 0.8em; /* Adjust spacing after other blocks before paragraph */
+.ai-message h1 + p, .ai-message h2 + p, .ai-message h3 + p, .ai-message h4 + p, .ai-message h5 + p, .ai-message h6 + p {
+     margin-top: 0.8em; /* Space after lists, code blocks etc. before a paragraph */
 }
+/* --- END: CORRECTED PARAGRAPH SPACING FOR AI MESSAGES --- */
+
 
 /* Default margins for other block elements INSIDE AI messages */
 /* Ensure lists, code blocks, etc., have their own standard spacing */
@@ -142,7 +147,7 @@ h1 {
     overflow-x: auto;
     border: 1px solid #444;
     margin: 0.8em 0; /* Add consistent vertical margin */
-    white-space: pre;
+    white-space: pre; /* Keep strict pre for code blocks */
 }
 .ai-message blockquote {
     border-left: 3px solid #555;
@@ -165,247 +170,58 @@ h1 {
     font-weight: 500;
     color: #ffffff;
 }
-/* --- END: CORRECTED PARAGRAPH & BLOCK SPACING --- */
-
 
 /* Styling for Images within Messages */
 .message img.message-image {
-    max-width: 100%;
-    max-height: 300px;
-    border-radius: 10px;
-    object-fit: contain;
-    cursor: pointer;
-    margin-top: 5px; /* Keep small space if image follows text directly in bubble */
+    max-width: 100%; max-height: 300px; border-radius: 10px; object-fit: contain; cursor: pointer; margin-top: 5px;
 }
 
 /* Google Search Suggestion Styling */
-.search-suggestion-container {
-    margin-top: 12px; /* Space above the Google snippet if it appears */
-}
+.search-suggestion-container { margin-top: 12px; }
 
 /* --- Rest of Markdown Element Styling (code, links etc) --- */
-.message code {
-    font-family: Consolas, Monaco, 'Andale Mono', 'Ubuntu Mono', monospace;
-    font-size: 0.9em;
-}
-.message p > code {
-    background-color: rgba(255, 255, 255, 0.1);
-    padding: 0.2em 0.4em;
-    border-radius: 3px;
-    font-size: 0.85em;
-}
-.message pre code {
-    background-color: transparent;
-    padding: 0;
-    font-size: inherit;
-    border-radius: 0;
-}
-.message p a {
-    color: #64b5f6;
-    text-decoration: underline;
-}
-.message p a:hover {
-    color: #90caf9;
-}
-.message h1 { font-size: 1.5em; }
-.message h2 { font-size: 1.3em; }
-.message h3 { font-size: 1.15em; }
-.message h4 { font-size: 1em; }
-.message h5 { font-size: 0.9em; }
-.message h6 { font-size: 0.85em; color: #ccc; }
+.message code { font-family: Consolas, Monaco, 'Andale Mono', 'Ubuntu Mono', monospace; font-size: 0.9em; }
+.message p > code { background-color: rgba(255, 255, 255, 0.1); padding: 0.2em 0.4em; border-radius: 3px; font-size: 0.85em; }
+.message pre code { background-color: transparent; padding: 0; font-size: inherit; border-radius: 0; }
+.message p a { color: #64b5f6; text-decoration: underline; }
+.message p a:hover { color: #90caf9; }
+.message h1 { font-size: 1.5em; } .message h2 { font-size: 1.3em; } .message h3 { font-size: 1.15em; } .message h4 { font-size: 1em; } .message h5 { font-size: 0.9em; } .message h6 { font-size: 0.85em; color: #ccc; }
 
 
 /* Loading / Error Indicators */
-#loading, #error {
-    text-align: center;
-    padding: 10px;
-    font-style: italic;
-    color: #aaa;
-    width: 100%;
-    max-width: 800px;
-    margin: 5px auto;
-    flex-shrink: 0;
-}
-#error {
-    color: #ff4d4d;
-    font-weight: bold;
-    background-color: rgba(255, 77, 77, 0.1);
-    border-radius: 4px;
-    border: 1px solid rgba(255, 77, 77, 0.3);
-    padding: 10px 15px;
-}
-
+#loading, #error { text-align: center; padding: 10px; font-style: italic; color: #aaa; width: 100%; max-width: 800px; margin: 5px auto; flex-shrink: 0; }
+#error { color: #ff4d4d; font-weight: bold; background-color: rgba(255, 77, 77, 0.1); border-radius: 4px; border: 1px solid rgba(255, 77, 77, 0.3); padding: 10px 15px; }
 
 /* Image Preview Area Styling */
-#image-preview-container {
-    background-color: #1f1f1f;
-    padding: 8px 20px;
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    position: relative;
-    flex-shrink: 0;
-    width: 100%;
-}
-#image-preview-container > div {
-    position: relative;
-    display: inline-block;
-    max-width: 750px;
-    margin: 0 auto;
-    line-height: 0;
-}
-#image-preview {
-    display: block;
-    max-height: 80px;
-    max-width: 100%;
-    border-radius: 6px;
-    object-fit: contain;
-    border: 1px solid #444;
-}
-#remove-image-button {
-    position: absolute;
-    top: -5px;
-    right: -5px;
-    width: 22px;
-    height: 22px;
-    background-color: rgba(40, 40, 40, 0.8);
-    color: #ccc;
-    border: 1px solid #555;
-    border-radius: 50%;
-    cursor: pointer;
-    font-size: 16px;
-    font-weight: bold;
-    line-height: 18px;
-    text-align: center;
-    padding: 0;
-    transition: background-color 0.2s, color 0.2s;
-}
-#remove-image-button:hover {
-    background-color: rgba(255, 77, 77, 0.8);
-    color: white;
-    border-color: rgba(255, 77, 77, 0.9);
-}
-
+#image-preview-container { background-color: #1f1f1f; padding: 8px 20px; display: flex; justify-content: center; align-items: center; position: relative; flex-shrink: 0; width: 100%; }
+#image-preview-container > div { position: relative; display: inline-block; max-width: 750px; margin: 0 auto; line-height: 0; }
+#image-preview { display: block; max-height: 80px; max-width: 100%; border-radius: 6px; object-fit: contain; border: 1px solid #444; }
+#remove-image-button { position: absolute; top: -5px; right: -5px; width: 22px; height: 22px; background-color: rgba(40, 40, 40, 0.8); color: #ccc; border: 1px solid #555; border-radius: 50%; cursor: pointer; font-size: 16px; font-weight: bold; line-height: 18px; text-align: center; padding: 0; transition: background-color 0.2s, color 0.2s; }
+#remove-image-button:hover { background-color: rgba(255, 77, 77, 0.8); color: white; border-color: rgba(255, 77, 77, 0.9); }
 
 /* Input Form Styling */
-#chat-form {
-    display: flex;
-    align-items: flex-end;
-    padding: 15px 20px;
-    background-color: #1f1f1f;
-    flex-shrink: 0;
-    width: 100%;
-    justify-content: center;
-    gap: 10px;
-}
-#image-preview-container.hidden + #chat-form {
-    border-top: 1px solid #333;
-}
-#image-preview-container:not(.hidden) + #chat-form {
-    border-top: none;
-}
-
+#chat-form { display: flex; align-items: flex-end; padding: 15px 20px; background-color: #1f1f1f; flex-shrink: 0; width: 100%; justify-content: center; gap: 10px; }
+#image-preview-container.hidden + #chat-form { border-top: 1px solid #333; }
+#image-preview-container:not(.hidden) + #chat-form { border-top: none; }
 
 /* Attach Button Styling */
-#attach-button {
-    background: none;
-    border: none;
-    color: #aaa;
-    font-size: 1.5rem;
-    cursor: pointer;
-    padding: 0 5px;
-    line-height: 1;
-    transition: color 0.2s;
-    flex-shrink: 0;
-    align-self: flex-end;
-    margin-bottom: 10px;
-}
-#attach-button:hover {
-    color: #ddd;
-}
-#attach-button.has-file {
-    color: #64b5f6;
-}
-
+#attach-button { background: none; border: none; color: #aaa; font-size: 1.5rem; cursor: pointer; padding: 0 5px; line-height: 1; transition: color 0.2s; flex-shrink: 0; align-self: flex-end; margin-bottom: 10px; }
+#attach-button:hover { color: #ddd; }
+#attach-button.has-file { color: #64b5f6; }
 
 /* Textarea Input Styling */
-#message-input {
-    flex-grow: 1;
-    max-width: 700px;
-    padding: 10px 15px;
-    border: 1px solid #444;
-    border-radius: 20px;
-    box-sizing: border-box;
-    display: block;
-    min-height: 42px;
-    max-height: 25vh;
-    background-color: #2c2c2c;
-    color: #e0e0e0;
-    outline: none;
-    font-family: inherit;
-    font-size: 1rem;
-    line-height: 1.4;
-    white-space: pre-wrap;
-    overflow-wrap: break-word;
-    resize: none;
-    overflow-y: auto;
-}
-#message-input::placeholder {
-    color: #888;
-}
-#message-input:focus {
-    border-color: #4a90e2;
-    box-shadow: 0 0 0 2px rgba(74, 144, 226, 0.3);
-}
+#message-input { flex-grow: 1; max-width: 700px; padding: 10px 15px; border: 1px solid #444; border-radius: 20px; box-sizing: border-box; display: block; min-height: 42px; max-height: 25vh; background-color: #2c2c2c; color: #e0e0e0; outline: none; font-family: inherit; font-size: 1rem; line-height: 1.4; white-space: pre-wrap; overflow-wrap: break-word; resize: none; overflow-y: auto; }
+#message-input::placeholder { color: #888; }
+#message-input:focus { border-color: #4a90e2; box-shadow: 0 0 0 2px rgba(74, 144, 226, 0.3); }
 
 /* Send Button Styling */
-#send-button {
-    padding: 10px 20px;
-    background-color: #007bff;
-    color: white;
-    border: none;
-    border-radius: 20px;
-    cursor: pointer;
-    font-size: 1rem;
-    transition: background-color 0.2s ease;
-    flex-shrink: 0;
-    align-self: flex-end;
-    margin-bottom: 8px;
-}
-#send-button:disabled {
-    background-color: #004a9e;
-    cursor: not-allowed;
-    opacity: 0.7;
-}
-#send-button:hover:not(:disabled) {
-    background-color: #0056b3;
-}
+#send-button { padding: 10px 20px; background-color: #007bff; color: white; border: none; border-radius: 20px; cursor: pointer; font-size: 1rem; transition: background-color 0.2s ease; flex-shrink: 0; align-self: flex-end; margin-bottom: 8px; }
+#send-button:disabled { background-color: #004a9e; cursor: not-allowed; opacity: 0.7; }
+#send-button:hover:not(:disabled) { background-color: #0056b3; }
 
+/* Utility class */
+.hidden { display: none !important; }
 
-/* Utility class to hide elements */
-.hidden {
-    display: none !important;
-}
-
-
-/* --- Responsive adjustments --- */
-@media (max-width: 850px) {
-     #chat-history { max-width: 95%; }
-     #message-input { max-width: none; }
-     #image-preview-container > div { max-width: 95%; }
-     #chat-form { padding: 15px; gap: 8px;}
-}
-
-@media (max-width: 600px) {
-    h1 { font-size: 1.2rem; padding: 12px 15px; }
-    #chat-container { padding: 10px; }
-    #chat-history { gap: 12px; }
-    .message { max-width: 90%; font-size: 0.95rem; padding: 8px 12px; }
-    #chat-form { padding: 10px; gap: 5px; }
-    #message-input { padding: 8px 12px; font-size: 0.95rem; min-height: 38px; }
-    #send-button { padding: 8px 15px; font-size: 0.95rem; margin-bottom: 6px;}
-    #attach-button { font-size: 1.3rem; padding: 0 3px; margin-bottom: 8px;}
-    #loading, #error { max-width: 95%; font-size: 0.9rem; }
-    #image-preview { max-height: 60px; }
-    #remove-image-button { width: 20px; height: 20px; font-size: 14px; line-height: 18px; top: -4px; right: -4px;}
-}
+/* Responsive adjustments */
+@media (max-width: 850px) { #chat-history { max-width: 95%; } #message-input { max-width: none; } #image-preview-container > div { max-width: 95%; } #chat-form { padding: 15px; gap: 8px;} }
+@media (max-width: 600px) { h1 { font-size: 1.2rem; padding: 12px 15px; } #chat-container { padding: 10px; } #chat-history { gap: 12px; } .message { max-width: 90%; font-size: 0.95rem; padding: 8px 12px; } #chat-form { padding: 10px; gap: 5px; } #message-input { padding: 8px 12px; font-size: 0.95rem; min-height: 38px; } #send-button { padding: 8px 15px; font-size: 0.95rem; margin-bottom: 6px;} #attach-button { font-size: 1.3rem; padding: 0 3px; margin-bottom: 8px;} #loading, #error { max-width: 95%; font-size: 0.9rem; } #image-preview { max-height: 60px; } #remove-image-button { width: 20px; height: 20px; font-size: 14px; line-height: 18px; top: -4px; right: -4px;} }
