@@ -18,7 +18,7 @@ const mainContentArea = document.getElementById('main-content-area'); // Scrolli
 const MAX_HISTORY_CHARS = 1000000;
 const IMAGE_CHAR_EQUIVALENT = 1000;
 const MAX_IMAGE_SIZE_MB = 15;
-const SCROLL_PADDING_TOP = 10; // Pixels above the message top when scrolling
+const SCROLL_PADDING_TOP = 10; // Pixels above the AI message top when scrolling
 // --- End Configuration ---
 
 // --- State Variables ---
@@ -49,35 +49,36 @@ function adjustTextareaHeight() {
     messageInput.style.height = `${messageInput.scrollHeight}px`;
 }
 
-// --- Standard scroll to bottom (for user messages) ---
+// --- Standard scroll to bottom (for user messages) - UPDATED ---
 function scrollChatToBottom() {
+    // Scrolls the main content area all the way down smoothly
     setTimeout(() => {
-        mainContentArea.scrollTop = mainContentArea.scrollHeight;
-    }, 50);
+        mainContentArea.scrollTo({
+            top: mainContentArea.scrollHeight, // Target the very bottom
+            behavior: 'smooth' // Make it smooth
+        });
+        // console.log("Smooth scrolling chat fully to bottom"); // Optional logging
+    }, 50); // Delay ensures content is rendered before scrolling
 }
+// --- END UPDATED ---
 
-// --- Smart scroll for AI messages (REVISED - Always Scrolls) ---
+
+// --- Smart scroll for AI messages (Remains the same - already smooth) ---
 function scrollToMessageTop(messageElement) {
     setTimeout(() => {
-        // Calculate the position of the message top relative to the scroll container's content
         const messageTopOffset = messageElement.offsetTop;
-
-        // Calculate the desired scroll position to bring the message top near the view top
         let desiredScrollTop = messageTopOffset - SCROLL_PADDING_TOP;
-
-        // Ensure we don't scroll past the beginning
         desiredScrollTop = Math.max(0, desiredScrollTop);
 
-        // ALWAYS attempt the smooth scroll
-        console.log(`Smart scrolling AI message to scrollTop: ${desiredScrollTop}`);
+        // Always attempt the smooth scroll
+        // console.log(`Smart scrolling AI message to scrollTop: ${desiredScrollTop}`);
         mainContentArea.scrollTo({
             top: desiredScrollTop,
-            behavior: 'smooth' // Use smooth scrolling
+            behavior: 'smooth'
         });
 
     }, 100); // Delay helps ensure offsetTop is calculated correctly after render
 }
-// --- END REVISED ---
 
 
 function handleInputKeyDown(event) {
@@ -195,9 +196,9 @@ function displayMessage(role, text, imageDataUrl = null, searchSuggestionHtml = 
 
     // Trigger scroll based on role
     if (role === 'user') {
-        scrollChatToBottom(); // Scroll fully down for user's messages
+        scrollChatToBottom(); // Use smooth scroll to bottom
     } else if (role === 'ai') {
-        scrollToMessageTop(messageDiv); // Use the smart scroll for AI messages
+        scrollToMessageTop(messageDiv); // Use the smart smooth scroll
     }
 }
 
