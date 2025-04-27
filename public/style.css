@@ -7,185 +7,143 @@
 
 html {
     height: 100%;
-    height: -webkit-fill-available; /* Better height handling on mobile Safari */
+    height: -webkit-fill-available;
 }
 
 body {
     font-family: 'Roboto', sans-serif;
-    background-color: #121212; /* Dark background */
-    color: #e0e0e0; /* Light text */
+    background-color: #121212;
+    color: #e0e0e0;
     margin: 0;
     padding: 0;
     display: flex;
-    flex-direction: column; /* Stack content vertically */
-    height: 100vh; /* Fallback for older browsers */
-    height: -webkit-fill-available; /* Fallback for iOS/WebKit */
-    height: 100dvh; /* Use dynamic viewport height if supported */
-    overflow: hidden; /* Prevent body itself from scrolling */
-    padding-bottom: env(safe-area-inset-bottom); /* Keep safe area padding if you added it */
+    flex-direction: column;
+    height: 100vh;
+    height: -webkit-fill-available;
+    height: 100dvh; /* Mobile fix */
+    overflow: hidden;
+    padding-bottom: env(safe-area-inset-bottom); /* Mobile fix */
 }
 
-/* Scrollable Main Content Area (Contains H1 + Chat History) */
 #main-content-area {
-    flex-grow: 1; /* Takes up available vertical space */
-    overflow-y: auto; /* Enables vertical scrolling */
-    position: relative; /* Context for potential absolutely positioned children */
-    display: flex; /* Use flex for internal stacking */
-    flex-direction: column; /* Stack H1 above chat container */
+    flex-grow: 1;
+    overflow-y: auto;
+    position: relative;
+    display: flex;
+    flex-direction: column;
 }
 
-
-/* Header Styling (Inside scrollable area) */
 h1 {
     text-align: center;
     color: #ffffff;
-    background-color: #1f1f1f; /* Slightly lighter dark bg */
+    background-color: #1f1f1f;
     padding: 15px 20px;
-    margin: 0; /* Remove default margin */
-    font-weight: 500; /* Medium weight */
-    border-bottom: 1px solid #333; /* Separator line */
+    margin: 0;
+    font-weight: 500;
+    border-bottom: 1px solid #333;
 }
 
-/* Chat Container (Inside scrollable area) */
 #chat-container {
-    padding: 20px; /* Spacing around chat history */
+    padding: 20px;
     width: 100%;
 }
 
-/* Chat History (Holds the message bubbles) */
 #chat-history {
     display: flex;
-    flex-direction: column; /* Stack messages vertically */
-    gap: 15px; /* Space between messages */
+    flex-direction: column;
+    gap: 15px; /* Space BETWEEN bubbles */
     width: 100%;
-    max-width: 800px; /* Limit content width */
-    margin: 0 auto; /* Center the history horizontally */
-    padding-bottom: 10px; /* Space at the very end of the scroll */
+    max-width: 800px;
+    margin: 0 auto;
+    padding-bottom: 10px;
 }
 
-/* Individual Message Bubble Styling - ESSENTIAL FOR BUBBLES */
+/* --- CORE BUBBLE STYLES --- */
 .message {
-    padding: 10px 15px;
+    padding: 10px 15px; /* Internal padding */
     border-radius: 18px;
     max-width: 80%;
-    line-height: 1.4; /* Base line height */
+    line-height: 1.45; /* Base line height for wrapped/single lines */
     overflow-wrap: break-word;
-    display: flex; /* Ensures bubble structure */
+    display: flex; /* Use flex for internal stacking */
     flex-direction: column;
-    gap: 8px; /* Base gap between elements inside bubble */
+    /* Removed gap here, rely on margins below for internal spacing */
 }
 
-/* Base reset for paragraphs within ALL messages */
-.message p {
-    margin: 0; /* Remove ALL default margins first */
-    overflow-wrap: break-word;
-    white-space: pre-wrap; /* Preserve explicit newlines (\n -> <br>) AND wrap text */
-}
-
-/* User message specific styles */
 .user-message {
     background-color: #007bff;
     color: white;
     align-self: flex-end; /* Positions bubble right */
     border-bottom-right-radius: 5px;
 }
-/* User message paragraphs inherit base styles */
-/* .user-message p { white-space: pre-wrap; is set by .message p */ }
 
-
-/* AI message specific styles */
 .ai-message {
     background-color: #333333;
     color: #e0e0e0;
     align-self: flex-start; /* Positions bubble left */
     border-bottom-left-radius: 5px;
 }
-/* AI message paragraphs inherit base styles */
-/* .ai-message p { white-space: pre-wrap; is set by .message p */ }
+/* --- END CORE BUBBLE STYLES --- */
 
-/* --- START: CORRECTED PARAGRAPH SPACING FOR AI MESSAGES --- */
-/* Add top margin ONLY to a paragraph that directly follows another paragraph INSIDE an AI message */
+
+/* --- TEXT CONTENT STYLING INSIDE BUBBLES --- */
+
+/* Base for all paragraphs inside any message */
+.message p {
+    margin: 0; /* Reset browser default paragraph margins */
+    white-space: pre-wrap; /* Respect single \n (as <br>) AND wrap lines */
+}
+
+/* Add margin-top ONLY to paragraphs that follow another paragraph INSIDE AI messages */
+/* This creates the gap for double newlines (\n\n) */
 .ai-message p + p {
-   margin-top: 0.5em; /* Adjust this value for desired gap size (e.g., 0.4em, 6px) */
-                       /* This creates the extra space for intentional paragraph breaks (\n\n) */
+   margin-top: 0.4em; /* << ADJUST THIS VALUE (smaller now) for desired gap size */
 }
 
-/* Optional: Add spacing between paragraphs and other common block elements for consistency */
-.ai-message p + ul,
-.ai-message p + ol,
-.ai-message p + pre,
-.ai-message p + blockquote,
-.ai-message p + hr,
-.ai-message p + h1, .ai-message p + h2, .ai-message p + h3, .ai-message p + h4, .ai-message p + h5, .ai-message p + h6 {
-    margin-top: 0.8em; /* Space before lists, code blocks etc. after a paragraph */
+/* Basic List Styling inside AI messages */
+.ai-message ul,
+.ai-message ol {
+    margin: 0.5em 0; /* Add some space before/after lists */
+    padding-left: 25px; /* Standard indentation */
 }
 
-.ai-message ul + p,
-.ai-message ol + p,
-.ai-message pre + p,
-.ai-message blockquote + p,
-.ai-message hr + p,
-.ai-message h1 + p, .ai-message h2 + p, .ai-message h3 + p, .ai-message h4 + p, .ai-message h5 + p, .ai-message h6 + p {
-     margin-top: 0.8em; /* Space after lists, code blocks etc. before a paragraph */
-}
-/* --- END: CORRECTED PARAGRAPH SPACING FOR AI MESSAGES --- */
-
-
-/* Default margins for other block elements INSIDE AI messages */
-/* Ensure lists, code blocks, etc., have their own standard spacing */
-.ai-message ul, .ai-message ol {
-    padding-left: 25px;
-    margin: 0.8em 0; /* Add consistent vertical margin */
-}
+/* Spacing between list items */
 .ai-message li {
-    margin-bottom: 0.25em; /* Smaller gap between list items */
+     margin-bottom: 0.15em; /* Small gap between list items */
 }
-.ai-message pre {
-    background-color: rgba(0, 0, 0, 0.2);
-    padding: 10px;
-    border-radius: 4px;
-    overflow-x: auto;
-    border: 1px solid #444;
-    margin: 0.8em 0; /* Add consistent vertical margin */
-    white-space: pre; /* Keep strict pre for code blocks */
+.ai-message li:last-child {
+    margin-bottom: 0; /* No extra space after the last item */
 }
-.ai-message blockquote {
-    border-left: 3px solid #555;
-    padding-left: 10px;
-    margin: 0.8em 0; /* Add consistent vertical margin */
-    color: #bbb;
-    font-style: italic;
+
+/* Ensure paragraphs following lists have some space */
+.ai-message ul + p,
+.ai-message ol + p {
+    margin-top: 0.5em;
 }
-.ai-message blockquote p {
-    margin: 0; /* Reset paragraph margin INSIDE blockquote */
-}
-.ai-message hr {
-    border: 0;
-    border-top: 1px solid #444;
-    margin: 1em 0; /* Standard hr margin */
-}
-.ai-message h1, .ai-message h2, .ai-message h3, .ai-message h4, .ai-message h5, .ai-message h6 {
-    margin-top: 1.2em; /* Space above headings */
-    margin-bottom: 0.6em; /* Space below headings */
-    font-weight: 500;
-    color: #ffffff;
-}
+
+/* --- END TEXT CONTENT STYLING --- */
+
 
 /* Styling for Images within Messages */
 .message img.message-image {
-    max-width: 100%; max-height: 300px; border-radius: 10px; object-fit: contain; cursor: pointer; margin-top: 5px;
+    max-width: 100%; max-height: 300px; border-radius: 10px; object-fit: contain; cursor: pointer; margin-top: 8px; /* Add consistent gap if image follows text */
 }
 
 /* Google Search Suggestion Styling */
-.search-suggestion-container { margin-top: 12px; }
+.search-suggestion-container { margin-top: 12px; /* Space above suggestions */ }
 
-/* --- Rest of Markdown Element Styling (code, links etc) --- */
+/* --- Other Markdown Elements --- */
+.message pre { background-color: rgba(0, 0, 0, 0.2); padding: 10px; border-radius: 4px; overflow-x: auto; border: 1px solid #444; margin: 0.8em 0; white-space: pre; }
 .message code { font-family: Consolas, Monaco, 'Andale Mono', 'Ubuntu Mono', monospace; font-size: 0.9em; }
 .message p > code { background-color: rgba(255, 255, 255, 0.1); padding: 0.2em 0.4em; border-radius: 3px; font-size: 0.85em; }
 .message pre code { background-color: transparent; padding: 0; font-size: inherit; border-radius: 0; }
+.message blockquote { border-left: 3px solid #555; padding-left: 10px; margin: 0.8em 0; color: #bbb; font-style: italic; }
+.message blockquote p { margin: 0; white-space: normal; /* Override pre-wrap inside quote if needed */ }
 .message p a { color: #64b5f6; text-decoration: underline; }
 .message p a:hover { color: #90caf9; }
+.message h1, .message h2, .message h3, .message h4, .message h5, .message h6 { margin-top: 1.2em; margin-bottom: 0.6em; font-weight: 500; color: #ffffff; }
 .message h1 { font-size: 1.5em; } .message h2 { font-size: 1.3em; } .message h3 { font-size: 1.15em; } .message h4 { font-size: 1em; } .message h5 { font-size: 0.9em; } .message h6 { font-size: 0.85em; color: #ccc; }
+.message hr { border: 0; border-top: 1px solid #444; margin: 1em 0; }
 
 
 /* Loading / Error Indicators */
