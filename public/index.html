@@ -22,18 +22,24 @@
 
 </head>
 <body>
-    <h1>Kramer Intelligence</h1>
 
-    <div id="chat-container">
-        <div id="chat-history">
-            <!-- Chat messages will appear here -->
+    <!-- NEW WRAPPER for scrollable content -->
+    <div id="main-content-area">
+        <h1>Kramer Intelligence</h1>
+
+        <div id="chat-container">
+            <div id="chat-history">
+                <!-- Chat messages will appear here -->
+            </div>
         </div>
     </div>
+    <!-- END NEW WRAPPER -->
+
 
     <div id="loading" class="hidden">Thinking...</div>
     <div id="error" class="hidden"></div>
 
-    <!-- Image Preview Area -->
+    <!-- Image Preview Area (Stays outside the main scroll area) -->
     <div id="image-preview-container" class="hidden">
         <div>
              <img id="image-preview" src="#" alt="Image preview"/>
@@ -42,18 +48,13 @@
     </div>
     <!-- END Image Preview Area -->
 
+    <!-- Form Area (Stays outside the main scroll area) -->
     <form id="chat-form">
-        <!-- Hidden file input -->
         <input type="file" id="image-upload-input" accept="image/png, image/jpeg, image/webp, image/heic, image/heif" style="display: none;">
-        <!-- Button to trigger file input -->
         <button type="button" id="attach-button" title="Attach Image">
             📎
         </button>
-
-        <!-- Text area for multi-line input -->
         <textarea id="message-input" placeholder="Ask me anything..." rows="1" autocomplete="off"></textarea>
-
-        <!-- Send button -->
         <button type="submit" id="send-button">Send</button>
     </form>
 
