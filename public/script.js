@@ -52,29 +52,38 @@ function adjustTextareaHeight() {
 // --- Scrolling Functions ---
 // Scrolls fully to the bottom (smoothly) - Used for user messages
 function scrollChatToBottom() {
-    setTimeout(() => {
+    // Use rAF for consistency, though less critical here as scrollHeight is simpler
+    requestAnimationFrame(() => {
         mainContentArea.scrollTo({
             top: mainContentArea.scrollHeight,
             behavior: 'smooth'
         });
-    }, 50); // Keep user scroll delay short
+    });
+    // Using setTimeout is also fine here if preferred:
+    // setTimeout(() => {
+    //     mainContentArea.scrollTo({
+    //         top: mainContentArea.scrollHeight,
+    //         behavior: 'smooth'
+    //     });
+    // }, 50);
 }
 
-// Scrolls smoothly to the top of a new AI message
+// Scrolls smoothly to the top of a new AI message using requestAnimationFrame
 function scrollToMessageTop(messageElement) {
-    // --- MODIFIED: Increased Delay ---
-    setTimeout(() => {
-        const messageTopOffset = messageElement.offsetTop;
-        let desiredScrollTop = messageTopOffset - SCROLL_PADDING_TOP;
-        desiredScrollTop = Math.max(0, desiredScrollTop);
+    // --- MODIFIED: Use double requestAnimationFrame ---
+    requestAnimationFrame(() => { // Wait for frame 1 (after DOM mutation likely processed)
+        requestAnimationFrame(() => { // Wait for frame 2 (layout calculations should be stable)
+            const messageTopOffset = messageElement.offsetTop;
+            let desiredScrollTop = messageTopOffset - SCROLL_PADDING_TOP;
+            desiredScrollTop = Math.max(0, desiredScrollTop); // Don't scroll negative
 
-        // Always attempt the smooth scroll
-        mainContentArea.scrollTo({
-            top: desiredScrollTop,
-            behavior: 'smooth'
+            // console.log(`rAF - Scrolling AI message to scrollTop: ${desiredScrollTop}`);
+            mainContentArea.scrollTo({
+                top: desiredScrollTop,
+                behavior: 'smooth'
+            });
         });
-
-    }, 150); // <--- Increased delay from 100ms to 150ms
+    });
     // --- END MODIFIED ---
 }
 // --- END Scrolling Functions ---
@@ -83,34 +92,18 @@ function scrollToMessageTop(messageElement) {
 // Handles keydown events in the textarea (Enter vs Shift+Enter)
 function handleInputKeyDown(event) {
     if (event.key === 'Enter') {
-        if (event.shiftKey) {
-            // Shift+Enter: Allow default newline behavior. Height adjusted by 'input' listener.
-        } else {
-            // Enter alone: Prevent newline, send message.
-            event.preventDefault();
-            handleSendMessage();
-        }
+        if (event.shiftKey) { /* Allow newline */ }
+        else { event.preventDefault(); handleSendMessage(); }
     }
 }
 
 // Handles clicks on the explicit Send button
-function handleSendButtonClick() {
-    handleSendMessage();
-}
+function handleSendButtonClick() { handleSendMessage(); }
 // --- END Input Handling ---
 
 // --- Image Handling Functions ---
 // Processes a selected file (from input or paste)
-function processSelectedFile(file) {
-    if (!file) return false;
-    if (!file.type.startsWith('image/')) { showError('Invalid image file.'); handleRemoveImage(); return false; }
-    if (file.size > MAX_IMAGE_SIZE_MB * 1024 * 1024) { showError(`Image > ${MAX_IMAGE_SIZE_MB} MB.`); handleRemoveImage(); return false; }
-    hideError();
-    const reader = new FileReader();
-    reader.onload = (e) => { selectedFileBase64 = e.target.result; selectedFile = file; imagePreview.src = selectedFileBase64; imagePreviewContainer.classList.remove('hidden'); attachButton.classList.add('has-file'); console.log("Image processed:", file.name); };
-    reader.onerror = (e) => { console.error("FileReader error:", e); showError("Error reading image."); handleRemoveImage(); };
-    reader.readAsDataURL(file); return true;
- }
+function processSelectedFile(file) { if (!file) return false; if (!file.type.startsWith('image/')) { showError('Invalid image file.'); handleRemoveImage(); return false; } if (file.size > MAX_IMAGE_SIZE_MB * 1024 * 1024) { showError(`Image > ${MAX_IMAGE_SIZE_MB} MB.`); handleRemoveImage(); return false; } hideError(); const reader = new FileReader(); reader.onload = (e) => { selectedFileBase64 = e.target.result; selectedFile = file; imagePreview.src = selectedFileBase64; imagePreviewContainer.classList.remove('hidden'); attachButton.classList.add('has-file'); console.log("Image processed:", file.name); }; reader.onerror = (e) => { console.error("FileReader error:", e); showError("Error reading image."); handleRemoveImage(); }; reader.readAsDataURL(file); return true; }
 
 // Handles file selection via the file input element
 function handleFileSelect(event) { const file = event.target.files[0]; if (!file) return; const processed = processSelectedFile(file); if (!processed) { resetFileInput(); } }
@@ -206,11 +199,11 @@ function displayMessage(role, text, imageDataUrl = null, searchSuggestionHtml = 
         try {
             // Directly inject Google's HTML without sanitization per their requirements
             suggestionContainer.innerHTML = searchSuggestionHtml;
-            console.log("Directly appended search suggestions HTML.");
+            // console.log("Directly appended search suggestions HTML.");
 
             // Append container only if it's not empty after assignment
             if (suggestionContainer.innerHTML.trim()) { messageDiv.appendChild(suggestionContainer); }
-            else { console.log("Google Search suggestion HTML was empty."); }
+            // else { console.log("Google Search suggestion HTML was empty."); }
         } catch (error) { console.error("Error setting innerHTML for search suggestions:", error); }
     }
 
