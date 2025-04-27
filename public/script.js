@@ -12,30 +12,34 @@ const imageUploadInput = document.getElementById('image-upload-input');
 const imagePreviewContainer = document.getElementById('image-preview-container');
 const imagePreview = document.getElementById('image-preview');
 const removeImageButton = document.getElementById('remove-image-button');
+// --- ADDED: Reference to the main scrolling container ---
+const mainContentArea = document.getElementById('main-content-area');
+// --- END ADDED ---
 
 // --- Configuration ---
 const MAX_HISTORY_CHARS = 1000000;
-const IMAGE_CHAR_EQUIVALENT = 1000; // Estimated char count for history truncation
+const IMAGE_CHAR_EQUIVALENT = 1000;
 const MAX_IMAGE_SIZE_MB = 15;
+const SCROLL_PADDING_TOP = 10; // Optional padding above the message top
 // --- End Configuration ---
 
 // --- State Variables ---
 let conversationHistory = [];
-let selectedFile = null; // Holds the File object
-let selectedFileBase64 = null; // Holds the DataURL string
+let selectedFile = null;
+let selectedFileBase64 = null;
 // --- End State Variables ---
 
 // --- Event Listeners ---
-messageInput.addEventListener('keydown', handleInputKeyDown); // For Enter/Shift+Enter
-sendButton.addEventListener('click', handleSendButtonClick); // For button click
+messageInput.addEventListener('keydown', handleInputKeyDown);
+sendButton.addEventListener('click', handleSendButtonClick);
 attachButton.addEventListener('click', () => {
     resetFileInput();
     imageUploadInput.click();
 });
 imageUploadInput.addEventListener('change', handleFileSelect);
 removeImageButton.addEventListener('click', handleRemoveImage);
-document.addEventListener('paste', handlePaste); // For pasting images
-messageInput.addEventListener('input', adjustTextareaHeight); // For dynamic height
+document.addEventListener('paste', handlePaste);
+messageInput.addEventListener('input', adjustTextareaHeight);
 // --- END Event Listeners ---
 
 
@@ -43,299 +47,201 @@ messageInput.addEventListener('input', adjustTextareaHeight); // For dynamic hei
 
 // --- Function to dynamically adjust textarea height ---
 function adjustTextareaHeight() {
-    // Reset height temporarily to accurately measure scrollHeight
     messageInput.style.height = 'auto';
-    // Set height to scrollHeight, respecting CSS max-height
     messageInput.style.height = `${messageInput.scrollHeight}px`;
-    // console.log(`Adjusted textarea height to: ${messageInput.style.height}`); // Optional logging
 }
 
-// --- Handler for Keydown Events on Input ---
+// --- Standard scroll to bottom (for user messages) ---
+function scrollChatToBottom() {
+    // Scrolls the main content area all the way down
+    setTimeout(() => {
+        mainContentArea.scrollTop = mainContentArea.scrollHeight;
+        // console.log("Scrolled chat fully to bottom");
+    }, 50); // Delay ensures content is rendered
+}
+
+// --- NEW: Smart scroll for AI messages ---
+function scrollToMessageTop(messageElement) {
+    setTimeout(() => {
+        const containerRect = mainContentArea.getBoundingClientRect();
+        const messageRect = messageElement.getBoundingClientRect();
+
+        // Calculate the position of the message top relative to the container top
+        // messageRect.top is relative to viewport, containerRect.top is relative to viewport
+        // messageTopInContainer = messageRect.top - containerRect.top;
+        // More reliably, use offsetTop relative to the container's scrollable content
+        const messageTopOffset = messageElement.offsetTop;
+
+        // Calculate the desired scroll position to bring the message top near the view top
+        let desiredScrollTop = messageTopOffset - SCROLL_PADDING_TOP;
+
+        // Ensure we don't scroll past the beginning
+        desiredScrollTop = Math.max(0, desiredScrollTop);
+
+        // Check if the user has scrolled up significantly. If so, maybe don't auto-scroll.
+        // Tolerance: Don't scroll if user is viewing content more than ~100px from the bottom.
+        const scrollTolerance = 100;
+        const isScrolledToBottom = (mainContentArea.scrollHeight - mainContentArea.scrollTop - mainContentArea.clientHeight) < scrollTolerance;
+
+        if (isScrolledToBottom) {
+            // Smooth scroll if supported, otherwise jump
+             console.log(`Smart scrolling AI message to scrollTop: ${desiredScrollTop}`);
+            mainContentArea.scrollTo({
+                top: desiredScrollTop,
+                behavior: 'smooth' // Use smooth scrolling
+            });
+           // Fallback for browsers without smooth scroll (less likely now)
+           // if (!('scrollBehavior' in document.documentElement.style)) {
+           //    mainContentArea.scrollTop = desiredScrollTop;
+           // }
+        } else {
+            console.log("User is scrolled up, not auto-scrolling for new AI message.");
+        }
+
+    }, 100); // Slightly longer delay might be needed for accurate offsetTop after complex rendering
+}
+// --- END NEW ---
+
+
 function handleInputKeyDown(event) {
     if (event.key === 'Enter') {
-        if (event.shiftKey) {
-            // Shift+Enter: Allow default newline insertion.
-            // Height adjustment is handled by the 'input' event listener.
-            console.log("Shift+Enter detected - Allowing newline.");
-        } else {
-            // Enter alone: Prevent default newline and send message.
-            console.log("Enter alone detected - Preventing newline, triggering send.");
-            event.preventDefault();
-            handleSendMessage();
-        }
+        if (event.shiftKey) { /* Allow newline */ }
+        else { event.preventDefault(); handleSendMessage(); }
     }
 }
 
-// --- Handler for Send Button Click ---
-function handleSendButtonClick() {
-    console.log("Send button clicked - triggering send.");
-    handleSendMessage();
-}
+function handleSendButtonClick() { handleSendMessage(); }
 
-// --- Refactored File Processing Logic ---
-function processSelectedFile(file) {
+
+function processSelectedFile(file) { /* ... (no changes needed) ... */
     if (!file) return false;
     if (!file.type.startsWith('image/')) {
         showError('Pasted/Selected item is not a valid image file.');
-        handleRemoveImage();
-        return false;
-    }
+        handleRemoveImage(); return false; }
     if (file.size > MAX_IMAGE_SIZE_MB * 1024 * 1024) {
         showError(`Image size should not exceed ${MAX_IMAGE_SIZE_MB} MB.`);
-        handleRemoveImage();
-        return false;
-    }
+        handleRemoveImage(); return false; }
     hideError();
     const reader = new FileReader();
     reader.onload = (e) => {
-        selectedFileBase64 = e.target.result;
-        selectedFile = file;
-        imagePreview.src = selectedFileBase64;
-        imagePreviewContainer.classList.remove('hidden');
-        attachButton.classList.add('has-file');
-        console.log("Image processed:", file.name);
-    };
-    reader.onerror = (e) => {
-        console.error("FileReader error:", e);
-        showError("Error reading the image file.");
-        handleRemoveImage();
-    };
-    reader.readAsDataURL(file);
-    return true;
-}
+        selectedFileBase64 = e.target.result; selectedFile = file;
+        imagePreview.src = selectedFileBase64; imagePreviewContainer.classList.remove('hidden');
+        attachButton.classList.add('has-file'); console.log("Image processed:", file.name); };
+    reader.onerror = (e) => { console.error("FileReader error:", e); showError("Error reading image file."); handleRemoveImage(); };
+    reader.readAsDataURL(file); return true;
+ }
+function handleFileSelect(event) { /* ... (no changes needed) ... */
+    const file = event.target.files[0]; if (!file) return;
+    const processed = processSelectedFile(file); if (!processed) { resetFileInput(); } }
+function handlePaste(event) { /* ... (no changes needed) ... */
+    if (document.activeElement !== messageInput) { return; } const items = (event.clipboardData || event.originalEvent.clipboardData)?.items; if (!items) { return; } let foundImage = false; for (let i = 0; i < items.length; i++) { const item = items[i]; if (item.kind === 'file' && item.type.startsWith('image/')) { const imageFile = item.getAsFile(); if (imageFile) { const processed = processSelectedFile(imageFile); if (processed) { foundImage = true; event.preventDefault(); console.log("Image paste handled."); break; } } } } }
+function handleRemoveImage() { /* ... (no changes needed) ... */
+    selectedFile = null; selectedFileBase64 = null; imagePreview.src = '#';
+    imagePreviewContainer.classList.add('hidden'); resetFileInput();
+    attachButton.classList.remove('has-file'); hideError(); console.log("Selected image removed."); }
+function resetFileInput() { imageUploadInput.value = null; }
 
-// --- Handle File Selection via Input ---
-function handleFileSelect(event) {
-    const file = event.target.files[0];
-    if (!file) return;
-    const processed = processSelectedFile(file);
-    if (!processed) {
-        resetFileInput();
-    }
-}
 
-// --- Paste Handler (Checks for Focus) ---
-function handlePaste(event) {
-    if (document.activeElement !== messageInput) { return; } // Only handle paste if input is focused
-    const items = (event.clipboardData || event.originalEvent.clipboardData)?.items;
-    if (!items) { return; }
-    let foundImage = false;
-    for (let i = 0; i < items.length; i++) {
-        const item = items[i];
-        if (item.kind === 'file' && item.type.startsWith('image/')) {
-            const imageFile = item.getAsFile();
-            if (imageFile) {
-                const processed = processSelectedFile(imageFile);
-                if (processed) {
-                    foundImage = true;
-                    event.preventDefault(); // Prevent pasting file path as text
-                    console.log("Image paste handled, default paste prevented.");
-                    break; // Handle only first image
-                }
-            }
-        }
-    }
-    // Let text paste trigger 'input' event naturally for resize
-}
-
-// --- Handle Manual Removal of Image ---
-function handleRemoveImage() {
-    selectedFile = null;
-    selectedFileBase64 = null;
-    imagePreview.src = '#';
-    imagePreviewContainer.classList.add('hidden');
-    resetFileInput();
-    attachButton.classList.remove('has-file');
-    hideError(); // Hide errors when image is removed
-    console.log("Selected image removed.");
-}
-
-// --- Utility to Reset File Input ---
-function resetFileInput() {
-    imageUploadInput.value = null;
-}
-
-// --- Handle Sending Message (Text and/or Image) ---
 async function handleSendMessage() {
     const userMessageText = messageInput.value.trim();
-    if (!userMessageText && !selectedFileBase64) {
-        console.log("Send ignored: No text or image.");
-        return;
-    }
+    if (!userMessageText && !selectedFileBase64) { return; }
 
-    sendButton.disabled = true;
-    hideError();
-    showLoading();
+    sendButton.disabled = true; hideError(); showLoading();
 
-    const messageParts = [];
-    let currentImageDataUrl = null; // For local display
+    const messageParts = []; let currentImageDataUrl = null;
     if (selectedFileBase64 && selectedFile) {
         messageParts.push({ inlineData: { mimeType: selectedFile.type, data: selectedFileBase64 } });
-        currentImageDataUrl = selectedFileBase64;
-    }
-    if (userMessageText) {
-        messageParts.push({ text: userMessageText });
-    }
+        currentImageDataUrl = selectedFileBase64; }
+    if (userMessageText) { messageParts.push({ text: userMessageText }); }
 
+    // --- Pass the role to displayMessage ---
     displayMessage('user', userMessageText || '', currentImageDataUrl);
-    scrollChatToBottom();
+    // Note: scrollChatToBottom is now called *within* displayMessage for user roles
 
     conversationHistory.push({ role: 'user', parts: messageParts });
-
-    // Clear input and reset image state AFTER sending
-    messageInput.value = '';
-    handleRemoveImage(); // Resets image selection
-
-    // Reset textarea height AFTER clearing value
-    adjustTextareaHeight();
-
-    messageInput.focus();
+    messageInput.value = ''; handleRemoveImage(); adjustTextareaHeight(); messageInput.focus();
 
     // --- API Call Section ---
     try {
         truncateHistory();
         const historyForThisRequest = [...conversationHistory];
         const payload = { history: historyForThisRequest };
-        // console.log("Sending payload to /api/chat:", JSON.stringify(payload).substring(0, 500) + '...'); // Log less
 
-        const response = await fetch('/api/chat', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(payload),
-        });
-
+        const response = await fetch('/api/chat', { /* ... */
+            method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload), });
         hideLoading();
 
-        if (!response.ok) {
-            let errorMsg = `API Error: ${response.statusText} (${response.status})`;
-            try {
-                const errorData = await response.json();
-                errorMsg = errorData.error || errorMsg;
-            } catch (e) { console.warn("Could not parse API error response."); }
-            throw new Error(errorMsg);
-        }
+        if (!response.ok) { let errorMsg = `API Error: ${response.statusText} (${response.status})`; try { const errorData = await response.json(); errorMsg = errorData.error || errorMsg; } catch (e) { console.warn("Could not parse API error."); } throw new Error(errorMsg); }
 
         const data = await response.json();
-        const aiResponseText = data.text;
-        const searchSuggestionHtml = data.searchSuggestionHtml;
-        const modelUsed = data.modelUsed;
-
+        const aiResponseText = data.text; const searchSuggestionHtml = data.searchSuggestionHtml; const modelUsed = data.modelUsed;
         console.log(`AI Response received (using ${modelUsed || 'model'})`);
 
         conversationHistory.push({ role: 'model', parts: [{ text: aiResponseText }] });
 
+        // --- Pass the role to displayMessage ---
         displayMessage('ai', aiResponseText, null, searchSuggestionHtml);
-        scrollChatToBottom();
+         // Note: scrollToMessageTop is now called *within* displayMessage for AI roles
 
-    } catch (err) {
-        console.error("Error during send/receive:", err);
-        showError(err.message || "Failed to get response from AI.");
-        hideLoading();
-    } finally {
-        sendButton.disabled = false;
-    }
+    } catch (err) { console.error("Error during send/receive:", err); showError(err.message || "Failed to get response."); hideLoading();
+    } finally { sendButton.disabled = false; }
     // --- END API Call Section ---
 }
 
-// --- Display Message in Chat History ---
+
+// --- MODIFIED: Display Message and Trigger Appropriate Scroll ---
 function displayMessage(role, text, imageDataUrl = null, searchSuggestionHtml = null) {
     const messageDiv = document.createElement('div');
     messageDiv.classList.add('message', role === 'user' ? 'user-message' : 'ai-message');
 
+    // ... (code to add image/text/suggestions to messageDiv remains the same) ...
     if (imageDataUrl && role === 'user') {
         const imgElement = document.createElement('img');
-        imgElement.classList.add('message-image');
-        imgElement.src = imageDataUrl;
-        imgElement.alt = "User uploaded image";
-        messageDiv.appendChild(imgElement);
-    }
-
+        imgElement.classList.add('message-image'); imgElement.src = imageDataUrl; imgElement.alt = "User uploaded image";
+        messageDiv.appendChild(imgElement); }
     if (text) {
         const paragraph = document.createElement('p');
         if (role === 'ai' && typeof marked !== 'undefined' && typeof DOMPurify !== 'undefined') {
             try {
-                marked.setOptions({ breaks: true, gfm: true });
-                const rawHtml = marked.parse(text);
-                const sanitizedHtml = DOMPurify.sanitize(rawHtml);
-                paragraph.innerHTML = sanitizedHtml;
-            } catch (error) {
-                console.error("Markdown processing error:", error);
-                paragraph.textContent = text; // Fallback
-            }
-        } else {
-            paragraph.textContent = text;
-        }
-        messageDiv.appendChild(paragraph);
-    }
-
+                marked.setOptions({ breaks: true, gfm: true }); const rawHtml = marked.parse(text);
+                const sanitizedHtml = DOMPurify.sanitize(rawHtml); paragraph.innerHTML = sanitizedHtml;
+            } catch (error) { console.error("Markdown error:", error); paragraph.textContent = text; }
+        } else { paragraph.textContent = text; }
+        messageDiv.appendChild(paragraph); }
     if (role === 'ai' && searchSuggestionHtml) {
         const suggestionContainer = document.createElement('div');
         suggestionContainer.classList.add('search-suggestion-container');
-        if (typeof DOMPurify !== 'undefined') {
-            suggestionContainer.innerHTML = DOMPurify.sanitize(searchSuggestionHtml);
-        } else {
-            console.warn("DOMPurify not loaded. Search suggestions HTML not displayed.");
-        }
-        // Append only if content exists after sanitization (or if Purify missing)
-        if (suggestionContainer.innerHTML) {
-           messageDiv.appendChild(suggestionContainer);
-        }
-    }
+        if (typeof DOMPurify !== 'undefined') { suggestionContainer.innerHTML = DOMPurify.sanitize(searchSuggestionHtml); }
+        else { console.warn("DOMPurify not loaded."); }
+        if (suggestionContainer.innerHTML) { messageDiv.appendChild(suggestionContainer); } }
 
+
+    // Append the message to the history
     chatHistory.appendChild(messageDiv);
-}
 
-// --- Truncate History if it Exceeds Limit ---
-function truncateHistory() {
-    let totalChars = 0;
-    for (const message of conversationHistory) {
-        if (message.parts && Array.isArray(message.parts)) {
-            for (const part of message.parts) {
-                if (part.text) { totalChars += part.text.length; }
-                else if (part.inlineData) { totalChars += IMAGE_CHAR_EQUIVALENT; }
-            }
-        }
-    }
-    // console.log(`History size: ~${totalChars} chars`);
-    while (totalChars > MAX_HISTORY_CHARS && conversationHistory.length >= 2) {
-        console.log(`History limit exceeded (${totalChars}/${MAX_HISTORY_CHARS}). Truncating.`);
-        const removedUserMsg = conversationHistory.shift();
-        const removedModelMsg = conversationHistory.shift();
-        let removedChars = 0;
-        [removedUserMsg, removedModelMsg].forEach(msg => {
-             if (msg?.parts && Array.isArray(msg.parts)) {
-                msg.parts.forEach(part => {
-                    if (part.text) removedChars += part.text.length;
-                    else if (part.inlineData) removedChars += IMAGE_CHAR_EQUIVALENT;
-                });
-            }
-        });
-        totalChars -= removedChars;
-        console.log(`Removed pair. New count: ~${totalChars}`);
+    // --- Trigger scroll based on role ---
+    if (role === 'user') {
+        scrollChatToBottom(); // Always scroll fully down for user's own messages
+    } else if (role === 'ai') {
+        scrollToMessageTop(messageDiv); // Use the smart scroll for AI messages
     }
 }
+// --- END MODIFIED ---
 
-// --- UI Utility Functions ---
-function scrollChatToBottom() {
-    setTimeout(() => {
-        const chatContainer = document.getElementById('chat-container');
-        chatContainer.scrollTop = chatContainer.scrollHeight;
-    }, 50); // Small delay helps ensure DOM is updated
-}
+
+function truncateHistory() { /* ... (no changes needed) ... */
+    let totalChars = 0; for (const message of conversationHistory) { if (message.parts && Array.isArray(message.parts)) { for (const part of message.parts) { if (part.text) { totalChars += part.text.length; } else if (part.inlineData) { totalChars += IMAGE_CHAR_EQUIVALENT; } } } }
+    while (totalChars > MAX_HISTORY_CHARS && conversationHistory.length >= 2) { console.log(`History limit exceeded. Truncating.`); const removedUserMsg = conversationHistory.shift(); const removedModelMsg = conversationHistory.shift(); let removedChars = 0; [removedUserMsg, removedModelMsg].forEach(msg => { if (msg?.parts && Array.isArray(msg.parts)) { msg.parts.forEach(part => { if (part.text) removedChars += part.text.length; else if (part.inlineData) removedChars += IMAGE_CHAR_EQUIVALENT; }); } }); totalChars -= removedChars; } }
+
+
 function showLoading() { loadingIndicator.classList.remove('hidden'); }
 function hideLoading() { loadingIndicator.classList.add('hidden'); }
-function showError(message) {
-    errorDisplay.textContent = message;
-    errorDisplay.classList.remove('hidden');
-    console.error("Displaying error:", message);
-}
-function hideError() {
-    errorDisplay.classList.add('hidden');
-    errorDisplay.textContent = '';
-}
+function showError(message) { errorDisplay.textContent = message; errorDisplay.classList.remove('hidden'); console.error("Displaying error:", message); }
+function hideError() { errorDisplay.classList.add('hidden'); errorDisplay.textContent = ''; }
+
 
 // --- Initial Setup ---
 messageInput.focus();
-adjustTextareaHeight(); // Set initial height correctly
+adjustTextareaHeight(); // Set initial height
 console.log("Kramer Intelligence script initialized.");
 // --- END Initial Setup ---
