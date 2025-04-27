@@ -9,6 +9,16 @@ function getBase64Data(dataUrl) {
     return dataUrl.split(',')[1];
 }
 
+// --- Configuration ---
+// Define the models to try, in order of preference
+const MODELS_TO_TRY = [
+    // 'gemini-2.5-flash-preview-04-17',
+	'gemini-2.0-flash'
+];
+const MAX_IMAGE_SIZE_MB = 15; // Keep your image size limit definition
+// --- End Configuration ---
+
+
 // Handler function for Vercel Serverless Function
 export default async function handler(req, res) {
     // --- Security/CORS Headers ---
@@ -36,12 +46,12 @@ export default async function handler(req, res) {
     }
 
     // --- MODIFIED: Process history to format for Gemini API ---
+    // (Keep your existing history processing logic exactly as it was)
     const processedContents = history.map(message => {
         if (!message.role || !Array.isArray(message.parts)) {
             console.warn("Skipping invalid message structure in history:", message);
             return null; // Or handle error more strictly
         }
-
         const processedParts = message.parts.map(part => {
             if (part.text) {
                 return { text: part.text };
@@ -51,6 +61,7 @@ export default async function handler(req, res) {
                      console.error("Failed to extract base64 data for part:", part);
                      return null; // Skip this invalid part
                 }
+                // Gemini API expects just the base64 string, not the data URL prefix
                 return {
                     inlineData: {
                         mimeType: part.inlineData.mimeType,
@@ -63,12 +74,8 @@ export default async function handler(req, res) {
             }
         }).filter(part => part !== null); // Remove any null parts resulting from errors
 
-        // Only include the message if it has valid parts after processing
         if (processedParts.length > 0) {
-            return {
-                role: message.role,
-                parts: processedParts
-            };
+            return { role: message.role, parts: processedParts };
         } else {
             return null; // Skip messages that ended up with no valid parts
         }
@@ -81,61 +88,115 @@ export default async function handler(req, res) {
 
 
     const systemPrompt = "You are Kramer Intelligence, an advanced AI assistant developed by Daniel Vincent Kramer";
-    const modelName = 'gemini-2.0-flash';
-    const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/${modelName}:generateContent?key=${apiKey}`;
 
-    const requestBody = {
-        contents: processedContents, // Use processed history
-        systemInstruction: { parts: [ { text: systemPrompt } ] },
-        tools: [ { googleSearch: {} } ],
-        // generationConfig, safetySettings...
-    };
+    // --- Initialize variables for the fallback loop ---
+    let googleData = null;
+    let googleResponse = null; // Store the last response object
+    let lastErrorData = null; // Store the error details from the last failed attempt
+    let successfulModel = null; // Keep track of which model succeeded
 
+    // --- Loop through models and attempt API call ---
+    for (const modelName of MODELS_TO_TRY) {
+        console.log(`Attempting API call with model: ${modelName}`);
+        const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/${modelName}:generateContent?key=${apiKey}`;
+
+        const requestBody = {
+            contents: processedContents,
+            systemInstruction: { parts: [ { text: systemPrompt } ] },
+            tools: [ { googleSearch: {} } ],
+            // generationConfig, safetySettings... could potentially be added here
+        };
+
+        try {
+            googleResponse = await fetch(apiUrl, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(requestBody),
+            });
+
+            if (googleResponse.ok) {
+                googleData = await googleResponse.json();
+                successfulModel = modelName;
+                console.log(`Success with model: ${successfulModel}`);
+                break; // Exit the loop on first successful call
+            } else {
+                // API returned an error status (e.g., 4xx, 5xx)
+                console.warn(`Model ${modelName} failed with status: ${googleResponse.status}`);
+                try {
+                    lastErrorData = await googleResponse.json(); // Try to parse error details
+                    console.warn(`Error details for ${modelName}:`, JSON.stringify(lastErrorData));
+                } catch (parseError) {
+                    // If parsing the error fails, store the raw text
+                    const errorText = await googleResponse.text();
+                    console.warn(`Could not parse error JSON for ${modelName}. Raw response:`, errorText);
+                    lastErrorData = { error: { message: `API Error: ${googleResponse.status} ${googleResponse.statusText}. Response body was not valid JSON.` } };
+                }
+                // Continue to the next model in the list
+            }
+        } catch (error) {
+            // Network error or other fetch-related issue
+            console.error(`Fetch error for model ${modelName}:`, error);
+            lastErrorData = { error: { message: `Network or fetch error for ${modelName}: ${error.message}` } };
+            // Ensure googleResponse is null or appropriately handled if fetch itself failed
+            googleResponse = { status: 500, statusText: 'Network Error' }; // Mock response for status code handling later
+            // Continue to the next model
+        }
+    } // --- End of model loop ---
+
+
+    // --- Process the result (or final error) ---
     try {
-        const googleResponse = await fetch(apiUrl, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(requestBody),
-        });
+        // If googleData is null after the loop, all models failed
+        if (!googleData || !successfulModel) {
+            console.error('All models failed. Reporting last encountered error.');
+            const finalStatus = googleResponse?.status || 500; // Use last status or 500
+            let errorMsg = lastErrorData?.error?.message || `API Error: ${finalStatus} ${googleResponse?.statusText || 'Unknown Error'}`;
 
-        const googleData = await googleResponse.json();
+            // Append specific known error details if helpful
+            if (lastErrorData?.error?.status === 'FAILED_PRECONDITION') errorMsg += ' (Check API key/billing?)';
+            if (lastErrorData?.error?.message?.includes('400 Bad Request') && lastErrorData?.error?.message?.includes('payload is too large')) errorMsg = `Request too large (likely image size). Max ~${MAX_IMAGE_SIZE_MB}MB recommended.`;
+             else if (lastErrorData?.error?.message?.includes('429')) errorMsg += ' (Rate limit exceeded?)'; // Example for rate limit
 
-        if (!googleResponse.ok) {
-            console.error('Google API Error:', googleData);
-            let errorMsg = googleData?.error?.message || `API Error: ${googleResponse.status}`;
-             if (googleData?.error?.status === 'FAILED_PRECONDITION') errorMsg += ' Billing?';
-             if (googleData?.error?.message?.includes('400 Bad Request. Request payload is too large')) errorMsg = `Request too large (likely image size). Max ~${MAX_IMAGE_SIZE_MB}MB recommended.`;
-            return res.status(googleResponse.status || 500).json({ error: errorMsg });
+            return res.status(finalStatus).json({ error: errorMsg });
         }
 
+        // --- SUCCESS: Proceed with processing the successful response from googleData ---
         let aiText = null;
         let searchSuggestionHtml = null;
         const candidate = googleData?.candidates?.[0];
 
         if (candidate) {
-            aiText = candidate.content?.parts?.[0]?.text;
+            aiText = candidate.content?.parts?.[0]?.text; // Assuming text response is primary
             const groundingMetadata = candidate.groundingMetadata;
             if (groundingMetadata?.searchEntryPoint?.renderedContent) {
                 searchSuggestionHtml = groundingMetadata.searchEntryPoint.renderedContent;
             }
         }
 
+        // Check for blocks *after* confirming a candidate exists
         if (googleData.promptFeedback?.blockReason) {
             console.warn('Blocked:', googleData.promptFeedback.blockReason);
-            return res.status(400).json({ error: `Blocked: ${googleData.promptFeedback.blockReason}` });
-        }
-        if (typeof aiText !== 'string') { // Check *after* block reason
-            console.error('Bad structure/no text:', googleData);
-            return res.status(500).json({ error: 'AI response format error.' });
+            // Return a user-friendly block message
+            return res.status(400).json({ error: `Content blocked by safety settings: ${googleData.promptFeedback.blockReason}` });
         }
 
+        // Validate the AI response format
+        if (typeof aiText !== 'string') {
+            // This case might happen if the model responds but not with text in the expected place
+            console.error('AI response received, but no valid text content found:', googleData);
+            return res.status(500).json({ error: 'AI response format error (No text found).' });
+        }
+
+        // --- Send successful response back to client ---
         res.status(200).json({
             text: aiText,
-            searchSuggestionHtml: searchSuggestionHtml
+            searchSuggestionHtml: searchSuggestionHtml,
+            modelUsed: successfulModel // Optionally include which model succeeded
         });
 
     } catch (error) {
-        console.error('Serverless function error:', error);
-        res.status(500).json({ error: 'Internal server error.' });
+        // Catch any unexpected errors during response processing *after* the fetch loop
+        console.error('Serverless function error after API call:', error);
+        res.status(500).json({ error: 'Internal server error during response processing.' });
     }
 }
