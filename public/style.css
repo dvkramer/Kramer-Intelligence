@@ -65,15 +65,17 @@ h1 {
     max-width: 80%;
     line-height: 1.45; /* Base line height for wrapped/single lines */
     overflow-wrap: break-word;
-    display: flex; /* Use flex for internal stacking */
-    flex-direction: column;
-    /* gap: 8px; */ /* REMOVED gap, rely on margins below for internal spacing */
+    /* Removed display: flex and gap - we'll control spacing via margins */
+    /* display: block; ensures block layout context */
+    display: block;
+    position: relative; /* Needed if pseudo-elements were used, but good practice */
 }
 
 .user-message {
     background-color: #007bff;
     color: white;
-    align-self: flex-end; /* Positions bubble right */
+    align-self: flex-end; /* Positions bubble right (within #chat-history flex container) */
+    margin-left: auto;  /* Ensures it stays right aligned if max-width isn't hit */
     border-bottom-right-radius: 5px;
 }
 
@@ -81,85 +83,208 @@ h1 {
     background-color: #333333;
     color: #e0e0e0;
     align-self: flex-start; /* Positions bubble left */
+    margin-right: auto; /* Ensures it stays left aligned if max-width isn't hit */
     border-bottom-left-radius: 5px;
 }
 /* --- END CORE BUBBLE STYLES --- */
 
 
-/* --- FIX: Force zero bottom margin on the VERY last element inside any message bubble --- */
-.message > :last-child {
-    margin-bottom: 0 !important;
+/* ======================================================== */
+/* --- FIX: Force zero bottom margin on the VERY last element inside ANY message bubble --- */
+/* This targets any direct child (*) that is the last child inside .message */
+.message > *:last-child {
+    margin-bottom: 0 !important; /* Force no margin at the very end of the bubble */
 }
-/* --- END FIX --- */
+/* ======================================================== */
 
 
 /* --- TEXT CONTENT STYLING INSIDE BUBBLES --- */
 
-/* Base for all paragraphs inside any message */
+/* Base for ALL block elements inside messages - reset margins */
+/* More general than just p to catch other potential culprits */
+.message p,
+.message ul,
+.message ol,
+.message pre,
+.message blockquote,
+.message dl, /* Add other block elements if needed */
+.message figure,
+.message h1, .message h2, .message h3, .message h4, .message h5, .message h6,
+.message hr,
+.message .search-suggestion-container, /* Also apply to custom containers */
+.message img.message-image /* Also apply to images if they aren't wrapped */
+{
+    margin-top: 0;
+    margin-bottom: 0; /* Start with zero vertical margins */
+}
+
+/* Specific handling for paragraphs */
 .message p {
-    margin: 0; /* Reset browser default paragraph margins */
+    /* margin: 0; redundant due to above, but keep for clarity if preferred */
     white-space: pre-wrap; /* Respect single \n (as <br>) AND wrap lines */
 }
 
-/* Add margin-top ONLY to paragraphs that follow another paragraph INSIDE AI messages */
-/* This creates the gap for double newlines (\n\n) */
+/* Add SMALL margin-top ONLY to paragraphs that follow another paragraph INSIDE AI messages */
+/* This creates the gap for intentional double newlines (\n\n) */
 .ai-message p + p {
-   margin-top: 0.4em; /* << ADJUST THIS VALUE (smaller now) for desired gap size */
+   margin-top: 0.4em; /* << ADJUST THIS VALUE for desired paragraph gap size */
 }
 
-/* Basic List Styling inside AI messages - Tighter Spacing */
+/* === TIGHTER List Styling === */
 .ai-message ul,
 .ai-message ol {
-    margin: 0.4em 0; /* Reduced vertical margin around the whole list */
+    /* Reduced vertical margin around the whole list block */
+    /* We rely on adjacent element rules now */
     padding-left: 25px; /* Standard indentation */
 }
 
 /* Spacing between list items - Tighter */
 .ai-message li {
-     margin-bottom: 0.1em; /* VERY small gap between list items */
-}
-/* Remove space after the absolute last item in the list */
-.ai-message li:last-child {
-    margin-bottom: 0;
+     margin-top: 0;
+     /* VERY small gap between list items via margin-bottom */
+     /* But setting margin-top on subsequent li avoids last-child rule complexity */
+     line-height: 1.4; /* Slightly reduce line height if needed */
 }
 
-/* Keep spacing rules for elements before/after lists */
+/* Add small space *before* list items that aren't the first one */
+.ai-message li + li {
+    margin-top: 0.15em; /* Adjust this tiny gap */
+}
+
+/* Spacing rules for elements *before* or *after* lists */
+/* Use a slightly larger gap than p+p for structure */
 .ai-message p + ul,
-.ai-message p + ol {
-    margin-top: 0.5em; /* Space before list following a paragraph */
-}
-.ai-message ul + p,
-.ai-message ol + p {
-    margin-top: 0.5em; /* Space after list preceding a paragraph */
+.ai-message p + ol,
+.ai-message pre + ul,
+.ai-message pre + ol,
+.ai-message blockquote + ul,
+.ai-message blockquote + ol,
+.ai-message hr + ul,
+.ai-message hr + ol,
+.ai-message h1 + ul, .ai-message h2 + ul, .ai-message h3 + ul, .ai-message h4 + ul, .ai-message h5 + ul, .ai-message h6 + ul,
+.ai-message h1 + ol, .ai-message h2 + ol, .ai-message h3 + ol, .ai-message h4 + ol, .ai-message h5 + ol, .ai-message h6 + ol
+{
+    margin-top: 0.6em; /* Space before list following other block elements */
 }
 
+.ai-message ul + p,
+.ai-message ol + p,
+.ai-message ul + pre,
+.ai-message ol + pre,
+.ai-message ul + blockquote,
+.ai-message ol + blockquote,
+.ai-message ul + hr,
+.ai-message ol + hr,
+.ai-message ul + h1, .ai-message ul + h2, .ai-message ul + h3, .ai-message ul + h4, .ai-message ul + h5, .ai-message ul + h6,
+.ai-message ol + h1, .ai-message ol + h2, .ai-message ol + h3, .ai-message ol + h4, .ai-message ol + h5, .ai-message ol + h6
+ {
+    margin-top: 0.6em; /* Space after list preceding other block elements */
+}
 /* --- END TEXT CONTENT STYLING --- */
 
 
 /* Styling for Images within Messages */
 .message img.message-image {
-    max-width: 100%; max-height: 300px; border-radius: 10px; object-fit: contain; cursor: pointer; margin-top: 8px; /* Add consistent gap if image follows text */
-    /* The margin-bottom on this will be forced to 0 if it's the last element by the .message > :last-child rule */
+    display: block; /* Make image a block element */
+    max-width: 100%;
+    max-height: 300px;
+    border-radius: 10px;
+    object-fit: contain;
+    cursor: pointer;
+    /* The margin-bottom: 0 will be handled by the *:last-child rule if it's last */
+    /* Add margin-top if it follows another element */
 }
+/* Add space above image if it's not the first element */
+.message > *:not(:first-child) + img.message-image {
+     margin-top: 0.6em;
+}
+
 
 /* Google Search Suggestion Styling */
 .search-suggestion-container {
-    margin-top: 12px; /* Space above suggestions */
-    /* The margin-bottom on this will be forced to 0 if it's the last element by the .message > :last-child rule */
- }
+    /* The margin-bottom: 0 will be handled by the *:last-child rule if it's last */
+    /* Add margin-top if it's not the first element */
+}
+/* Add space above suggestions if it's not the first element */
+.message > *:not(:first-child) + .search-suggestion-container {
+    margin-top: 0.8em; /* Slightly more space for this container */
+}
+
 
 /* --- Other Markdown Elements --- */
-.ai-message pre { background-color: rgba(0, 0, 0, 0.2); padding: 10px; border-radius: 4px; overflow-x: auto; border: 1px solid #444; margin: 0.8em 0; white-space: pre; }
+/* Use adjacent sibling selectors for consistent spacing */
+.ai-message pre {
+    background-color: rgba(0, 0, 0, 0.2);
+    padding: 10px;
+    border-radius: 4px;
+    overflow-x: auto;
+    border: 1px solid #444;
+    white-space: pre;
+    /* margin: 0.8em 0; Removed, handled by adjacent sibling rules */
+}
 .message code { font-family: Consolas, Monaco, 'Andale Mono', 'Ubuntu Mono', monospace; font-size: 0.9em; }
 .message p > code { background-color: rgba(255, 255, 255, 0.1); padding: 0.2em 0.4em; border-radius: 3px; font-size: 0.85em; }
 .message pre code { background-color: transparent; padding: 0; font-size: inherit; border-radius: 0; }
-.ai-message blockquote { border-left: 3px solid #555; padding-left: 10px; margin: 0.8em 0; color: #bbb; font-style: italic; }
+
+.ai-message blockquote {
+    border-left: 3px solid #555;
+    padding-left: 10px;
+    color: #bbb;
+    font-style: italic;
+    /* margin: 0.8em 0; Removed, handled by adjacent sibling rules */
+}
 .ai-message blockquote p { margin: 0; white-space: normal; /* Override pre-wrap inside quote if needed */ }
+/* Add space between blockquote paragraphs if needed */
+.ai-message blockquote p + p {
+    margin-top: 0.3em; /* Smaller gap inside quotes */
+}
+
 .message p a { color: #64b5f6; text-decoration: underline; }
 .message p a:hover { color: #90caf9; }
-.ai-message h1, .ai-message h2, .ai-message h3, .ai-message h4, .ai-message h5, .ai-message h6 { margin-top: 1.2em; margin-bottom: 0.6em; font-weight: 500; color: #ffffff; }
+
+.ai-message h1, .ai-message h2, .ai-message h3, .ai-message h4, .ai-message h5, .ai-message h6 {
+    font-weight: 500;
+    color: #ffffff;
+    line-height: 1.3;
+    /* margin-top: 1.2em; margin-bottom: 0.6em; Removed, handled by adjacent sibling rules */
+}
 .message h1 { font-size: 1.5em; } .message h2 { font-size: 1.3em; } .message h3 { font-size: 1.15em; } .message h4 { font-size: 1em; } .message h5 { font-size: 0.9em; } .message h6 { font-size: 0.85em; color: #ccc; }
-.ai-message hr { border: 0; border-top: 1px solid #444; margin: 1em 0; }
+
+.ai-message hr {
+    border: 0;
+    border-top: 1px solid #444;
+    /* margin: 1em 0; Removed, handled by adjacent sibling rules */
+}
+
+/* Define consistent spacing using adjacent sibling (+) combinator for various block elements */
+/* Adjust these values as needed for desired rhythm */
+.ai-message p + pre, .ai-message p + blockquote, .ai-message p + hr,
+.ai-message ul + pre, .ai-message ul + blockquote, .ai-message ul + hr,
+.ai-message ol + pre, .ai-message ol + blockquote, .ai-message ol + hr,
+.ai-message pre + p, .ai-message pre + blockquote, .ai-message pre + hr,
+.ai-message blockquote + p, .ai-message blockquote + pre, .ai-message blockquote + hr,
+.ai-message hr + p, .ai-message hr + pre, .ai-message hr + blockquote,
+.ai-message h1 + p, .ai-message h2 + p, .ai-message h3 + p, .ai-message h4 + p, .ai-message h5 + p, .ai-message h6 + p, /* Heading followed by paragraph */
+.ai-message p + h1, .ai-message p + h2, .ai-message p + h3, .ai-message p + h4, .ai-message p + h5, .ai-message p + h6  /* Paragraph followed by heading */
+/* Add combinations for heading <> list, heading <> pre etc. if needed */
+{
+    margin-top: 0.8em; /* General spacing between different block types */
+}
+
+/* Larger space before headings */
+.ai-message *:not(h1):not(h2):not(h3):not(h4):not(h5):not(h6) + h1,
+.ai-message *:not(h1):not(h2):not(h3):not(h4):not(h5):not(h6) + h2,
+.ai-message *:not(h1):not(h2):not(h3):not(h4):not(h5):not(h6) + h3,
+.ai-message *:not(h1):not(h2):not(h3):not(h4):not(h5):not(h6) + h4,
+.ai-message *:not(h1):not(h2):not(h3):not(h4):not(h5):not(h6) + h5,
+.ai-message *:not(h1):not(h2):not(h3):not(h4):not(h5):not(h6) + h6
+{
+    margin-top: 1.2em;
+}
+/* Smaller space after headings */
+.ai-message h1 + *, .ai-message h2 + *, .ai-message h3 + *, .ai-message h4 + *, .ai-message h5 + *, .ai-message h6 + * {
+    margin-top: 0.6em; /* Overrides the general 0.8em rule above */
+}
 
 
 /* Loading / Error Indicators */
