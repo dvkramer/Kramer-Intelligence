@@ -25,8 +25,8 @@ body {
 
 /* Styles for the main scrollable wrapper */
 #main-content-area {
-    flex-grow: 1; /* Takes up available vertical space */
-    overflow-y: auto; /* Enables scrolling for H1 + Chat History */
+    flex-grow: 1;
+    overflow-y: auto;
     position: relative;
     display: flex;
     flex-direction: column;
@@ -42,12 +42,10 @@ h1 {
     margin: 0;
     font-weight: 500;
     border-bottom: 1px solid #333;
-    /* No position: sticky; ensures it scrolls with content */
 }
 
 /* Chat Area Styling (Now inside scroll area) */
 #chat-container {
-    /* No flex-grow or overflow needed, handled by parent */
     padding: 20px;
     width: 100%;
 }
@@ -72,10 +70,13 @@ h1 {
 /* Image in Message Styling */
 .message img.message-image { max-width: 100%; max-height: 300px; border-radius: 10px; object-fit: contain; cursor: pointer; margin-top: 5px; }
 
-/* Search Suggestion Styling */
-.search-suggestion-container { margin-top: 8px; padding: 8px 12px; background-color: rgba(255, 255, 255, 0.05); border-radius: 8px; font-size: 0.9em; border: 1px solid rgba(255, 255, 255, 0.1); }
-.search-suggestion-container a { color: inherit !important; text-decoration: none !important; display: block; padding: 4px 0; }
-.search-suggestion-container a:hover { background-color: rgba(255, 255, 255, 0.1); }
+/* --- Search Suggestion Styling (CORRECTED - Minimal Wrapper Style Only) --- */
+.search-suggestion-container {
+    margin-top: 12px; /* Add space above the snippet */
+    /* DO NOT add padding, background, border, font-size, color, etc. here */
+    /* Let the injected renderedContent handle its own appearance */
+}
+/* --- End Search Suggestion Styling --- */
 
 /* Markdown Element Styling */
 .message pre { background-color: rgba(0, 0, 0, 0.2); padding: 10px; border-radius: 4px; overflow-x: auto; border: 1px solid #444; margin-top: 8px; margin-bottom: 8px; white-space: pre; }
@@ -86,7 +87,7 @@ h1 {
 .message li { margin-bottom: 4px; }
 .message blockquote { border-left: 3px solid #555; padding-left: 10px; margin-left: 0; margin-top: 8px; margin-bottom: 8px; color: #bbb; font-style: italic; }
 .message blockquote p { margin: 0; }
-.message p a { color: #64b5f6; text-decoration: underline; }
+.message p a { color: #64b5f6; text-decoration: underline; } /* Links in regular markdown */
 .message p a:hover { color: #90caf9; }
 .message h1, .message h2, .message h3, .message h4, .message h5, .message h6 { margin-top: 1em; margin-bottom: 0.5em; font-weight: 500; color: #ffffff; }
 .message h1 { font-size: 1.5em; } .message h2 { font-size: 1.3em; } .message h3 { font-size: 1.15em; } .message h4 { font-size: 1em; } .message h5 { font-size: 0.9em; } .message h6 { font-size: 0.85em; color: #ccc;}
@@ -94,31 +95,12 @@ h1 {
 
 
 /* Loading/Error Indicators */
-#loading, #error {
-    text-align: center;
-    padding: 10px;
-    font-style: italic;
-    color: #aaa;
-    width: 100%;
-    max-width: 800px;
-    margin: 5px auto;
-    flex-shrink: 0;
-}
+#loading, #error { text-align: center; padding: 10px; font-style: italic; color: #aaa; width: 100%; max-width: 800px; margin: 5px auto; flex-shrink: 0; }
 #error { color: #ff4d4d; font-weight: bold; background-color: rgba(255, 77, 77, 0.1); border-radius: 4px; border: 1px solid rgba(255, 77, 77, 0.3); padding: 10px 15px; }
 
 
 /* Image Preview Area Styling */
-#image-preview-container {
-    background-color: #1f1f1f;
-    border-top: 1px solid #333;
-    padding: 8px 20px;
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    position: relative;
-    flex-shrink: 0;
-    width: 100%;
-}
+#image-preview-container { background-color: #1f1f1f; border-top: 1px solid #333; padding: 8px 20px; display: flex; justify-content: center; align-items: center; position: relative; flex-shrink: 0; width: 100%; }
 #image-preview-container > div { position: relative; display: inline-block; max-width: 750px; margin: 0 auto; line-height: 0; }
 #image-preview { display: block; max-height: 80px; max-width: 100%; border-radius: 6px; object-fit: contain; border: 1px solid #444; }
 #remove-image-button { position: absolute; top: -5px; right: -5px; width: 22px; height: 22px; background-color: rgba(40, 40, 40, 0.8); color: #ccc; border: 1px solid #555; border-radius: 50%; cursor: pointer; font-size: 16px; font-weight: bold; line-height: 18px; text-align: center; padding: 0; transition: background-color 0.2s, color 0.2s; }
@@ -126,24 +108,9 @@ h1 {
 
 
 /* Input Form Styling */
-#chat-form {
-    display: flex;
-    align-items: flex-end;
-    padding: 15px 20px;
-    /* border-top handled below */
-    background-color: #1f1f1f;
-    flex-shrink: 0;
-    width: 100%;
-    justify-content: center;
-    gap: 10px;
-}
-/* Adjust form border based on preview visibility */
-#image-preview-container.hidden + #chat-form {
-    border-top: 1px solid #333;
-}
-#image-preview-container:not(.hidden) + #chat-form {
-    border-top: none; /* Preview container provides the top border */
-}
+#chat-form { display: flex; align-items: flex-end; padding: 15px 20px; background-color: #1f1f1f; flex-shrink: 0; width: 100%; justify-content: center; gap: 10px; }
+#image-preview-container.hidden + #chat-form { border-top: 1px solid #333; }
+#image-preview-container:not(.hidden) + #chat-form { border-top: none; }
 
 
 /* Attach Button Styling */
@@ -176,7 +143,6 @@ h1 {
 }
 @media (max-width: 600px) {
     h1 { font-size: 1.2rem; padding: 12px 15px; }
-    /* #main-content-area { } */
     #chat-container { padding: 10px; }
     #chat-history { gap: 12px; }
     .message { max-width: 90%; font-size: 0.95rem; padding: 8px 12px; }

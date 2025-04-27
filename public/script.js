@@ -49,21 +49,17 @@ function adjustTextareaHeight() {
     messageInput.style.height = `${messageInput.scrollHeight}px`;
 }
 
-// --- Standard scroll to bottom (for user messages) - UPDATED ---
+// --- Standard scroll to bottom (for user messages) - Smooth ---
 function scrollChatToBottom() {
-    // Scrolls the main content area all the way down smoothly
     setTimeout(() => {
         mainContentArea.scrollTo({
             top: mainContentArea.scrollHeight, // Target the very bottom
             behavior: 'smooth' // Make it smooth
         });
-        // console.log("Smooth scrolling chat fully to bottom"); // Optional logging
-    }, 50); // Delay ensures content is rendered before scrolling
+    }, 50);
 }
-// --- END UPDATED ---
 
-
-// --- Smart scroll for AI messages (Remains the same - already smooth) ---
+// --- Smart scroll for AI messages - Smooth ---
 function scrollToMessageTop(messageElement) {
     setTimeout(() => {
         const messageTopOffset = messageElement.offsetTop;
@@ -71,13 +67,12 @@ function scrollToMessageTop(messageElement) {
         desiredScrollTop = Math.max(0, desiredScrollTop);
 
         // Always attempt the smooth scroll
-        // console.log(`Smart scrolling AI message to scrollTop: ${desiredScrollTop}`);
         mainContentArea.scrollTo({
             top: desiredScrollTop,
             behavior: 'smooth'
         });
 
-    }, 100); // Delay helps ensure offsetTop is calculated correctly after render
+    }, 100);
 }
 
 
@@ -130,8 +125,7 @@ async function handleSendMessage() {
         currentImageDataUrl = selectedFileBase64; }
     if (userMessageText) { messageParts.push({ text: userMessageText }); }
 
-    // displayMessage handles scrolling based on role now
-    displayMessage('user', userMessageText || '', currentImageDataUrl);
+    displayMessage('user', userMessageText || '', currentImageDataUrl); // Handles scroll
 
     conversationHistory.push({ role: 'user', parts: messageParts });
     messageInput.value = ''; handleRemoveImage(); adjustTextareaHeight(); messageInput.focus();
@@ -154,8 +148,7 @@ async function handleSendMessage() {
 
         conversationHistory.push({ role: 'model', parts: [{ text: aiResponseText }] });
 
-        // displayMessage handles scrolling based on role now
-        displayMessage('ai', aiResponseText, null, searchSuggestionHtml);
+        displayMessage('ai', aiResponseText, null, searchSuggestionHtml); // Handles scroll
 
     } catch (err) { console.error("Error during send/receive:", err); showError(err.message || "Failed to get response."); hideLoading();
     } finally { sendButton.disabled = false; }
@@ -172,34 +165,53 @@ function displayMessage(role, text, imageDataUrl = null, searchSuggestionHtml = 
     if (imageDataUrl && role === 'user') {
         const imgElement = document.createElement('img');
         imgElement.classList.add('message-image'); imgElement.src = imageDataUrl; imgElement.alt = "User uploaded image";
-        messageDiv.appendChild(imgElement); }
+        messageDiv.appendChild(imgElement);
+    }
     // Add text if present
     if (text) {
         const paragraph = document.createElement('p');
         if (role === 'ai' && typeof marked !== 'undefined' && typeof DOMPurify !== 'undefined') {
             try {
                 marked.setOptions({ breaks: true, gfm: true }); const rawHtml = marked.parse(text);
-                const sanitizedHtml = DOMPurify.sanitize(rawHtml); paragraph.innerHTML = sanitizedHtml;
+                const sanitizedHtml = DOMPurify.sanitize(rawHtml); // Basic sanitize for AI text
+                paragraph.innerHTML = sanitizedHtml;
             } catch (error) { console.error("Markdown error:", error); paragraph.textContent = text; }
         } else { paragraph.textContent = text; }
-        messageDiv.appendChild(paragraph); }
+        if (paragraph.innerHTML || paragraph.textContent) { messageDiv.appendChild(paragraph); }
+    }
     // Add search suggestions if present
     if (role === 'ai' && searchSuggestionHtml) {
         const suggestionContainer = document.createElement('div');
-        suggestionContainer.classList.add('search-suggestion-container');
-        if (typeof DOMPurify !== 'undefined') { suggestionContainer.innerHTML = DOMPurify.sanitize(searchSuggestionHtml); }
-        else { console.warn("DOMPurify not loaded."); }
-        if (suggestionContainer.innerHTML) { messageDiv.appendChild(suggestionContainer); } }
+        suggestionContainer.classList.add('search-suggestion-container'); // Class for margin only
+
+        if (typeof DOMPurify !== 'undefined') {
+            try {
+                // Sanitize Google's HTML, ALLOWING style tags and potentially needed protocols
+                const sanitizedGoogleHtml = DOMPurify.sanitize(searchSuggestionHtml, {
+                    ALLOW_STYLE: true, // MUST allow style tags from Google
+                    ALLOW_UNKNOWN_PROTOCOLS: true // For potential google search links
+                 });
+                suggestionContainer.innerHTML = sanitizedGoogleHtml;
+                 console.log("Sanitized and appended search suggestions (styles allowed).");
+            } catch (error) {
+                 console.error("Error sanitizing search suggestion HTML:", error);
+            }
+        } else {
+            console.warn("DOMPurify not loaded. Cannot safely display search suggestions HTML.");
+        }
+        if (suggestionContainer.innerHTML.trim()) {
+             messageDiv.appendChild(suggestionContainer);
+        } else {
+             console.log("Search suggestion HTML was empty after sanitization or missing.");
+        }
+    }
 
     // Append the message to the history
     chatHistory.appendChild(messageDiv);
 
     // Trigger scroll based on role
-    if (role === 'user') {
-        scrollChatToBottom(); // Use smooth scroll to bottom
-    } else if (role === 'ai') {
-        scrollToMessageTop(messageDiv); // Use the smart smooth scroll
-    }
+    if (role === 'user') { scrollChatToBottom(); } // Smooth scroll to bottom
+    else if (role === 'ai') { scrollToMessageTop(messageDiv); } // Smooth scroll to AI message top
 }
 
 
