@@ -43,6 +43,18 @@ messageInput.addEventListener('input', adjustTextareaHeight);
 
 // --- Functions ---
 
+// --- Mobile Detection Helper ---
+function isMobileDevice() {
+    // Basic check combining touch capability and common user agent keywords
+    const hasTouch = ('ontouchstart' in window) || (navigator.maxTouchPoints > 0) || (navigator.msMaxTouchPoints > 0);
+    const isLikelyMobileUA = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+    // Consider it mobile if it has touch AND a mobile-like UA string.
+    // Adjust logic if needed (e.g., just checking hasTouch might be sufficient)
+    return hasTouch && isLikelyMobileUA;
+}
+// --- END Mobile Detection Helper ---
+
+
 // --- Textarea Height Adjustment ---
 function adjustTextareaHeight() {
     messageInput.style.height = 'auto';
@@ -60,40 +72,31 @@ function scrollChatToBottom() {
     });
 }
 
-// Scrolls smoothly to the top of a new AI message using requestAnimationFrame (Attempting to fix jump)
+// Scrolls smoothly to the top of a new AI message using requestAnimationFrame
 function scrollToMessageTop(messageElement) {
-    // --- MODIFIED: Try to counteract immediate jump ---
-
-    // 1. Get current state BEFORE modification might affect scroll
     const initialScrollTop = mainContentArea.scrollTop;
     const initialScrollHeight = mainContentArea.scrollHeight;
     const clientHeight = mainContentArea.clientHeight;
-    // Check if we are scrolled near the bottom initially (e.g., within 50px)
     const isNearBottomInitially = (initialScrollHeight - initialScrollTop - clientHeight) < 50;
 
-    requestAnimationFrame(() => { // Frame 1: Counteract jump and prepare for smooth scroll
-        // 2. Check if browser might have jumped scroll down INSTANTLY after append
+    requestAnimationFrame(() => {
         const currentScrollTop = mainContentArea.scrollTop;
-        if (isNearBottomInitially && currentScrollTop > initialScrollTop + 10) { // Did it jump down significantly?
+        if (isNearBottomInitially && currentScrollTop > initialScrollTop + 10) {
              console.log(`Scroll jumped down from ${initialScrollTop} to ${currentScrollTop}. Resetting.`);
-             // Force scroll back WITHOUT animation
              mainContentArea.scrollTop = initialScrollTop;
         }
 
-        // 3. Now schedule the SMOOTH scroll for the NEXT frame
-        requestAnimationFrame(() => { // Frame 2: Perform the smooth scroll from corrected position
+        requestAnimationFrame(() => {
             const messageTopOffset = messageElement.offsetTop;
             let desiredScrollTop = messageTopOffset - SCROLL_PADDING_TOP;
-            desiredScrollTop = Math.max(0, desiredScrollTop); // Don't scroll negative
+            desiredScrollTop = Math.max(0, desiredScrollTop);
 
-            // console.log(`rAF Frame 2 - Smooth scrolling AI message to scrollTop: ${desiredScrollTop}`);
             mainContentArea.scrollTo({
                 top: desiredScrollTop,
                 behavior: 'smooth'
             });
         });
     });
-    // --- END MODIFIED ---
 }
 // --- END Scrolling Functions ---
 
@@ -116,16 +119,45 @@ async function handleSendMessage() {
     const userMessageText = messageInput.value.trim();
     if (!userMessageText && !selectedFileBase64) { return; }
 
-    sendButton.disabled = true; hideError(); showLoading();
+    // Disable button immediately
+    sendButton.disabled = true;
+    hideError();
+    showLoading(); // Show loading indicator early
 
-    const messageParts = []; let currentImageDataUrl = null;
-    if (selectedFileBase64 && selectedFile) { messageParts.push({ inlineData: { mimeType: selectedFile.type, data: selectedFileBase64 } }); currentImageDataUrl = selectedFileBase64; }
-    if (userMessageText) { messageParts.push({ text: userMessageText }); }
+    const messageParts = [];
+    let currentImageDataUrl = null;
 
+    // Capture image data FIRST (before clearing it)
+    if (selectedFileBase64 && selectedFile) {
+        messageParts.push({ inlineData: { mimeType: selectedFile.type, data: selectedFileBase64 } });
+        currentImageDataUrl = selectedFileBase64; // Store for display
+    }
+    // Capture text data
+    if (userMessageText) {
+        messageParts.push({ text: userMessageText });
+    }
+
+    // --- Display User Message ---
+    // Display the user's message *before* clearing the input/image
     displayMessage('user', userMessageText || '', currentImageDataUrl); // Handles scroll
 
+    // --- Add to History & Clear Inputs ---
     conversationHistory.push({ role: 'user', parts: messageParts });
-    messageInput.value = ''; handleRemoveImage(); adjustTextareaHeight(); messageInput.focus();
+    messageInput.value = ''; // Clear the text input
+    handleRemoveImage();    // Clear the selected image and preview
+    adjustTextareaHeight(); // Reset textarea height after clearing
+
+    // --- Conditional Focus/Blur ---
+    if (isMobileDevice()) {
+        // On mobile: Blur the input to hide the virtual keyboard
+        messageInput.blur(); // <<< BLUR ADDED FOR MOBILE
+        console.log("Mobile device detected, blurring input.");
+    } else {
+        // On desktop: Keep focus on the input for easy next message typing
+        messageInput.focus(); // <<< FOCUS RETAINED FOR DESKTOP
+        console.log("Desktop device detected, retaining focus.");
+    }
+    // --- End Conditional Focus/Blur ---
 
     // --- API Call Section ---
     try {
@@ -134,21 +166,45 @@ async function handleSendMessage() {
         const payload = { history: historyForThisRequest };
 
         const response = await fetch('/api/chat', {
-            method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload), });
-        hideLoading();
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload),
+        });
+        hideLoading(); // Hide loading indicator once fetch starts or finishes
 
-        if (!response.ok) { let errorMsg = `API Error: ${response.statusText} (${response.status})`; try { const errorData = await response.json(); errorMsg = errorData.error || errorMsg; } catch (e) { console.warn("Could not parse API error."); } throw new Error(errorMsg); }
+        if (!response.ok) {
+            let errorMsg = `API Error: ${response.statusText} (${response.status})`;
+            try {
+                const errorData = await response.json();
+                errorMsg = errorData.error || errorMsg;
+            } catch (e) {
+                console.warn("Could not parse API error.");
+            }
+            throw new Error(errorMsg);
+        }
 
         const data = await response.json();
-        const aiResponseText = data.text; const searchSuggestionHtml = data.searchSuggestionHtml; const modelUsed = data.modelUsed;
-        console.log(`AI Response received (using ${modelUsed || 'model'})`);
+        const aiResponseText = data.text;
+        const searchSuggestionHtml = data.searchSuggestionHtml;
+        const modelUsed = data.modelUsed; // Optional: Log which model was used
+        console.log(`AI Response received (using ${modelUsed || 'default model'})`); // Adjusted log
 
         conversationHistory.push({ role: 'model', parts: [{ text: aiResponseText }] });
 
+        // Display AI response
         displayMessage('ai', aiResponseText, null, searchSuggestionHtml); // Handles scroll
 
-    } catch (err) { console.error("Error during send/receive:", err); showError(err.message || "Failed to get response."); hideLoading();
-    } finally { sendButton.disabled = false; }
+    } catch (err) {
+        console.error("Error during send/receive:", err);
+        showError(err.message || "Failed to get response.");
+        hideLoading(); // Ensure loading is hidden on error
+        // Optionally: Remove the last user message from history if API fails?
+        // conversationHistory.pop(); // Uncomment to rollback history on failure
+    } finally {
+        // --- Re-enable Send Button ---
+        sendButton.disabled = false;
+        // Focus is handled conditionally above, no action needed here.
+    }
     // --- END API Call Section ---
 }
 // --- END Core Message Sending Logic ---
@@ -191,11 +247,9 @@ function displayMessage(role, text, imageDataUrl = null, searchSuggestionHtml = 
         try {
             // Directly inject Google's HTML without sanitization per their requirements
             suggestionContainer.innerHTML = searchSuggestionHtml;
-            // console.log("Directly appended search suggestions HTML.");
 
             // Append container only if it's not empty after assignment
             if (suggestionContainer.innerHTML.trim()) { messageDiv.appendChild(suggestionContainer); }
-            // else { console.log("Google Search suggestion HTML was empty."); }
         } catch (error) { console.error("Error setting innerHTML for search suggestions:", error); }
     }
 
