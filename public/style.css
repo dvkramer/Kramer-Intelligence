@@ -68,85 +68,122 @@ h1 {
     padding: 10px 15px; /* Internal padding */
     border-radius: 18px; /* Rounded corners */
     max-width: 80%; /* Limit bubble width */
-    line-height: 1.4; /* Text line spacing */
+    line-height: 1.4; /* Base text line spacing */
     overflow-wrap: break-word; /* Break long words/URLs */
     display: flex; /* Use flex for internal alignment if needed */
     flex-direction: column; /* Stack image/text/suggestions */
-    gap: 8px; /* Space between stacked items */
+    gap: 8px; /* Consistent small gap between direct children (like text block and suggestions) */
 }
 
-/* Paragraphs within messages */
+/* --- START: CORRECTED PARAGRAPH & BLOCK SPACING --- */
+
+/* Base reset for paragraphs within messages */
 .message p {
-    margin: 0; /* Remove default top/bottom margins initially */
-    overflow-wrap: break-word; /* Ensure wrapping */
-    /* NOTE: Spacing adjustments happen specifically for .ai-message p below */
+    margin: 0; /* Remove ALL default margins first */
+    overflow-wrap: break-word;
+    white-space: pre-wrap; /* Preserve explicit newlines (\n -> <br>) AND wrap text */
 }
 
-/* User message specific styles */
-.user-message {
-    background-color: #007bff; /* Blue background */
-    color: white;
-    align-self: flex-end; /* Align to the right */
-    border-bottom-right-radius: 5px; /* Slightly flattened corner */
-}
-
-/* Apply newline preservation to user message paragraphs */
+/* User message paragraphs (usually don't need extra spacing) */
 .user-message p {
-    white-space: pre-wrap; /* Preserve newlines and wrap text */
-    /* User messages don't need extra margin between paragraphs typically */
+    /* white-space: pre-wrap; is inherited or set above */
 }
 
-/* AI message specific styles */
-.ai-message {
-    background-color: #333333; /* Dark grey background */
-    color: #e0e0e0;
-    align-self: flex-start; /* Align to the left */
-    border-bottom-left-radius: 5px; /* Slightly flattened corner */
+/* AI message paragraph spacing */
+/* Add top margin ONLY to a paragraph that directly follows another paragraph */
+.ai-message p + p {
+   margin-top: 0.5em; /* Adjust this value for desired gap size (e.g., 0.4em, 6px) */
+                       /* This creates the extra space for intentional paragraph breaks (\n\n) */
 }
 
-/* --- START: AI MESSAGE PARAGRAPH SPACING --- */
-/* AI message paragraph styling */
-.ai-message p {
-    white-space: pre-wrap;   /* Respect line breaks (\n -> <br>) AND wrap text */
-    margin-bottom: 0.75em; /* Add space AFTER each paragraph block (from \n\n) */
-                           /* 0.75em is approx 1.5x line-height depending on exact line-height value */
-                           /* Adjust this value (e.g., 0.6em, 1em, 10px) for desired spacing */
+/* Add spacing between paragraphs and other common block elements */
+.ai-message p + ul,
+.ai-message p + ol,
+.ai-message p + pre,
+.ai-message p + blockquote,
+.ai-message p + hr,
+.ai-message p + h1, /* Add for all heading levels if needed */
+.ai-message p + h2,
+.ai-message p + h3,
+.ai-message p + h4,
+.ai-message p + h5,
+.ai-message p + h6 {
+    margin-top: 0.8em; /* Adjust spacing between paragraph and other blocks */
 }
 
-/* Remove bottom margin from the VERY LAST paragraph inside an AI message bubble */
-.ai-message p:last-child {
-   margin-bottom: 0;
-}
-/* --- END: AI MESSAGE PARAGRAPH SPACING --- */
-
-
-/* Styling for Images within Messages */
-.message img.message-image {
-    max-width: 100%; /* Don't exceed bubble width */
-    max-height: 300px; /* Limit image display height */
-    border-radius: 10px; /* Rounded corners */
-    object-fit: contain; /* Scale while preserving aspect ratio */
-    cursor: pointer; /* Hint that it might be interactive */
-    margin-top: 5px; /* Space above if text is also present */
+/* Add spacing AFTER common block elements before a paragraph */
+.ai-message ul + p,
+.ai-message ol + p,
+.ai-message pre + p,
+.ai-message blockquote + p,
+.ai-message hr + p,
+.ai-message h1 + p, /* Add for all heading levels if needed */
+.ai-message h2 + p,
+.ai-message h3 + p,
+.ai-message h4 + p,
+.ai-message h5 + p,
+.ai-message h6 + p {
+     margin-top: 0.8em; /* Adjust spacing after other blocks before paragraph */
 }
 
-/* --- Google Search Suggestion Styling (Minimal Wrapper Only) --- */
-.search-suggestion-container {
-    margin-top: 12px;
+/* Default margins for other block elements INSIDE AI messages */
+/* Ensure lists, code blocks, etc., have their own standard spacing */
+.ai-message ul, .ai-message ol {
+    padding-left: 25px;
+    margin: 0.8em 0; /* Add consistent vertical margin */
 }
-/* --- End Search Suggestion Styling --- */
-
-/* --- Markdown Element Styling --- */
-.message pre {
+.ai-message li {
+    margin-bottom: 0.25em; /* Smaller gap between list items */
+}
+.ai-message pre {
     background-color: rgba(0, 0, 0, 0.2);
     padding: 10px;
     border-radius: 4px;
     overflow-x: auto;
     border: 1px solid #444;
-    margin-top: 8px;
-    margin-bottom: 8px;
-    white-space: pre; /* Keep strict pre for code blocks */
+    margin: 0.8em 0; /* Add consistent vertical margin */
+    white-space: pre;
 }
+.ai-message blockquote {
+    border-left: 3px solid #555;
+    padding-left: 10px;
+    margin: 0.8em 0; /* Add consistent vertical margin */
+    color: #bbb;
+    font-style: italic;
+}
+.ai-message blockquote p {
+    margin: 0; /* Reset paragraph margin INSIDE blockquote */
+}
+.ai-message hr {
+    border: 0;
+    border-top: 1px solid #444;
+    margin: 1em 0; /* Standard hr margin */
+}
+.ai-message h1, .ai-message h2, .ai-message h3, .ai-message h4, .ai-message h5, .ai-message h6 {
+    margin-top: 1.2em; /* Space above headings */
+    margin-bottom: 0.6em; /* Space below headings */
+    font-weight: 500;
+    color: #ffffff;
+}
+/* --- END: CORRECTED PARAGRAPH & BLOCK SPACING --- */
+
+
+/* Styling for Images within Messages */
+.message img.message-image {
+    max-width: 100%;
+    max-height: 300px;
+    border-radius: 10px;
+    object-fit: contain;
+    cursor: pointer;
+    margin-top: 5px; /* Keep small space if image follows text directly in bubble */
+}
+
+/* Google Search Suggestion Styling */
+.search-suggestion-container {
+    margin-top: 12px; /* Space above the Google snippet if it appears */
+}
+
+/* --- Rest of Markdown Element Styling (code, links etc) --- */
 .message code {
     font-family: Consolas, Monaco, 'Andale Mono', 'Ubuntu Mono', monospace;
     font-size: 0.9em;
@@ -163,27 +200,6 @@ h1 {
     font-size: inherit;
     border-radius: 0;
 }
-.message ul, .message ol {
-    padding-left: 25px;
-    margin-top: 8px;
-    margin-bottom: 8px; /* Add default margins back for lists etc. */
-}
-.message li {
-    margin-bottom: 4px;
-}
-.message blockquote {
-    border-left: 3px solid #555;
-    padding-left: 10px;
-    margin-left: 0;
-    margin-top: 8px;
-    margin-bottom: 8px; /* Add default margins back */
-    color: #bbb;
-    font-style: italic;
-}
-.message blockquote p {
-    margin: 0; /* Reset paragraph margin INSIDE blockquote */
-    margin-bottom: 0; /* Explicitly reset bottom margin inside blockquote */
-}
 .message p a {
     color: #64b5f6;
     text-decoration: underline;
@@ -191,24 +207,12 @@ h1 {
 .message p a:hover {
     color: #90caf9;
 }
-.message h1, .message h2, .message h3, .message h4, .message h5, .message h6 {
-    margin-top: 1em;
-    margin-bottom: 0.5em; /* Keep heading margins */
-    font-weight: 500;
-    color: #ffffff;
-}
 .message h1 { font-size: 1.5em; }
 .message h2 { font-size: 1.3em; }
 .message h3 { font-size: 1.15em; }
 .message h4 { font-size: 1em; }
 .message h5 { font-size: 0.9em; }
 .message h6 { font-size: 0.85em; color: #ccc; }
-.message hr {
-    border: 0;
-    border-top: 1px solid #444;
-    margin: 1em 0;
-}
-/* --- End Markdown Element Styling --- */
 
 
 /* Loading / Error Indicators */
