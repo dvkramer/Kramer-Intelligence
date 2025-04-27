@@ -18,6 +18,12 @@
       "sizes": "600x600",                   /* Specify its actual size */
       "type": "image/png",
       "purpose": "any"
+    },
+    {
+      "src": "/icons/icon-600x600.png", // <<< SAME file path
+      "sizes": "600x600",               // <<< Same size
+      "type": "image/png",
+      "purpose": "maskable" // <<< BUT *claiming* it's maskable
     }
   ]
 }
