@@ -18,8 +18,9 @@ body {
     padding: 0;
     display: flex;
     flex-direction: column; /* Stack content vertically */
-    height: 100vh; /* Full viewport height */
-    height: -webkit-fill-available; /* iOS fix */
+    height: 100vh; /* Fallback for older browsers */
+    height: -webkit-fill-available; /* Fallback for iOS/WebKit */
+    height: 100dvh; /* <<< SOLUTION 1: Use dynamic viewport height if supported */
     overflow: hidden; /* Prevent body itself from scrolling */
 }
 
