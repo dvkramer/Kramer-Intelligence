@@ -87,7 +87,25 @@ export default async function handler(req, res) {
     // --- END MODIFIED ---
 
 
-    const systemPrompt = "You are Kramer Intelligence, an advanced AI assistant developed by Daniel Vincent Kramer";
+    // --- Generate System Prompt with Current Date --- START DATE ADDITION ---
+    const baseSystemPrompt = "You are Kramer Intelligence, an advanced AI assistant developed by Daniel Vincent Kramer.";
+
+    // Get current date on the server (likely UTC on Vercel)
+    const today = new Date();
+    const dateOptions = {
+        weekday: 'long',
+        year: 'numeric',
+        month: 'long',
+        day: 'numeric',
+        // timeZone: 'UTC' // Optional: Uncomment if you want to force UTC explicitly
+    };
+    // Format the date (e.g., "Friday, April 26, 2024")
+    const formattedDate = today.toLocaleDateString('en-US', dateOptions); // Using 'en-US' locale for consistency
+
+    // Combine base prompt with the date information
+    const systemPrompt = `${baseSystemPrompt} Today's date is ${formattedDate}.`;
+    // --- END DATE ADDITION ---
+
 
     // --- Initialize variables for the fallback loop ---
     let googleData = null;
@@ -102,7 +120,7 @@ export default async function handler(req, res) {
 
         const requestBody = {
             contents: processedContents,
-            systemInstruction: { parts: [ { text: systemPrompt } ] },
+            systemInstruction: { parts: [ { text: systemPrompt } ] }, // Use the prompt with the date
             tools: [ { googleSearch: {} } ],
             // generationConfig, safetySettings... could potentially be added here
         };
