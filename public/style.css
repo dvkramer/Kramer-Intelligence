@@ -67,7 +67,7 @@ h1 {
     overflow-wrap: break-word;
     display: flex; /* Use flex for internal stacking */
     flex-direction: column;
-    /* Removed gap here, rely on margins below for internal spacing */
+    /* gap: 8px; */ /* REMOVED gap, rely on margins below for internal spacing */
 }
 
 .user-message {
@@ -86,6 +86,13 @@ h1 {
 /* --- END CORE BUBBLE STYLES --- */
 
 
+/* --- FIX: Force zero bottom margin on the VERY last element inside any message bubble --- */
+.message > :last-child {
+    margin-bottom: 0 !important;
+}
+/* --- END FIX --- */
+
+
 /* --- TEXT CONTENT STYLING INSIDE BUBBLES --- */
 
 /* Base for all paragraphs inside any message */
@@ -100,25 +107,30 @@ h1 {
    margin-top: 0.4em; /* << ADJUST THIS VALUE (smaller now) for desired gap size */
 }
 
-/* Basic List Styling inside AI messages */
+/* Basic List Styling inside AI messages - Tighter Spacing */
 .ai-message ul,
 .ai-message ol {
-    margin: 0.5em 0; /* Add some space before/after lists */
+    margin: 0.4em 0; /* Reduced vertical margin around the whole list */
     padding-left: 25px; /* Standard indentation */
 }
 
-/* Spacing between list items */
+/* Spacing between list items - Tighter */
 .ai-message li {
-     margin-bottom: 0.15em; /* Small gap between list items */
+     margin-bottom: 0.1em; /* VERY small gap between list items */
 }
+/* Remove space after the absolute last item in the list */
 .ai-message li:last-child {
-    margin-bottom: 0; /* No extra space after the last item */
+    margin-bottom: 0;
 }
 
-/* Ensure paragraphs following lists have some space */
+/* Keep spacing rules for elements before/after lists */
+.ai-message p + ul,
+.ai-message p + ol {
+    margin-top: 0.5em; /* Space before list following a paragraph */
+}
 .ai-message ul + p,
 .ai-message ol + p {
-    margin-top: 0.5em;
+    margin-top: 0.5em; /* Space after list preceding a paragraph */
 }
 
 /* --- END TEXT CONTENT STYLING --- */
@@ -127,23 +139,27 @@ h1 {
 /* Styling for Images within Messages */
 .message img.message-image {
     max-width: 100%; max-height: 300px; border-radius: 10px; object-fit: contain; cursor: pointer; margin-top: 8px; /* Add consistent gap if image follows text */
+    /* The margin-bottom on this will be forced to 0 if it's the last element by the .message > :last-child rule */
 }
 
 /* Google Search Suggestion Styling */
-.search-suggestion-container { margin-top: 12px; /* Space above suggestions */ }
+.search-suggestion-container {
+    margin-top: 12px; /* Space above suggestions */
+    /* The margin-bottom on this will be forced to 0 if it's the last element by the .message > :last-child rule */
+ }
 
 /* --- Other Markdown Elements --- */
-.message pre { background-color: rgba(0, 0, 0, 0.2); padding: 10px; border-radius: 4px; overflow-x: auto; border: 1px solid #444; margin: 0.8em 0; white-space: pre; }
+.ai-message pre { background-color: rgba(0, 0, 0, 0.2); padding: 10px; border-radius: 4px; overflow-x: auto; border: 1px solid #444; margin: 0.8em 0; white-space: pre; }
 .message code { font-family: Consolas, Monaco, 'Andale Mono', 'Ubuntu Mono', monospace; font-size: 0.9em; }
 .message p > code { background-color: rgba(255, 255, 255, 0.1); padding: 0.2em 0.4em; border-radius: 3px; font-size: 0.85em; }
 .message pre code { background-color: transparent; padding: 0; font-size: inherit; border-radius: 0; }
-.message blockquote { border-left: 3px solid #555; padding-left: 10px; margin: 0.8em 0; color: #bbb; font-style: italic; }
-.message blockquote p { margin: 0; white-space: normal; /* Override pre-wrap inside quote if needed */ }
+.ai-message blockquote { border-left: 3px solid #555; padding-left: 10px; margin: 0.8em 0; color: #bbb; font-style: italic; }
+.ai-message blockquote p { margin: 0; white-space: normal; /* Override pre-wrap inside quote if needed */ }
 .message p a { color: #64b5f6; text-decoration: underline; }
 .message p a:hover { color: #90caf9; }
-.message h1, .message h2, .message h3, .message h4, .message h5, .message h6 { margin-top: 1.2em; margin-bottom: 0.6em; font-weight: 500; color: #ffffff; }
+.ai-message h1, .ai-message h2, .ai-message h3, .ai-message h4, .ai-message h5, .ai-message h6 { margin-top: 1.2em; margin-bottom: 0.6em; font-weight: 500; color: #ffffff; }
 .message h1 { font-size: 1.5em; } .message h2 { font-size: 1.3em; } .message h3 { font-size: 1.15em; } .message h4 { font-size: 1em; } .message h5 { font-size: 0.9em; } .message h6 { font-size: 0.85em; color: #ccc; }
-.message hr { border: 0; border-top: 1px solid #444; margin: 1em 0; }
+.ai-message hr { border: 0; border-top: 1px solid #444; margin: 1em 0; }
 
 
 /* Loading / Error Indicators */
