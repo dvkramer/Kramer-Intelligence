@@ -1,0 +1,19 @@
+{
+  "name": "kramer-intelligence",
+  "version": "1.0.0",
+  "description": "Kramer Intelligence - AI Chat interface using Gemini API",
+  "main": "api/chat.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [
+    "ai",
+    "chat",
+    "gemini",
+    "vercel",
+    "kramer"
+  ],
+  "author": "Daniel Vincent Kramer",
+  "license": "ISC",
+  "dependencies": {}
+}
