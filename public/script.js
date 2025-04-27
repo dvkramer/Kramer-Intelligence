@@ -12,15 +12,13 @@ const imageUploadInput = document.getElementById('image-upload-input');
 const imagePreviewContainer = document.getElementById('image-preview-container');
 const imagePreview = document.getElementById('image-preview');
 const removeImageButton = document.getElementById('remove-image-button');
-// --- ADDED: Reference to the main scrolling container ---
-const mainContentArea = document.getElementById('main-content-area');
-// --- END ADDED ---
+const mainContentArea = document.getElementById('main-content-area'); // Scrolling container
 
 // --- Configuration ---
 const MAX_HISTORY_CHARS = 1000000;
 const IMAGE_CHAR_EQUIVALENT = 1000;
 const MAX_IMAGE_SIZE_MB = 15;
-const SCROLL_PADDING_TOP = 10; // Optional padding above the message top
+const SCROLL_PADDING_TOP = 10; // Pixels above the message top when scrolling
 // --- End Configuration ---
 
 // --- State Variables ---
@@ -53,23 +51,15 @@ function adjustTextareaHeight() {
 
 // --- Standard scroll to bottom (for user messages) ---
 function scrollChatToBottom() {
-    // Scrolls the main content area all the way down
     setTimeout(() => {
         mainContentArea.scrollTop = mainContentArea.scrollHeight;
-        // console.log("Scrolled chat fully to bottom");
-    }, 50); // Delay ensures content is rendered
+    }, 50);
 }
 
-// --- NEW: Smart scroll for AI messages ---
+// --- Smart scroll for AI messages (REVISED - Always Scrolls) ---
 function scrollToMessageTop(messageElement) {
     setTimeout(() => {
-        const containerRect = mainContentArea.getBoundingClientRect();
-        const messageRect = messageElement.getBoundingClientRect();
-
-        // Calculate the position of the message top relative to the container top
-        // messageRect.top is relative to viewport, containerRect.top is relative to viewport
-        // messageTopInContainer = messageRect.top - containerRect.top;
-        // More reliably, use offsetTop relative to the container's scrollable content
+        // Calculate the position of the message top relative to the scroll container's content
         const messageTopOffset = messageElement.offsetTop;
 
         // Calculate the desired scroll position to bring the message top near the view top
@@ -78,29 +68,16 @@ function scrollToMessageTop(messageElement) {
         // Ensure we don't scroll past the beginning
         desiredScrollTop = Math.max(0, desiredScrollTop);
 
-        // Check if the user has scrolled up significantly. If so, maybe don't auto-scroll.
-        // Tolerance: Don't scroll if user is viewing content more than ~100px from the bottom.
-        const scrollTolerance = 100;
-        const isScrolledToBottom = (mainContentArea.scrollHeight - mainContentArea.scrollTop - mainContentArea.clientHeight) < scrollTolerance;
+        // ALWAYS attempt the smooth scroll
+        console.log(`Smart scrolling AI message to scrollTop: ${desiredScrollTop}`);
+        mainContentArea.scrollTo({
+            top: desiredScrollTop,
+            behavior: 'smooth' // Use smooth scrolling
+        });
 
-        if (isScrolledToBottom) {
-            // Smooth scroll if supported, otherwise jump
-             console.log(`Smart scrolling AI message to scrollTop: ${desiredScrollTop}`);
-            mainContentArea.scrollTo({
-                top: desiredScrollTop,
-                behavior: 'smooth' // Use smooth scrolling
-            });
-           // Fallback for browsers without smooth scroll (less likely now)
-           // if (!('scrollBehavior' in document.documentElement.style)) {
-           //    mainContentArea.scrollTop = desiredScrollTop;
-           // }
-        } else {
-            console.log("User is scrolled up, not auto-scrolling for new AI message.");
-        }
-
-    }, 100); // Slightly longer delay might be needed for accurate offsetTop after complex rendering
+    }, 100); // Delay helps ensure offsetTop is calculated correctly after render
 }
-// --- END NEW ---
+// --- END REVISED ---
 
 
 function handleInputKeyDown(event) {
@@ -113,14 +90,12 @@ function handleInputKeyDown(event) {
 function handleSendButtonClick() { handleSendMessage(); }
 
 
-function processSelectedFile(file) { /* ... (no changes needed) ... */
+function processSelectedFile(file) {
     if (!file) return false;
     if (!file.type.startsWith('image/')) {
-        showError('Pasted/Selected item is not a valid image file.');
-        handleRemoveImage(); return false; }
+        showError('Pasted/Selected item is not a valid image file.'); handleRemoveImage(); return false; }
     if (file.size > MAX_IMAGE_SIZE_MB * 1024 * 1024) {
-        showError(`Image size should not exceed ${MAX_IMAGE_SIZE_MB} MB.`);
-        handleRemoveImage(); return false; }
+        showError(`Image size should not exceed ${MAX_IMAGE_SIZE_MB} MB.`); handleRemoveImage(); return false; }
     hideError();
     const reader = new FileReader();
     reader.onload = (e) => {
@@ -130,12 +105,12 @@ function processSelectedFile(file) { /* ... (no changes needed) ... */
     reader.onerror = (e) => { console.error("FileReader error:", e); showError("Error reading image file."); handleRemoveImage(); };
     reader.readAsDataURL(file); return true;
  }
-function handleFileSelect(event) { /* ... (no changes needed) ... */
+function handleFileSelect(event) {
     const file = event.target.files[0]; if (!file) return;
     const processed = processSelectedFile(file); if (!processed) { resetFileInput(); } }
-function handlePaste(event) { /* ... (no changes needed) ... */
+function handlePaste(event) {
     if (document.activeElement !== messageInput) { return; } const items = (event.clipboardData || event.originalEvent.clipboardData)?.items; if (!items) { return; } let foundImage = false; for (let i = 0; i < items.length; i++) { const item = items[i]; if (item.kind === 'file' && item.type.startsWith('image/')) { const imageFile = item.getAsFile(); if (imageFile) { const processed = processSelectedFile(imageFile); if (processed) { foundImage = true; event.preventDefault(); console.log("Image paste handled."); break; } } } } }
-function handleRemoveImage() { /* ... (no changes needed) ... */
+function handleRemoveImage() {
     selectedFile = null; selectedFileBase64 = null; imagePreview.src = '#';
     imagePreviewContainer.classList.add('hidden'); resetFileInput();
     attachButton.classList.remove('has-file'); hideError(); console.log("Selected image removed."); }
@@ -154,9 +129,8 @@ async function handleSendMessage() {
         currentImageDataUrl = selectedFileBase64; }
     if (userMessageText) { messageParts.push({ text: userMessageText }); }
 
-    // --- Pass the role to displayMessage ---
+    // displayMessage handles scrolling based on role now
     displayMessage('user', userMessageText || '', currentImageDataUrl);
-    // Note: scrollChatToBottom is now called *within* displayMessage for user roles
 
     conversationHistory.push({ role: 'user', parts: messageParts });
     messageInput.value = ''; handleRemoveImage(); adjustTextareaHeight(); messageInput.focus();
@@ -167,7 +141,7 @@ async function handleSendMessage() {
         const historyForThisRequest = [...conversationHistory];
         const payload = { history: historyForThisRequest };
 
-        const response = await fetch('/api/chat', { /* ... */
+        const response = await fetch('/api/chat', {
             method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload), });
         hideLoading();
 
@@ -179,9 +153,8 @@ async function handleSendMessage() {
 
         conversationHistory.push({ role: 'model', parts: [{ text: aiResponseText }] });
 
-        // --- Pass the role to displayMessage ---
+        // displayMessage handles scrolling based on role now
         displayMessage('ai', aiResponseText, null, searchSuggestionHtml);
-         // Note: scrollToMessageTop is now called *within* displayMessage for AI roles
 
     } catch (err) { console.error("Error during send/receive:", err); showError(err.message || "Failed to get response."); hideLoading();
     } finally { sendButton.disabled = false; }
@@ -189,16 +162,17 @@ async function handleSendMessage() {
 }
 
 
-// --- MODIFIED: Display Message and Trigger Appropriate Scroll ---
+// --- Display Message and Trigger Appropriate Scroll ---
 function displayMessage(role, text, imageDataUrl = null, searchSuggestionHtml = null) {
     const messageDiv = document.createElement('div');
     messageDiv.classList.add('message', role === 'user' ? 'user-message' : 'ai-message');
 
-    // ... (code to add image/text/suggestions to messageDiv remains the same) ...
+    // Add image if present
     if (imageDataUrl && role === 'user') {
         const imgElement = document.createElement('img');
         imgElement.classList.add('message-image'); imgElement.src = imageDataUrl; imgElement.alt = "User uploaded image";
         messageDiv.appendChild(imgElement); }
+    // Add text if present
     if (text) {
         const paragraph = document.createElement('p');
         if (role === 'ai' && typeof marked !== 'undefined' && typeof DOMPurify !== 'undefined') {
@@ -208,6 +182,7 @@ function displayMessage(role, text, imageDataUrl = null, searchSuggestionHtml = 
             } catch (error) { console.error("Markdown error:", error); paragraph.textContent = text; }
         } else { paragraph.textContent = text; }
         messageDiv.appendChild(paragraph); }
+    // Add search suggestions if present
     if (role === 'ai' && searchSuggestionHtml) {
         const suggestionContainer = document.createElement('div');
         suggestionContainer.classList.add('search-suggestion-container');
@@ -215,23 +190,21 @@ function displayMessage(role, text, imageDataUrl = null, searchSuggestionHtml = 
         else { console.warn("DOMPurify not loaded."); }
         if (suggestionContainer.innerHTML) { messageDiv.appendChild(suggestionContainer); } }
 
-
     // Append the message to the history
     chatHistory.appendChild(messageDiv);
 
-    // --- Trigger scroll based on role ---
+    // Trigger scroll based on role
     if (role === 'user') {
-        scrollChatToBottom(); // Always scroll fully down for user's own messages
+        scrollChatToBottom(); // Scroll fully down for user's messages
     } else if (role === 'ai') {
         scrollToMessageTop(messageDiv); // Use the smart scroll for AI messages
     }
 }
-// --- END MODIFIED ---
 
 
-function truncateHistory() { /* ... (no changes needed) ... */
+function truncateHistory() {
     let totalChars = 0; for (const message of conversationHistory) { if (message.parts && Array.isArray(message.parts)) { for (const part of message.parts) { if (part.text) { totalChars += part.text.length; } else if (part.inlineData) { totalChars += IMAGE_CHAR_EQUIVALENT; } } } }
-    while (totalChars > MAX_HISTORY_CHARS && conversationHistory.length >= 2) { console.log(`History limit exceeded. Truncating.`); const removedUserMsg = conversationHistory.shift(); const removedModelMsg = conversationHistory.shift(); let removedChars = 0; [removedUserMsg, removedModelMsg].forEach(msg => { if (msg?.parts && Array.isArray(msg.parts)) { msg.parts.forEach(part => { if (part.text) removedChars += part.text.length; else if (part.inlineData) removedChars += IMAGE_CHAR_EQUIVALENT; }); } }); totalChars -= removedChars; } }
+    while (totalChars > MAX_HISTORY_CHARS && conversationHistory.length >= 2) { /* console.log(`History limit exceeded. Truncating.`); */ const removedUserMsg = conversationHistory.shift(); const removedModelMsg = conversationHistory.shift(); let removedChars = 0; [removedUserMsg, removedModelMsg].forEach(msg => { if (msg?.parts && Array.isArray(msg.parts)) { msg.parts.forEach(part => { if (part.text) removedChars += part.text.length; else if (part.inlineData) removedChars += IMAGE_CHAR_EQUIVALENT; }); } }); totalChars -= removedChars; } }
 
 
 function showLoading() { loadingIndicator.classList.remove('hidden'); }
