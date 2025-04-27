@@ -52,32 +52,41 @@ function adjustTextareaHeight() {
 // --- Scrolling Functions ---
 // Scrolls fully to the bottom (smoothly) - Used for user messages
 function scrollChatToBottom() {
-    // Use rAF for consistency, though less critical here as scrollHeight is simpler
     requestAnimationFrame(() => {
         mainContentArea.scrollTo({
             top: mainContentArea.scrollHeight,
             behavior: 'smooth'
         });
     });
-    // Using setTimeout is also fine here if preferred:
-    // setTimeout(() => {
-    //     mainContentArea.scrollTo({
-    //         top: mainContentArea.scrollHeight,
-    //         behavior: 'smooth'
-    //     });
-    // }, 50);
 }
 
-// Scrolls smoothly to the top of a new AI message using requestAnimationFrame
+// Scrolls smoothly to the top of a new AI message using requestAnimationFrame (Attempting to fix jump)
 function scrollToMessageTop(messageElement) {
-    // --- MODIFIED: Use double requestAnimationFrame ---
-    requestAnimationFrame(() => { // Wait for frame 1 (after DOM mutation likely processed)
-        requestAnimationFrame(() => { // Wait for frame 2 (layout calculations should be stable)
+    // --- MODIFIED: Try to counteract immediate jump ---
+
+    // 1. Get current state BEFORE modification might affect scroll
+    const initialScrollTop = mainContentArea.scrollTop;
+    const initialScrollHeight = mainContentArea.scrollHeight;
+    const clientHeight = mainContentArea.clientHeight;
+    // Check if we are scrolled near the bottom initially (e.g., within 50px)
+    const isNearBottomInitially = (initialScrollHeight - initialScrollTop - clientHeight) < 50;
+
+    requestAnimationFrame(() => { // Frame 1: Counteract jump and prepare for smooth scroll
+        // 2. Check if browser might have jumped scroll down INSTANTLY after append
+        const currentScrollTop = mainContentArea.scrollTop;
+        if (isNearBottomInitially && currentScrollTop > initialScrollTop + 10) { // Did it jump down significantly?
+             console.log(`Scroll jumped down from ${initialScrollTop} to ${currentScrollTop}. Resetting.`);
+             // Force scroll back WITHOUT animation
+             mainContentArea.scrollTop = initialScrollTop;
+        }
+
+        // 3. Now schedule the SMOOTH scroll for the NEXT frame
+        requestAnimationFrame(() => { // Frame 2: Perform the smooth scroll from corrected position
             const messageTopOffset = messageElement.offsetTop;
             let desiredScrollTop = messageTopOffset - SCROLL_PADDING_TOP;
             desiredScrollTop = Math.max(0, desiredScrollTop); // Don't scroll negative
 
-            // console.log(`rAF - Scrolling AI message to scrollTop: ${desiredScrollTop}`);
+            // console.log(`rAF Frame 2 - Smooth scrolling AI message to scrollTop: ${desiredScrollTop}`);
             mainContentArea.scrollTo({
                 top: desiredScrollTop,
                 behavior: 'smooth'
@@ -89,32 +98,15 @@ function scrollToMessageTop(messageElement) {
 // --- END Scrolling Functions ---
 
 // --- Input Handling ---
-// Handles keydown events in the textarea (Enter vs Shift+Enter)
-function handleInputKeyDown(event) {
-    if (event.key === 'Enter') {
-        if (event.shiftKey) { /* Allow newline */ }
-        else { event.preventDefault(); handleSendMessage(); }
-    }
-}
-
-// Handles clicks on the explicit Send button
+function handleInputKeyDown(event) { if (event.key === 'Enter') { if (event.shiftKey) { /* Allow newline */ } else { event.preventDefault(); handleSendMessage(); } } }
 function handleSendButtonClick() { handleSendMessage(); }
 // --- END Input Handling ---
 
 // --- Image Handling Functions ---
-// Processes a selected file (from input or paste)
 function processSelectedFile(file) { if (!file) return false; if (!file.type.startsWith('image/')) { showError('Invalid image file.'); handleRemoveImage(); return false; } if (file.size > MAX_IMAGE_SIZE_MB * 1024 * 1024) { showError(`Image > ${MAX_IMAGE_SIZE_MB} MB.`); handleRemoveImage(); return false; } hideError(); const reader = new FileReader(); reader.onload = (e) => { selectedFileBase64 = e.target.result; selectedFile = file; imagePreview.src = selectedFileBase64; imagePreviewContainer.classList.remove('hidden'); attachButton.classList.add('has-file'); console.log("Image processed:", file.name); }; reader.onerror = (e) => { console.error("FileReader error:", e); showError("Error reading image."); handleRemoveImage(); }; reader.readAsDataURL(file); return true; }
-
-// Handles file selection via the file input element
 function handleFileSelect(event) { const file = event.target.files[0]; if (!file) return; const processed = processSelectedFile(file); if (!processed) { resetFileInput(); } }
-
-// Handles paste events (for images, when input is focused)
 function handlePaste(event) { if (document.activeElement !== messageInput) { return; } const items = (event.clipboardData || event.originalEvent.clipboardData)?.items; if (!items) { return; } let foundImage = false; for (let i = 0; i < items.length; i++) { const item = items[i]; if (item.kind === 'file' && item.type.startsWith('image/')) { const imageFile = item.getAsFile(); if (imageFile) { const processed = processSelectedFile(imageFile); if (processed) { foundImage = true; event.preventDefault(); console.log("Image paste handled."); break; } } } } }
-
-// Handles click on the remove image button or clears image state programmatically
 function handleRemoveImage() { selectedFile = null; selectedFileBase64 = null; imagePreview.src = '#'; imagePreviewContainer.classList.add('hidden'); resetFileInput(); attachButton.classList.remove('has-file'); hideError(); console.log("Selected image removed."); }
-
-// Resets the value of the hidden file input
 function resetFileInput() { imageUploadInput.value = null; }
 // --- END Image Handling Functions ---
 
@@ -210,14 +202,13 @@ function displayMessage(role, text, imageDataUrl = null, searchSuggestionHtml = 
     // Add the fully constructed message bubble to the chat history UI
     chatHistory.appendChild(messageDiv);
 
-    // Trigger the appropriate scrolling behavior
+    // Trigger the appropriate scrolling behavior AFTER appending
     if (role === 'user') { scrollChatToBottom(); } // Smooth scroll fully down for user
     else if (role === 'ai') { scrollToMessageTop(messageDiv); } // Smooth scroll to top of AI message
 }
 // --- END Display & Formatting ---
 
 // --- History Management ---
-// Truncates the conversation history if it exceeds the character limit
 function truncateHistory() { let totalChars = 0; for (const message of conversationHistory) { if (message.parts && Array.isArray(message.parts)) { for (const part of message.parts) { if (part.text) { totalChars += part.text.length; } else if (part.inlineData) { totalChars += IMAGE_CHAR_EQUIVALENT; } } } } while (totalChars > MAX_HISTORY_CHARS && conversationHistory.length >= 2) { /* console.log(`History limit exceeded. Truncating.`); */ const removedUserMsg = conversationHistory.shift(); const removedModelMsg = conversationHistory.shift(); let removedChars = 0; [removedUserMsg, removedModelMsg].forEach(msg => { if (msg?.parts && Array.isArray(msg.parts)) { msg.parts.forEach(part => { if (part.text) removedChars += part.text.length; else if (part.inlineData) removedChars += IMAGE_CHAR_EQUIVALENT; }); } }); totalChars -= removedChars; } }
 // --- END History Management ---
 
