@@ -43,73 +43,15 @@ messageInput.addEventListener('input', adjustTextareaHeight);
 
 // --- Functions ---
 
-// --- Function to dynamically adjust textarea height ---
-function adjustTextareaHeight() {
-    messageInput.style.height = 'auto';
-    messageInput.style.height = `${messageInput.scrollHeight}px`;
-}
-
-// --- Standard scroll to bottom (for user messages) - Smooth ---
-function scrollChatToBottom() {
-    setTimeout(() => {
-        mainContentArea.scrollTo({
-            top: mainContentArea.scrollHeight, // Target the very bottom
-            behavior: 'smooth' // Make it smooth
-        });
-    }, 50);
-}
-
-// --- Smart scroll for AI messages - Smooth ---
-function scrollToMessageTop(messageElement) {
-    setTimeout(() => {
-        const messageTopOffset = messageElement.offsetTop;
-        let desiredScrollTop = messageTopOffset - SCROLL_PADDING_TOP;
-        desiredScrollTop = Math.max(0, desiredScrollTop);
-
-        // Always attempt the smooth scroll
-        mainContentArea.scrollTo({
-            top: desiredScrollTop,
-            behavior: 'smooth'
-        });
-
-    }, 100);
-}
-
-
-function handleInputKeyDown(event) {
-    if (event.key === 'Enter') {
-        if (event.shiftKey) { /* Allow newline */ }
-        else { event.preventDefault(); handleSendMessage(); }
-    }
-}
-
+function adjustTextareaHeight() { messageInput.style.height = 'auto'; messageInput.style.height = `${messageInput.scrollHeight}px`; }
+function scrollChatToBottom() { setTimeout(() => { mainContentArea.scrollTo({ top: mainContentArea.scrollHeight, behavior: 'smooth' }); }, 50); }
+function scrollToMessageTop(messageElement) { setTimeout(() => { const messageTopOffset = messageElement.offsetTop; let desiredScrollTop = messageTopOffset - SCROLL_PADDING_TOP; desiredScrollTop = Math.max(0, desiredScrollTop); mainContentArea.scrollTo({ top: desiredScrollTop, behavior: 'smooth' }); }, 100); }
+function handleInputKeyDown(event) { if (event.key === 'Enter') { if (event.shiftKey) { /* Allow newline */ } else { event.preventDefault(); handleSendMessage(); } } }
 function handleSendButtonClick() { handleSendMessage(); }
-
-
-function processSelectedFile(file) {
-    if (!file) return false;
-    if (!file.type.startsWith('image/')) {
-        showError('Pasted/Selected item is not a valid image file.'); handleRemoveImage(); return false; }
-    if (file.size > MAX_IMAGE_SIZE_MB * 1024 * 1024) {
-        showError(`Image size should not exceed ${MAX_IMAGE_SIZE_MB} MB.`); handleRemoveImage(); return false; }
-    hideError();
-    const reader = new FileReader();
-    reader.onload = (e) => {
-        selectedFileBase64 = e.target.result; selectedFile = file;
-        imagePreview.src = selectedFileBase64; imagePreviewContainer.classList.remove('hidden');
-        attachButton.classList.add('has-file'); console.log("Image processed:", file.name); };
-    reader.onerror = (e) => { console.error("FileReader error:", e); showError("Error reading image file."); handleRemoveImage(); };
-    reader.readAsDataURL(file); return true;
- }
-function handleFileSelect(event) {
-    const file = event.target.files[0]; if (!file) return;
-    const processed = processSelectedFile(file); if (!processed) { resetFileInput(); } }
-function handlePaste(event) {
-    if (document.activeElement !== messageInput) { return; } const items = (event.clipboardData || event.originalEvent.clipboardData)?.items; if (!items) { return; } let foundImage = false; for (let i = 0; i < items.length; i++) { const item = items[i]; if (item.kind === 'file' && item.type.startsWith('image/')) { const imageFile = item.getAsFile(); if (imageFile) { const processed = processSelectedFile(imageFile); if (processed) { foundImage = true; event.preventDefault(); console.log("Image paste handled."); break; } } } } }
-function handleRemoveImage() {
-    selectedFile = null; selectedFileBase64 = null; imagePreview.src = '#';
-    imagePreviewContainer.classList.add('hidden'); resetFileInput();
-    attachButton.classList.remove('has-file'); hideError(); console.log("Selected image removed."); }
+function processSelectedFile(file) { if (!file) return false; if (!file.type.startsWith('image/')) { showError('Invalid image file.'); handleRemoveImage(); return false; } if (file.size > MAX_IMAGE_SIZE_MB * 1024 * 1024) { showError(`Image > ${MAX_IMAGE_SIZE_MB} MB.`); handleRemoveImage(); return false; } hideError(); const reader = new FileReader(); reader.onload = (e) => { selectedFileBase64 = e.target.result; selectedFile = file; imagePreview.src = selectedFileBase64; imagePreviewContainer.classList.remove('hidden'); attachButton.classList.add('has-file'); console.log("Image processed:", file.name); }; reader.onerror = (e) => { console.error("FileReader error:", e); showError("Error reading image."); handleRemoveImage(); }; reader.readAsDataURL(file); return true; }
+function handleFileSelect(event) { const file = event.target.files[0]; if (!file) return; const processed = processSelectedFile(file); if (!processed) { resetFileInput(); } }
+function handlePaste(event) { if (document.activeElement !== messageInput) { return; } const items = (event.clipboardData || event.originalEvent.clipboardData)?.items; if (!items) { return; } let foundImage = false; for (let i = 0; i < items.length; i++) { const item = items[i]; if (item.kind === 'file' && item.type.startsWith('image/')) { const imageFile = item.getAsFile(); if (imageFile) { const processed = processSelectedFile(imageFile); if (processed) { foundImage = true; event.preventDefault(); console.log("Image paste handled."); break; } } } } }
+function handleRemoveImage() { selectedFile = null; selectedFileBase64 = null; imagePreview.src = '#'; imagePreviewContainer.classList.add('hidden'); resetFileInput(); attachButton.classList.remove('has-file'); hideError(); console.log("Selected image removed."); }
 function resetFileInput() { imageUploadInput.value = null; }
 
 
@@ -120,9 +62,7 @@ async function handleSendMessage() {
     sendButton.disabled = true; hideError(); showLoading();
 
     const messageParts = []; let currentImageDataUrl = null;
-    if (selectedFileBase64 && selectedFile) {
-        messageParts.push({ inlineData: { mimeType: selectedFile.type, data: selectedFileBase64 } });
-        currentImageDataUrl = selectedFileBase64; }
+    if (selectedFileBase64 && selectedFile) { messageParts.push({ inlineData: { mimeType: selectedFile.type, data: selectedFileBase64 } }); currentImageDataUrl = selectedFileBase64; }
     if (userMessageText) { messageParts.push({ text: userMessageText }); }
 
     displayMessage('user', userMessageText || '', currentImageDataUrl); // Handles scroll
@@ -156,7 +96,7 @@ async function handleSendMessage() {
 }
 
 
-// --- Display Message and Trigger Appropriate Scroll ---
+// --- Display Message and Trigger Appropriate Scroll (REVISED searchSuggestionHtml handling) ---
 function displayMessage(role, text, imageDataUrl = null, searchSuggestionHtml = null) {
     const messageDiv = document.createElement('div');
     messageDiv.classList.add('message', role === 'user' ? 'user-message' : 'ai-message');
@@ -167,46 +107,43 @@ function displayMessage(role, text, imageDataUrl = null, searchSuggestionHtml = 
         imgElement.classList.add('message-image'); imgElement.src = imageDataUrl; imgElement.alt = "User uploaded image";
         messageDiv.appendChild(imgElement);
     }
-    // Add text if present
+    // Add text if present - SANITIZE AI MARKDOWN
     if (text) {
         const paragraph = document.createElement('p');
         if (role === 'ai' && typeof marked !== 'undefined' && typeof DOMPurify !== 'undefined') {
             try {
                 marked.setOptions({ breaks: true, gfm: true }); const rawHtml = marked.parse(text);
-                const sanitizedHtml = DOMPurify.sanitize(rawHtml); // Basic sanitize for AI text
+                // Sanitize the main AI text normally
+                const sanitizedHtml = DOMPurify.sanitize(rawHtml);
                 paragraph.innerHTML = sanitizedHtml;
             } catch (error) { console.error("Markdown error:", error); paragraph.textContent = text; }
-        } else { paragraph.textContent = text; }
+        } else { paragraph.textContent = text; } // User text or no markdown libs
         if (paragraph.innerHTML || paragraph.textContent) { messageDiv.appendChild(paragraph); }
     }
-    // Add search suggestions if present
+
+    // Add search suggestions if present - DO NOT SANITIZE GOOGLE'S HTML
     if (role === 'ai' && searchSuggestionHtml) {
         const suggestionContainer = document.createElement('div');
         suggestionContainer.classList.add('search-suggestion-container'); // Class for margin only
 
-        if (typeof DOMPurify !== 'undefined') {
-            try {
-                // Sanitize Google's HTML, ALLOWING style tags and potentially needed protocols
-                const sanitizedGoogleHtml = DOMPurify.sanitize(searchSuggestionHtml, {
-                    ALLOW_STYLE: true, // MUST allow style tags from Google
-                    ALLOW_UNKNOWN_PROTOCOLS: true // For potential google search links
-                 });
-                suggestionContainer.innerHTML = sanitizedGoogleHtml;
-                 console.log("Sanitized and appended search suggestions (styles allowed).");
-            } catch (error) {
-                 console.error("Error sanitizing search suggestion HTML:", error);
-            }
-        } else {
-            console.warn("DOMPurify not loaded. Cannot safely display search suggestions HTML.");
+        // --- Directly injecting Google's provided HTML ---
+        try {
+            suggestionContainer.innerHTML = searchSuggestionHtml;
+             console.log("Directly appended search suggestions HTML.");
+
+             // Append only if Google provided non-empty content
+             if (suggestionContainer.innerHTML.trim()) {
+                 messageDiv.appendChild(suggestionContainer);
+             } else {
+                 console.log("Google Search suggestion HTML was empty.");
+             }
+        } catch (error) {
+             console.error("Error setting innerHTML for search suggestions:", error);
         }
-        if (suggestionContainer.innerHTML.trim()) {
-             messageDiv.appendChild(suggestionContainer);
-        } else {
-             console.log("Search suggestion HTML was empty after sanitization or missing.");
-        }
+        // --- End Direct Injection ---
     }
 
-    // Append the message to the history
+    // Append the complete message bubble to the history
     chatHistory.appendChild(messageDiv);
 
     // Trigger scroll based on role
@@ -215,11 +152,7 @@ function displayMessage(role, text, imageDataUrl = null, searchSuggestionHtml = 
 }
 
 
-function truncateHistory() {
-    let totalChars = 0; for (const message of conversationHistory) { if (message.parts && Array.isArray(message.parts)) { for (const part of message.parts) { if (part.text) { totalChars += part.text.length; } else if (part.inlineData) { totalChars += IMAGE_CHAR_EQUIVALENT; } } } }
-    while (totalChars > MAX_HISTORY_CHARS && conversationHistory.length >= 2) { /* console.log(`History limit exceeded. Truncating.`); */ const removedUserMsg = conversationHistory.shift(); const removedModelMsg = conversationHistory.shift(); let removedChars = 0; [removedUserMsg, removedModelMsg].forEach(msg => { if (msg?.parts && Array.isArray(msg.parts)) { msg.parts.forEach(part => { if (part.text) removedChars += part.text.length; else if (part.inlineData) removedChars += IMAGE_CHAR_EQUIVALENT; }); } }); totalChars -= removedChars; } }
-
-
+function truncateHistory() { let totalChars = 0; for (const message of conversationHistory) { if (message.parts && Array.isArray(message.parts)) { for (const part of message.parts) { if (part.text) { totalChars += part.text.length; } else if (part.inlineData) { totalChars += IMAGE_CHAR_EQUIVALENT; } } } } while (totalChars > MAX_HISTORY_CHARS && conversationHistory.length >= 2) { /* console.log(`History limit exceeded. Truncating.`); */ const removedUserMsg = conversationHistory.shift(); const removedModelMsg = conversationHistory.shift(); let removedChars = 0; [removedUserMsg, removedModelMsg].forEach(msg => { if (msg?.parts && Array.isArray(msg.parts)) { msg.parts.forEach(part => { if (part.text) removedChars += part.text.length; else if (part.inlineData) removedChars += IMAGE_CHAR_EQUIVALENT; }); } }); totalChars -= removedChars; } }
 function showLoading() { loadingIndicator.classList.remove('hidden'); }
 function hideLoading() { loadingIndicator.classList.add('hidden'); }
 function showError(message) { errorDisplay.textContent = message; errorDisplay.classList.remove('hidden'); console.error("Displaying error:", message); }
