@@ -2,7 +2,7 @@
 
 // DOM element references
 const chatForm = document.getElementById('chat-form');
-const messageInput = document.getElementById('message-input'); // Now refers to the <textarea>
+const messageInput = document.getElementById('message-input'); // Textarea
 const sendButton = document.getElementById('send-button');
 const chatHistory = document.getElementById('chat-history');
 const loadingIndicator = document.getElementById('loading');
@@ -15,69 +15,64 @@ const removeImageButton = document.getElementById('remove-image-button');
 
 // --- Configuration ---
 const MAX_HISTORY_CHARS = 1000000;
-const IMAGE_CHAR_EQUIVALENT = 1000;
+const IMAGE_CHAR_EQUIVALENT = 1000; // Estimated char count for history truncation
 const MAX_IMAGE_SIZE_MB = 15;
 // --- End Configuration ---
 
 // --- State Variables ---
 let conversationHistory = [];
-let selectedFile = null;
-let selectedFileBase64 = null;
+let selectedFile = null; // Holds the File object
+let selectedFileBase64 = null; // Holds the DataURL string
 // --- End State Variables ---
 
 // --- Event Listeners ---
-
-// --- REMOVED: Form submit listener is no longer the primary trigger ---
-// chatForm.addEventListener('submit', handleSendMessage);
-
-// --- ADDED: Keydown listener on the textarea ---
-messageInput.addEventListener('keydown', handleInputKeyDown);
-
-// --- ADDED: Click listener for the send button ---
-// We still need the button to work independently
-sendButton.addEventListener('click', handleSendButtonClick);
-
-// Listeners for image handling (remain the same)
+messageInput.addEventListener('keydown', handleInputKeyDown); // For Enter/Shift+Enter
+sendButton.addEventListener('click', handleSendButtonClick); // For button click
 attachButton.addEventListener('click', () => {
     resetFileInput();
     imageUploadInput.click();
 });
 imageUploadInput.addEventListener('change', handleFileSelect);
 removeImageButton.addEventListener('click', handleRemoveImage);
-document.addEventListener('paste', handlePaste);
+document.addEventListener('paste', handlePaste); // For pasting images
+messageInput.addEventListener('input', adjustTextareaHeight); // For dynamic height
 // --- END Event Listeners ---
 
 
 // --- Functions ---
 
-// --- NEW: Handler for Keydown Events on Input ---
+// --- Function to dynamically adjust textarea height ---
+function adjustTextareaHeight() {
+    // Reset height temporarily to accurately measure scrollHeight
+    messageInput.style.height = 'auto';
+    // Set height to scrollHeight, respecting CSS max-height
+    messageInput.style.height = `${messageInput.scrollHeight}px`;
+    // console.log(`Adjusted textarea height to: ${messageInput.style.height}`); // Optional logging
+}
+
+// --- Handler for Keydown Events on Input ---
 function handleInputKeyDown(event) {
-    // Check if Enter key was pressed
     if (event.key === 'Enter') {
         if (event.shiftKey) {
-            // Shift + Enter: Allow default behavior (insert newline)
-            console.log("Shift+Enter detected - inserting newline.");
-            // Optionally, you might want to slightly increase the textarea height here
-            // adjustTextareaHeight(); // Example call to a potential helper function
+            // Shift+Enter: Allow default newline insertion.
+            // Height adjustment is handled by the 'input' event listener.
+            console.log("Shift+Enter detected - Allowing newline.");
         } else {
-            // Enter alone: Prevent default (newline insertion) and send message
-            console.log("Enter detected - sending message.");
-            event.preventDefault(); // Prevent newline
-            handleSendMessage(); // Call the send logic
+            // Enter alone: Prevent default newline and send message.
+            console.log("Enter alone detected - Preventing newline, triggering send.");
+            event.preventDefault();
+            handleSendMessage();
         }
     }
 }
-// --- END NEW ---
 
-// --- NEW: Handler for Send Button Click ---
+// --- Handler for Send Button Click ---
 function handleSendButtonClick() {
-    console.log("Send button clicked.");
-    handleSendMessage(); // Call the same send logic
+    console.log("Send button clicked - triggering send.");
+    handleSendMessage();
 }
-// --- END NEW ---
 
-
-// --- Refactored File Processing Logic (remains the same) ---
+// --- Refactored File Processing Logic ---
 function processSelectedFile(file) {
     if (!file) return false;
     if (!file.type.startsWith('image/')) {
@@ -98,7 +93,7 @@ function processSelectedFile(file) {
         imagePreview.src = selectedFileBase64;
         imagePreviewContainer.classList.remove('hidden');
         attachButton.classList.add('has-file');
-        console.log("Image processed successfully:", file.name, file.type);
+        console.log("Image processed:", file.name);
     };
     reader.onerror = (e) => {
         console.error("FileReader error:", e);
@@ -108,9 +103,8 @@ function processSelectedFile(file) {
     reader.readAsDataURL(file);
     return true;
 }
-// --- END Refactored File Processing Logic ---
 
-// --- Handle File Selection via Input (remains the same) ---
+// --- Handle File Selection via Input ---
 function handleFileSelect(event) {
     const file = event.target.files[0];
     if (!file) return;
@@ -119,46 +113,32 @@ function handleFileSelect(event) {
         resetFileInput();
     }
 }
-// --- END Handle File Selection via Input ---
 
-// --- Paste Handler (Checks for Focus - remains the same logic) ---
+// --- Paste Handler (Checks for Focus) ---
 function handlePaste(event) {
-    if (document.activeElement !== messageInput) {
-        console.log("Paste event ignored: Message input does not have focus.");
-        return;
-    }
+    if (document.activeElement !== messageInput) { return; } // Only handle paste if input is focused
     const items = (event.clipboardData || event.originalEvent.clipboardData)?.items;
-    if (!items) {
-        console.log("Paste event ignored: No clipboard items found.");
-        return;
-    }
-    console.log("Paste event detected while input focused.");
+    if (!items) { return; }
     let foundImage = false;
     for (let i = 0; i < items.length; i++) {
         const item = items[i];
         if (item.kind === 'file' && item.type.startsWith('image/')) {
             const imageFile = item.getAsFile();
             if (imageFile) {
-                console.log("Image file found in clipboard:", imageFile.name, imageFile.type);
                 const processed = processSelectedFile(imageFile);
                 if (processed) {
                     foundImage = true;
-                    event.preventDefault(); // Prevent default ONLY if image processed
+                    event.preventDefault(); // Prevent pasting file path as text
                     console.log("Image paste handled, default paste prevented.");
-                    break;
-                } else {
-                    console.log("Image processing failed (validation or reader error).");
+                    break; // Handle only first image
                 }
             }
         }
     }
-    if (!foundImage) {
-        console.log("Paste event did not contain a handleable image file, allowing default paste behavior.");
-    }
+    // Let text paste trigger 'input' event naturally for resize
 }
-// --- END Paste Handler ---
 
-// --- Handle Manual Removal of Image (remains the same) ---
+// --- Handle Manual Removal of Image ---
 function handleRemoveImage() {
     selectedFile = null;
     selectedFileBase64 = null;
@@ -166,25 +146,20 @@ function handleRemoveImage() {
     imagePreviewContainer.classList.add('hidden');
     resetFileInput();
     attachButton.classList.remove('has-file');
-    hideError();
-    console.log("Selected image removed and state reset.");
+    hideError(); // Hide errors when image is removed
+    console.log("Selected image removed.");
 }
-// --- END Handle Manual Removal of Image ---
 
-// --- Utility to Reset File Input (remains the same) ---
+// --- Utility to Reset File Input ---
 function resetFileInput() {
     imageUploadInput.value = null;
 }
-// --- END Utility to Reset File Input ---
 
-// --- Handle Sending Message (MODIFIED: No longer receives event) ---
+// --- Handle Sending Message (Text and/or Image) ---
 async function handleSendMessage() {
-    // event.preventDefault(); // REMOVED - Not called by submit event anymore
-
     const userMessageText = messageInput.value.trim();
-
     if (!userMessageText && !selectedFileBase64) {
-        console.log("Send ignored: No text or image selected.");
+        console.log("Send ignored: No text or image.");
         return;
     }
 
@@ -193,42 +168,35 @@ async function handleSendMessage() {
     showLoading();
 
     const messageParts = [];
-    let currentImageDataUrl = null;
-
+    let currentImageDataUrl = null; // For local display
     if (selectedFileBase64 && selectedFile) {
-        messageParts.push({
-            inlineData: { mimeType: selectedFile.type, data: selectedFileBase64 }
-        });
+        messageParts.push({ inlineData: { mimeType: selectedFile.type, data: selectedFileBase64 } });
         currentImageDataUrl = selectedFileBase64;
-        console.log("Adding image part to request:", selectedFile.name);
     }
-
     if (userMessageText) {
         messageParts.push({ text: userMessageText });
-        console.log("Adding text part to request:", userMessageText);
     }
 
-    // Display user message BEFORE clearing inputs
     displayMessage('user', userMessageText || '', currentImageDataUrl);
-    scrollChatToBottom(); // Scroll after adding the message
+    scrollChatToBottom();
 
-    // Add to internal history
     conversationHistory.push({ role: 'user', parts: messageParts });
 
-    // Clear inputs and reset image state
-    messageInput.value = ''; // Clear the textarea
-    handleRemoveImage(); // Resets image state, preview, etc.
-    // Optional: Reset textarea height if you implemented auto-resizing
-    // resetTextareaHeight();
+    // Clear input and reset image state AFTER sending
+    messageInput.value = '';
+    handleRemoveImage(); // Resets image selection
+
+    // Reset textarea height AFTER clearing value
+    adjustTextareaHeight();
 
     messageInput.focus();
 
-    // --- API Call Section (logic remains the same) ---
+    // --- API Call Section ---
     try {
         truncateHistory();
         const historyForThisRequest = [...conversationHistory];
         const payload = { history: historyForThisRequest };
-        console.log("Sending payload to /api/chat:", JSON.stringify(payload, (key, value) => key === 'data' && typeof value === 'string' && value.length > 100 ? value.substring(0, 100) + '...' : value , 2));
+        // console.log("Sending payload to /api/chat:", JSON.stringify(payload).substring(0, 500) + '...'); // Log less
 
         const response = await fetch('/api/chat', {
             method: 'POST',
@@ -243,9 +211,7 @@ async function handleSendMessage() {
             try {
                 const errorData = await response.json();
                 errorMsg = errorData.error || errorMsg;
-            } catch (e) {
-                console.warn("Could not parse error JSON from API response.");
-            }
+            } catch (e) { console.warn("Could not parse API error response."); }
             throw new Error(errorMsg);
         }
 
@@ -254,8 +220,7 @@ async function handleSendMessage() {
         const searchSuggestionHtml = data.searchSuggestionHtml;
         const modelUsed = data.modelUsed;
 
-        console.log(`AI Response received (using ${modelUsed || 'unknown model'}):`, aiResponseText?.substring(0, 100) + "...");
-        if(searchSuggestionHtml) console.log("Search suggestion HTML present.");
+        console.log(`AI Response received (using ${modelUsed || 'model'})`);
 
         conversationHistory.push({ role: 'model', parts: [{ text: aiResponseText }] });
 
@@ -264,16 +229,15 @@ async function handleSendMessage() {
 
     } catch (err) {
         console.error("Error during send/receive:", err);
-        showError(err.message || "Failed to get response from AI. Please try again.");
+        showError(err.message || "Failed to get response from AI.");
         hideLoading();
     } finally {
         sendButton.disabled = false;
     }
     // --- END API Call Section ---
 }
-// --- END Handle Sending Message ---
 
-// --- Display Message in Chat History (remains the same) ---
+// --- Display Message in Chat History ---
 function displayMessage(role, text, imageDataUrl = null, searchSuggestionHtml = null) {
     const messageDiv = document.createElement('div');
     messageDiv.classList.add('message', role === 'user' ? 'user-message' : 'ai-message');
@@ -295,8 +259,8 @@ function displayMessage(role, text, imageDataUrl = null, searchSuggestionHtml = 
                 const sanitizedHtml = DOMPurify.sanitize(rawHtml);
                 paragraph.innerHTML = sanitizedHtml;
             } catch (error) {
-                console.error("Error parsing or sanitizing Markdown:", error);
-                paragraph.textContent = text;
+                console.error("Markdown processing error:", error);
+                paragraph.textContent = text; // Fallback
             }
         } else {
             paragraph.textContent = text;
@@ -310,9 +274,9 @@ function displayMessage(role, text, imageDataUrl = null, searchSuggestionHtml = 
         if (typeof DOMPurify !== 'undefined') {
             suggestionContainer.innerHTML = DOMPurify.sanitize(searchSuggestionHtml);
         } else {
-            console.warn("DOMPurify not loaded. Cannot safely display search suggestions HTML.");
-            // suggestionContainer.innerHTML = "<!-- Search suggestions omitted for security -->";
+            console.warn("DOMPurify not loaded. Search suggestions HTML not displayed.");
         }
+        // Append only if content exists after sanitization (or if Purify missing)
         if (suggestionContainer.innerHTML) {
            messageDiv.appendChild(suggestionContainer);
         }
@@ -320,9 +284,8 @@ function displayMessage(role, text, imageDataUrl = null, searchSuggestionHtml = 
 
     chatHistory.appendChild(messageDiv);
 }
-// --- END Display Message in Chat History ---
 
-// --- Truncate History (remains the same) ---
+// --- Truncate History if it Exceeds Limit ---
 function truncateHistory() {
     let totalChars = 0;
     for (const message of conversationHistory) {
@@ -333,10 +296,9 @@ function truncateHistory() {
             }
         }
     }
-     console.log(`Current history size: ~${totalChars} estimated chars (Limit: ${MAX_HISTORY_CHARS})`);
-
+    // console.log(`History size: ~${totalChars} chars`);
     while (totalChars > MAX_HISTORY_CHARS && conversationHistory.length >= 2) {
-        console.log(`History limit exceeded (${totalChars}/${MAX_HISTORY_CHARS}). Truncating oldest pair...`);
+        console.log(`History limit exceeded (${totalChars}/${MAX_HISTORY_CHARS}). Truncating.`);
         const removedUserMsg = conversationHistory.shift();
         const removedModelMsg = conversationHistory.shift();
         let removedChars = 0;
@@ -349,41 +311,31 @@ function truncateHistory() {
             }
         });
         totalChars -= removedChars;
-        console.log(`Removed oldest pair (estimated ${removedChars} chars). New char count: ~${totalChars}`);
+        console.log(`Removed pair. New count: ~${totalChars}`);
     }
 }
-// --- END Truncate History ---
 
-// --- UI Utility Functions (remain the same) ---
+// --- UI Utility Functions ---
 function scrollChatToBottom() {
     setTimeout(() => {
         const chatContainer = document.getElementById('chat-container');
         chatContainer.scrollTop = chatContainer.scrollHeight;
-    }, 50);
+    }, 50); // Small delay helps ensure DOM is updated
 }
-
-function showLoading() {
-    loadingIndicator.classList.remove('hidden');
-}
-
-function hideLoading() {
-    loadingIndicator.classList.add('hidden');
-}
-
+function showLoading() { loadingIndicator.classList.remove('hidden'); }
+function hideLoading() { loadingIndicator.classList.add('hidden'); }
 function showError(message) {
     errorDisplay.textContent = message;
     errorDisplay.classList.remove('hidden');
-    console.error("Displaying error to user:", message);
+    console.error("Displaying error:", message);
 }
-
 function hideError() {
     errorDisplay.classList.add('hidden');
     errorDisplay.textContent = '';
 }
-// --- END UI Utility Functions ---
-
 
 // --- Initial Setup ---
 messageInput.focus();
-console.log("Kramer Intelligence script initialized successfully.");
+adjustTextareaHeight(); // Set initial height correctly
+console.log("Kramer Intelligence script initialized.");
 // --- END Initial Setup ---

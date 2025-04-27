@@ -52,6 +52,7 @@ h1 {
     width: 100%;
     max-width: 800px;
     margin: 0 auto;
+    padding-bottom: 10px;
 }
 
 /* Message Bubble Styling */
@@ -60,7 +61,8 @@ h1 {
     border-radius: 18px;
     max-width: 80%;
     line-height: 1.4;
-    word-wrap: break-word;
+    word-wrap: break-word; /* Fallback */
+    overflow-wrap: break-word; /* Modern standard for breaking words */
     display: flex;
     flex-direction: column;
     gap: 8px;
@@ -68,6 +70,9 @@ h1 {
 
 .message p {
     margin: 0;
+    /* Default word wrapping */
+    word-wrap: break-word; /* Fallback */
+    overflow-wrap: break-word; /* Modern standard */
 }
 
 .user-message {
@@ -76,6 +81,14 @@ h1 {
     align-self: flex-end;
     border-bottom-right-radius: 5px;
 }
+
+/* --- THIS IS THE FIX --- */
+.user-message p {
+    /* Preserve newline characters AND wrap text */
+    white-space: pre-wrap;
+}
+/* --- END FIX --- */
+
 
 .ai-message {
     background-color: #333333;
@@ -91,23 +104,31 @@ h1 {
     border-radius: 10px;
     object-fit: contain;
     cursor: pointer;
-    margin-top: 5px;
+    margin-top: 5px; /* Only relevant if text is also present */
 }
 
 /* Search Suggestion Styling */
 .search-suggestion-container {
-    margin-top: 5px;
-    width: 100%;
+    margin-top: 8px;
+    padding: 8px 12px;
+    background-color: rgba(255, 255, 255, 0.05);
+    border-radius: 8px;
+    font-size: 0.9em;
+    border: 1px solid rgba(255, 255, 255, 0.1);
 }
 
 .search-suggestion-container a {
     color: inherit !important;
     text-decoration: none !important;
+    display: block;
+    padding: 4px 0;
+}
+.search-suggestion-container a:hover {
+    background-color: rgba(255, 255, 255, 0.1);
 }
 
 /* --- Markdown Element Styling --- */
-/* (Keep all existing Markdown styles) */
-.message pre { background-color: rgba(0, 0, 0, 0.2); padding: 10px; border-radius: 4px; overflow-x: auto; border: 1px solid #444; margin-top: 8px; margin-bottom: 8px; }
+.message pre { background-color: rgba(0, 0, 0, 0.2); padding: 10px; border-radius: 4px; overflow-x: auto; border: 1px solid #444; margin-top: 8px; margin-bottom: 8px; white-space: pre; /* Crucial for code blocks */ }
 .message code { font-family: Consolas, Monaco, 'Andale Mono', 'Ubuntu Mono', monospace; font-size: 0.9em; }
 .message p > code { background-color: rgba(255, 255, 255, 0.1); padding: 0.2em 0.4em; border-radius: 3px; font-size: 0.85em; }
 .message pre code { background-color: transparent; padding: 0; font-size: inherit; border-radius: 0; }
@@ -127,8 +148,8 @@ h1 {
 #image-preview-container {
     background-color: #1f1f1f;
     border-top: 1px solid #333;
-    padding: 8px 20px; /* Add horizontal padding back */
-    display: flex; /* Use flex when *not* hidden */
+    padding: 8px 20px;
+    display: flex;
     justify-content: center;
     align-items: center;
     position: relative;
@@ -136,13 +157,12 @@ h1 {
     width: 100%;
 }
 
-/* Wrapper inside container to control width/centering */
 #image-preview-container > div {
     position: relative;
     display: inline-block;
-    max-width: 750px; /* Or adjust to match input width */
-    margin: 0 auto; /* Center the wrapper */
-    line-height: 0; /* Prevent extra space from inline-block */
+    max-width: 750px;
+    margin: 0 auto;
+    line-height: 0;
 }
 
 #image-preview {
@@ -183,58 +203,65 @@ h1 {
 /* Input Form Styling */
 #chat-form {
     display: flex;
+    align-items: flex-end; /* Align items to bottom */
     padding: 15px 20px;
     border-top: 1px solid #333;
     background-color: #1f1f1f;
     flex-shrink: 0;
     width: 100%;
     justify-content: center;
-    align-items: center;
+    gap: 10px;
 }
 
 /* Attach Button Styling */
 #attach-button {
     background: none;
     border: none;
-    color: #aaa; /* Default color */
+    color: #aaa;
     font-size: 1.5rem;
     cursor: pointer;
-    padding: 5px 10px 5px 0;
-    margin-right: 5px;
+    padding: 0 5px;
     line-height: 1;
     transition: color 0.2s;
+    flex-shrink: 0;
+    align-self: flex-end;
+    margin-bottom: 10px;
 }
-#attach-button:hover {
-    color: #ddd;
-}
-/* Style when image is selected */
-#attach-button.has-file {
-    color: #64b5f6; /* Blue color when file is selected */
-}
+#attach-button:hover { color: #ddd; }
+#attach-button.has-file { color: #64b5f6; }
 
 
+/* Textarea Input Styling */
 #message-input {
     flex-grow: 1;
     max-width: 700px;
     padding: 10px 15px;
     border: 1px solid #444;
+    border-radius: 20px;
+    box-sizing: border-box;
+    display: block;
+    min-height: 42px;
+    max-height: 25vh;
     background-color: #2c2c2c;
     color: #e0e0e0;
-    border-radius: 20px;
-    margin-right: 10px;
-    font-size: 1rem;
     outline: none;
+    font-family: inherit;
+    font-size: 1rem;
+    line-height: 1.4;
+    white-space: pre-wrap; /* Needed for typing */
+    word-wrap: break-word; /* Fallback */
+    overflow-wrap: break-word; /* Modern */
+    resize: none;
+    overflow-y: auto;
 }
 
-#message-input::placeholder {
-    color: #888;
-}
-
+#message-input::placeholder { color: #888; }
 #message-input:focus {
     border-color: #4a90e2;
     box-shadow: 0 0 0 2px rgba(74, 144, 226, 0.3);
 }
 
+/* Send Button Styling */
 #send-button {
     padding: 10px 20px;
     background-color: #007bff;
@@ -245,14 +272,11 @@ h1 {
     font-size: 1rem;
     transition: background-color 0.2s ease;
     flex-shrink: 0;
+    align-self: flex-end;
+    margin-bottom: 8px;
 }
-#send-button:disabled {
-    background-color: #004a9e;
-    cursor: not-allowed;
-}
-#send-button:hover:not(:disabled) {
-    background-color: #0056b3;
-}
+#send-button:disabled { background-color: #004a9e; cursor: not-allowed; opacity: 0.7; }
+#send-button:hover:not(:disabled) { background-color: #0056b3; }
 
 
 /* Loading / Error Indicators */
@@ -264,6 +288,7 @@ h1 {
     width: 100%;
     max-width: 800px;
     margin: 5px auto;
+    flex-shrink: 0;
 }
 
 #error {
@@ -276,9 +301,7 @@ h1 {
 }
 
 /* Utility class to hide elements */
-.hidden {
-    display: none !important; /* Use !important to ensure it overrides other display properties */
-}
+.hidden { display: none !important; }
 
 
 /* Responsive adjustments */
@@ -286,18 +309,19 @@ h1 {
      #chat-history { max-width: 95%; }
      #message-input { max-width: none; }
      #image-preview-container > div { max-width: 95%; }
+     #chat-form { padding: 15px; gap: 8px;}
 }
 
 @media (max-width: 600px) {
     h1 { font-size: 1.2rem; padding: 12px 15px; }
-    #chat-container { padding: 15px; }
-     #chat-history { gap: 12px; }
-    .message { max-width: 85%; font-size: 0.95rem; padding: 8px 12px; }
-    #chat-form { padding: 10px 15px; }
-    #message-input { padding: 8px 12px; font-size: 0.95rem; }
-    #send-button { padding: 8px 15px; font-size: 0.95rem; }
-     #loading, #error { max-width: 95%; font-size: 0.9rem; }
-    #attach-button { font-size: 1.3rem; padding: 5px 8px 5px 0;}
+    #chat-container { padding: 10px; }
+    #chat-history { gap: 12px; }
+    .message { max-width: 90%; font-size: 0.95rem; padding: 8px 12px; }
+    #chat-form { padding: 10px; gap: 5px; }
+    #message-input { padding: 8px 12px; font-size: 0.95rem; min-height: 38px; }
+    #send-button { padding: 8px 15px; font-size: 0.95rem; margin-bottom: 6px;}
+    #attach-button { font-size: 1.3rem; padding: 0 3px; margin-bottom: 8px;}
+    #loading, #error { max-width: 95%; font-size: 0.9rem; }
     #image-preview { max-height: 60px; }
     #remove-image-button { width: 20px; height: 20px; font-size: 14px; line-height: 18px; top: -4px; right: -4px;}
 }
