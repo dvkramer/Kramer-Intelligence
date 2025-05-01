@@ -6,7 +6,7 @@
     <title>Kramer Intelligence</title>
 
     <!-- SEO Meta Tags -->
-    <meta name="description" content="Chat with Kramer Intelligence, an AI assistant created by Daniel Vincent Kramer. Get answers, engage in conversation, and even upload images.">
+    <meta name="description" content="Chat with Kramer Intelligence, an AI assistant created by Daniel Vincent Kramer. Get answers, engage in conversation, and even upload images or PDFs.">
     <link rel="canonical" href="https://kramer-intelligence.vercel.app/"> <!-- Adjust if your URL changes -->
     <!-- End SEO Meta Tags -->
 
@@ -59,18 +59,19 @@
     <div id="error" class="hidden"></div>
 
     <!-- Image Preview Area (Stays outside the main scroll area) -->
+    <!-- Only shown for images, hidden for PDFs -->
     <div id="image-preview-container" class="hidden">
         <div>
              <img id="image-preview" src="#" alt="Image preview"/>
-             <button id="remove-image-button" title="Remove image">×</button>
+             <button id="remove-image-button" title="Remove file">×</button>
         </div>
     </div>
     <!-- END Image Preview Area -->
 
     <!-- Form Area (Stays outside the main scroll area) -->
     <form id="chat-form">
-        <input type="file" id="image-upload-input" accept="image/png, image/jpeg, image/webp, image/heic, image/heif" style="display: none;">
-        <button type="button" id="attach-button" title="Attach Image">
+        <input type="file" id="file-upload-input" accept="image/png, image/jpeg, image/webp, image/heic, image/heif, application/pdf" style="display: none;">
+        <button type="button" id="attach-button" title="Attach Image or PDF">
             📎
         </button>
         <textarea id="message-input" placeholder="Ask me anything..." rows="1" autocomplete="off"></textarea>

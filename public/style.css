@@ -113,6 +113,20 @@ h1 {
     margin-top: 5px; /* Space above if text is also present */
 }
 
+/* Styling for PDF Info within Messages */
+.message .pdf-info {
+    font-size: 0.85em;
+    font-style: italic;
+    color: #bbb;
+    margin-top: 5px;
+    padding: 3px 8px;
+    background-color: rgba(255, 255, 255, 0.05); /* Subtle background */
+    border-radius: 4px;
+    display: inline-block; /* Prevent taking full width */
+    word-break: break-all; /* Break long filenames */
+}
+
+
 /* --- Google Search Suggestion Styling (Minimal Wrapper Only) --- */
 /* Container for Google's renderedContent */
 .search-suggestion-container {
@@ -228,6 +242,7 @@ h1 {
 
 
 /* Image Preview Area Styling (Fixed below scroll area) */
+/* This area is ONLY shown for images */
 #image-preview-container {
     background-color: #1f1f1f;
     /* Border handled conditionally with form below */
@@ -295,11 +310,13 @@ h1 {
     gap: 10px; /* Space between attach, input, send */
 }
 /* Conditional border-top for form based on preview visibility */
+/* Add border if preview is hidden (which it always is for PDFs or no file) */
 #image-preview-container.hidden + #chat-form {
-    border-top: 1px solid #333; /* Add border if preview is hidden */
+    border-top: 1px solid #333;
 }
+/* Remove border if preview is visible (only for images) */
 #image-preview-container:not(.hidden) + #chat-form {
-    border-top: none; /* Remove border if preview is visible (preview has border) */
+    border-top: none;
 }
 
 
@@ -320,7 +337,7 @@ h1 {
 #attach-button:hover {
     color: #ddd; /* Lighter grey on hover */
 }
-/* Style when an image is attached */
+/* Style when an image or PDF is attached */
 #attach-button.has-file {
     color: #64b5f6; /* Blue when file selected */
 }

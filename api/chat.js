@@ -15,7 +15,8 @@ const MODELS_TO_TRY = [
 	'gemini-2.0-flash',
 	'gemini-2.5-flash-preview-04-17'
 ];
-const MAX_IMAGE_SIZE_MB = 15; // Keep your image size limit definition
+const MAX_FILE_SIZE_MB = 15; // Max size for inline upload (images *and* PDFs) - Gemini has ~20MB request limit
+const MAX_TOKENS = 1000000; // Define a maximum token limit for the context window (set to 1 million)
 // --- End Configuration ---
 
 
@@ -61,7 +62,7 @@ export default async function handler(req, res) {
                      console.error("Failed to extract base64 data for part:", part);
                      return null; // Skip this invalid part
                 }
-                // Gemini API expects just the base64 string, not the data URL prefix
+                 // Gemini API expects just the base64 string for inlineData
                 return {
                     inlineData: {
                         mimeType: part.inlineData.mimeType,
@@ -113,13 +114,76 @@ export default async function handler(req, res) {
     let lastErrorData = null; // Store the error details from the last failed attempt
     let successfulModel = null; // Keep track of which model succeeded
 
+    // --- NEW: Count tokens and truncate history BEFORE generateContent ---
+    try {
+        if (processedContents.length > 0) { // Only count if there's history
+            const firstModel = MODELS_TO_TRY[0]; // Use the preferred model for counting
+            const countTokensUrl = `https://generativelanguage.googleapis.com/v1beta/models/${firstModel}:countTokens?key=${apiKey}`;
+            let currentTokenCount = 0;
+
+            // Function to get token count for current history
+            const getTokenCount = async (contentsToCount) => {
+                if (!contentsToCount || contentsToCount.length === 0) return 0;
+                const countResponse = await fetch(countTokensUrl, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ contents: contentsToCount }),
+                });
+                if (!countResponse.ok) {
+                    const errorData = await countResponse.json().catch(() => ({}));
+                    console.warn(`Token count API failed (${countResponse.status}):`, errorData.error?.message || 'Unknown counting error');
+                    return -1; // Indicate error
+                }
+                const countData = await countResponse.json();
+                return countData.totalTokens;
+            };
+
+            // Initial count
+            currentTokenCount = await getTokenCount(processedContents);
+            console.log(`Initial token count: ${currentTokenCount} (Limit: ${MAX_TOKENS})`);
+
+            if (currentTokenCount === -1) {
+                console.warn("Proceeding without history truncation due to token count error.");
+            } else {
+                // Truncation loop
+                let iterations = 0;
+                const maxIterations = Math.ceil(processedContents.length / 2) + 1; // Safety break
+
+                while (currentTokenCount > MAX_TOKENS && processedContents.length >= 2 && iterations < maxIterations) {
+                    console.log(`Token count ${currentTokenCount} exceeds limit ${MAX_TOKENS}. Truncating...`);
+                    processedContents.shift(); // Remove oldest user message
+                    processedContents.shift(); // Remove oldest model message
+                    // Optimization: Check length before potentially expensive API call
+                    if (processedContents.length < 2) break;
+                    currentTokenCount = await getTokenCount(processedContents); // Recalculate
+                    console.log(`New token count after truncation: ${currentTokenCount}`);
+                    if (currentTokenCount === -1) {
+                         console.warn("Token count failed during truncation. Stopping truncation.");
+                         break; // Exit loop on error
+                    }
+                    iterations++;
+                }
+                if (iterations >= maxIterations && currentTokenCount > MAX_TOKENS) {
+                     console.warn("Truncation loop hit max iterations, history might still exceed token limit.");
+                } else if (currentTokenCount > MAX_TOKENS && processedContents.length < 2) {
+                     console.warn(`History still exceeds token limit (${currentTokenCount}), but cannot truncate further.`);
+                }
+            }
+        }
+
+    } catch (truncationError) {
+        console.error("Error during history truncation:", truncationError);
+        // Logged and continue, the generateContent call might still fail if too long
+    }
+    // --- END Token Counting and Truncation ---
+
     // --- Loop through models and attempt API call ---
     for (const modelName of MODELS_TO_TRY) {
         console.log(`Attempting API call with model: ${modelName}`);
         const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/${modelName}:generateContent?key=${apiKey}`;
 
         const requestBody = {
-            contents: processedContents,
+            contents: processedContents, // Use potentially truncated history
             systemInstruction: { parts: [ { text: systemPrompt } ] }, // Use the prompt with the date
             tools: [ { googleSearch: {} } ],
             // generationConfig, safetySettings... could potentially be added here
@@ -172,8 +236,10 @@ export default async function handler(req, res) {
 
             // Append specific known error details if helpful
             if (lastErrorData?.error?.status === 'FAILED_PRECONDITION') errorMsg += ' (Check API key/billing?)';
-            if (lastErrorData?.error?.message?.includes('400 Bad Request') && lastErrorData?.error?.message?.includes('payload is too large')) errorMsg = `Request too large (likely image size). Max ~${MAX_IMAGE_SIZE_MB}MB recommended.`;
+            if (lastErrorData?.error?.message?.includes('400 Bad Request') && lastErrorData?.error?.message?.includes('payload is too large')) errorMsg = `Request too large (image/PDF size or history length). Max file size ~${MAX_FILE_SIZE_MB}MB.`;
              else if (lastErrorData?.error?.message?.includes('429')) errorMsg += ' (Rate limit exceeded?)'; // Example for rate limit
+            else if (lastErrorData?.error?.code === 400 && lastErrorData?.error?.message?.includes('must be less than or equal to')) errorMsg = `Request failed: History likely exceeds model's token limit even after truncation. ${lastErrorData?.error?.message}`; // Specific token limit error
+
 
             return res.status(finalStatus).json({ error: errorMsg });
         }
@@ -201,9 +267,18 @@ export default async function handler(req, res) {
         // Validate the AI response format
         if (typeof aiText !== 'string') {
             // This case might happen if the model responds but not with text in the expected place
-            console.error('AI response received, but no valid text content found:', googleData);
-            return res.status(500).json({ error: 'AI response format error (No text found).' });
+            // Or if the only part is a tool call response, etc.
+            if (candidate?.content?.parts?.length > 0) {
+                 // If there are parts, but the first isn't text, maybe it's a function call result?
+                 // For now, let's just return an empty string or a placeholder
+                 console.warn('AI response received, but first part was not text:', candidate.content.parts);
+                 aiText = "[Model response did not contain text in the primary position]"; // Placeholder
+            } else {
+                 console.error('AI response received, but no valid text content found:', googleData);
+                 return res.status(500).json({ error: 'AI response format error (No text found).' });
+            }
         }
+
 
         // --- Send successful response back to client ---
         res.status(200).json({
