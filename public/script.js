@@ -147,13 +147,22 @@ function processSelectedFile(file) {
         selectedFileType = isImage ? 'image' : 'pdf';
 
         // Update UI based on type
+        const innerPreviewDiv = imagePreviewContainer.querySelector('div'); // Target the inner div
+
         if (isImage) {
+            imagePreviewContainer.classList.remove('pdf-mode'); // Ensure not in PDF mode
+            innerPreviewDiv.removeAttribute('data-filename'); // Clear filename data from inner div
             imagePreview.src = selectedFileBase64;
             imagePreviewContainer.classList.remove('hidden'); // Show image preview
         } else { // For PDF
-            imagePreview.src = '#'; // Clear any previous image src
-            imagePreviewContainer.classList.add('hidden'); // Hide the image preview area
-            // Optionally display PDF filename near attach button or input? For minimal change, rely on button state.
+            imagePreview.src = '#'; // Clear image src
+            imagePreviewContainer.classList.add('pdf-mode'); // Add class for PDF styling
+            // Store filename in data attribute ON THE INNER DIV for CSS to display
+            // Escape filename potentially containing quotes for the attribute value
+            const safeFilename = file.name.replace(/"/g, '"').replace(/'/g, ''');
+            innerPreviewDiv.setAttribute('data-filename', safeFilename);
+            imagePreviewContainer.classList.remove('hidden'); // Show the preview container
+            // CSS will hide the <img> and show the filename via ::before pseudo-element on the inner div
         }
         attachButton.classList.add('has-file'); // Indicate *some* file is attached
         console.log(`${selectedFileType.toUpperCase()} processed: ${file.name}`);
@@ -172,6 +181,10 @@ function processSelectedFile(file) {
 function handleFileSelect(event) {
     const file = event.target.files[0];
     if (!file) return; // No file selected
+    // If another file was already selected, remove it first
+    if (selectedFile) {
+        handleRemoveFile();
+    }
     const processed = processSelectedFile(file);
     if (!processed) {
         // If processing failed immediately (e.g., wrong type/size), reset the input
@@ -221,6 +234,12 @@ function handleRemoveFile() {
     selectedFileType = null;
     imagePreview.src = '#'; // Clear preview src
     imagePreviewContainer.classList.add('hidden'); // Hide preview container
+    imagePreviewContainer.classList.remove('pdf-mode'); // Remove PDF class if present
+    // Remove filename data attribute from inner div
+    const innerPreviewDiv = imagePreviewContainer.querySelector('div');
+    if (innerPreviewDiv) {
+        innerPreviewDiv.removeAttribute('data-filename');
+    }
     resetFileInput(); // Clear the actual file input element
     attachButton.classList.remove('has-file'); // Update attach button style
     hideError(); // Clear any file-related errors

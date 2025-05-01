@@ -241,59 +241,87 @@ h1 {
 }
 
 
-/* Image Preview Area Styling (Fixed below scroll area) */
-/* This area is ONLY shown for images */
+/* File Preview Area Styling (Fixed below scroll area) */
+/* Shared styles for the container */
 #image-preview-container {
     background-color: #1f1f1f;
-    /* Border handled conditionally with form below */
     padding: 8px 20px;
-    display: flex; /* Used for centering internal div */
-    justify-content: center;
+    display: flex;
+    justify-content: center; /* Centers the inner div */
     align-items: center;
-    position: relative; /* For remove button positioning */
-    flex-shrink: 0; /* Prevent shrinking */
+    position: relative; /* Context for remove button */
+    flex-shrink: 0;
     width: 100%;
+    min-height: 40px; /* Ensure some height even for PDF text */
 }
-/* Inner div for positioning remove button */
+/* Inner div for positioning remove button and holding preview */
 #image-preview-container > div {
     position: relative;
-    display: inline-block; /* Allows centering via text-align on parent */
-    max-width: 750px; /* Limit width */
+    display: inline-block; /* Critical for centering */
+    max-width: 750px;
     margin: 0 auto; /* Center */
-    line-height: 0; /* Prevent extra space below image */
+    line-height: 0; /* Prevent extra space */
 }
-/* The preview image */
+/* The preview image (shown by default, hidden in PDF mode) */
 #image-preview {
     display: block;
-    max-height: 80px; /* Limit preview height */
+    max-height: 80px;
     max-width: 100%;
     border-radius: 6px;
     object-fit: contain;
     border: 1px solid #444;
 }
-/* The 'x' button to remove image */
+/* The 'x' button to remove image/PDF */
 #remove-image-button {
     position: absolute;
-    top: -5px; /* Position overlap */
-    right: -5px; /* Position overlap */
+    top: -5px;
+    right: -5px;
     width: 22px;
     height: 22px;
-    background-color: rgba(40, 40, 40, 0.8); /* Semi-transparent dark */
+    background-color: rgba(40, 40, 40, 0.8);
     color: #ccc;
     border: 1px solid #555;
-    border-radius: 50%; /* Circular */
+    border-radius: 50%;
     cursor: pointer;
     font-size: 16px;
     font-weight: bold;
-    line-height: 18px; /* Vertical center 'x' */
+    line-height: 18px; /* Adjust to vertically center 'x' */
     text-align: center;
     padding: 0;
-    transition: background-color 0.2s, color 0.2s; /* Smooth hover */
+    transition: background-color 0.2s, color 0.2s;
 }
 #remove-image-button:hover {
-    background-color: rgba(255, 77, 77, 0.8); /* Reddish on hover */
+    background-color: rgba(255, 77, 77, 0.8);
     color: white;
     border-color: rgba(255, 77, 77, 0.9);
+}
+
+/* PDF Preview Specific Styling */
+/* Hide the actual image element when in PDF mode */
+#image-preview-container.pdf-mode #image-preview {
+    display: none;
+}
+
+/* Style the inner div to show filename via pseudo-element */
+/* The inner div needs line-height reset when showing text */
+#image-preview-container.pdf-mode > div {
+    line-height: initial; /* Reset line-height for text content */
+}
+#image-preview-container.pdf-mode > div::before {
+    content: '📎 PDF: ' attr(data-filename); /* Use data attribute for filename */
+    display: inline-block; /* Allows padding and respects text alignment */
+    padding: 10px 15px;
+    background-color: #2c2c2c; /* Match input background */
+    border: 1px solid #444; /* Match input border */
+    border-radius: 6px;
+    color: #ccc; /* Light grey text */
+    font-size: 0.9em;
+    font-style: italic;
+    max-width: 100%; /* Prevent overflow within the centered div */
+    overflow: hidden; /* Hide overflow */
+    text-overflow: ellipsis; /* Add ... for long names */
+    white-space: nowrap; /* Prevent wrapping */
+    text-align: left; /* Ensure text aligns left within its box */
 }
 
 
@@ -302,19 +330,18 @@ h1 {
     display: flex;
     align-items: flex-end; /* Align items to bottom edge */
     padding: 15px 20px;
-    /* Border handled conditionally below */
     background-color: #1f1f1f; /* Match header/preview background */
-    flex-shrink: 0; /* Prevent shrinking */
+    flex-shrink: 0;
     width: 100%;
-    justify-content: center; /* Center items horizontally */
-    gap: 10px; /* Space between attach, input, send */
+    justify-content: center;
+    gap: 10px;
 }
 /* Conditional border-top for form based on preview visibility */
-/* Add border if preview is hidden (which it always is for PDFs or no file) */
+/* Add border if preview is hidden (never the case when file is selected) */
 #image-preview-container.hidden + #chat-form {
     border-top: 1px solid #333;
 }
-/* Remove border if preview is visible (only for images) */
+/* Remove border if preview is visible (image or PDF) */
 #image-preview-container:not(.hidden) + #chat-form {
     border-top: none;
 }
@@ -325,103 +352,93 @@ h1 {
     background: none;
     border: none;
     color: #aaa; /* Default grey */
-    font-size: 1.5rem; /* Icon size */
+    font-size: 1.5rem;
     cursor: pointer;
-    padding: 0 5px; /* Minimal padding */
-    line-height: 1; /* Align icon better */
-    transition: color 0.2s; /* Smooth hover */
+    padding: 0 5px;
+    line-height: 1;
+    transition: color 0.2s;
     flex-shrink: 0;
-    align-self: flex-end; /* Align to bottom */
-    margin-bottom: 10px; /* Fine-tune vertical alignment with textarea */
+    align-self: flex-end;
+    margin-bottom: 10px;
 }
 #attach-button:hover {
-    color: #ddd; /* Lighter grey on hover */
+    color: #ddd;
 }
 /* Style when an image or PDF is attached */
 #attach-button.has-file {
-    color: #64b5f6; /* Blue when file selected */
+    color: #64b5f6;
 }
 
 
 /* Textarea Input Styling */
 #message-input {
-    /* Sizing & Box Model */
-    flex-grow: 1; /* Take up available horizontal space */
-    max-width: 700px; /* Limit width on large screens */
-    padding: 10px 15px; /* Internal spacing */
+    flex-grow: 1;
+    max-width: 700px;
+    padding: 10px 15px;
     border: 1px solid #444;
-    border-radius: 20px; /* Rounded corners */
-    box-sizing: border-box; /* Include padding/border in element's total width/height */
-    display: block; /* Needed for height adjustments */
-    min-height: 42px; /* Set minimum height (approx 1 row + padding) */
-    max-height: 25vh; /* Limit growth to 1/4 viewport height */
-    /* Appearance */
-    background-color: #2c2c2c; /* Dark input background */
-    color: #e0e0e0; /* Light text */
-    outline: none; /* Remove default focus outline */
-    /* Font & Text */
-    font-family: inherit; /* Use body font (Roboto) */
-    font-size: 1rem; /* Standard font size */
-    line-height: 1.4; /* Spacing for multi-line text */
-    white-space: pre-wrap; /* Allow wrapping and preserve typed newlines */
-    overflow-wrap: break-word; /* Break long words */
-    /* Behavior */
-    resize: none; /* Disable manual user resizing handle */
-    overflow-y: auto; /* Show scrollbar only when max-height is reached */
+    border-radius: 20px;
+    box-sizing: border-box;
+    display: block;
+    min-height: 42px;
+    max-height: 25vh;
+    background-color: #2c2c2c;
+    color: #e0e0e0;
+    outline: none;
+    font-family: inherit;
+    font-size: 1rem;
+    line-height: 1.4;
+    white-space: pre-wrap;
+    overflow-wrap: break-word;
+    resize: none;
+    overflow-y: auto;
 }
-/* Placeholder text style */
 #message-input::placeholder {
-    color: #888; /* Grey placeholder */
+    color: #888;
 }
-/* Focus style */
 #message-input:focus {
-    border-color: #4a90e2; /* Blue border on focus */
-    box-shadow: 0 0 0 2px rgba(74, 144, 226, 0.3); /* Subtle blue glow */
+    border-color: #4a90e2;
+    box-shadow: 0 0 0 2px rgba(74, 144, 226, 0.3);
 }
 
 /* Send Button Styling */
 #send-button {
     padding: 10px 20px;
-    background-color: #007bff; /* Blue background */
+    background-color: #007bff;
     color: white;
     border: none;
-    border-radius: 20px; /* Match input rounding */
+    border-radius: 20px;
     cursor: pointer;
     font-size: 1rem;
-    transition: background-color 0.2s ease; /* Smooth hover */
-    flex-shrink: 0; /* Prevent shrinking */
-    align-self: flex-end; /* Align to bottom */
-    margin-bottom: 8px; /* Fine-tune vertical alignment */
+    transition: background-color 0.2s ease;
+    flex-shrink: 0;
+    align-self: flex-end;
+    margin-bottom: 8px;
 }
-/* Disabled state */
 #send-button:disabled {
-    background-color: #004a9e; /* Darker blue */
+    background-color: #004a9e;
     cursor: not-allowed;
-    opacity: 0.7; /* Slightly faded */
+    opacity: 0.7;
 }
-/* Hover state (when not disabled) */
 #send-button:hover:not(:disabled) {
-    background-color: #0056b3; /* Darker blue on hover */
+    background-color: #0056b3;
 }
 
 
 /* Utility class to hide elements */
 .hidden {
-    display: none !important; /* Force override display */
+    display: none !important;
 }
 
 
 /* --- Responsive adjustments --- */
 @media (max-width: 850px) {
-     /* On medium screens, allow history/input to take more width */
      #chat-history { max-width: 95%; }
      #message-input { max-width: none; }
      #image-preview-container > div { max-width: 95%; }
-     #chat-form { padding: 15px; gap: 8px;} /* Adjust form padding/gap */
+     #chat-form { padding: 15px; gap: 8px;}
 }
 
 @media (max-width: 600px) {
-    /* On small screens, further reduce sizes/padding */
     h1 { font-size: 1.2rem; padding: 12px 15px; }
     #chat-container { padding: 10px; }
     #chat-history { gap: 12px; }
@@ -433,4 +450,9 @@ h1 {
     #loading, #error { max-width: 95%; font-size: 0.9rem; }
     #image-preview { max-height: 60px; }
     #remove-image-button { width: 20px; height: 20px; font-size: 14px; line-height: 18px; top: -4px; right: -4px;}
+    /* Adjust PDF preview font size on small screens */
+    #image-preview-container.pdf-mode > div::before {
+        font-size: 0.8em;
+        padding: 8px 12px;
+    }
 }
