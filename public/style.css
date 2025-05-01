@@ -20,7 +20,7 @@ body {
     flex-direction: column; /* Stack content vertically */
     height: 100vh; /* Fallback for older browsers */
     height: -webkit-fill-available; /* Fallback for iOS/WebKit */
-    height: 100dvh; /* <<< SOLUTION 1: Use dynamic viewport height if supported */
+    height: 100dvh; /* Use dynamic viewport height if supported */
     overflow: hidden; /* Prevent body itself from scrolling */
 }
 
@@ -44,6 +44,7 @@ h1 {
     font-weight: 500; /* Medium weight */
     border-bottom: 1px solid #333; /* Separator line */
     /* This element will scroll with the content */
+    flex-shrink: 0; /* Prevent shrinking when content is short */
 }
 
 /* Chat Container (Inside scrollable area) */
@@ -51,6 +52,10 @@ h1 {
     /* No flex-grow or overflow needed, handled by #main-content-area */
     padding: 20px; /* Spacing around chat history */
     width: 100%;
+    flex-grow: 1; /* Allow chat container to take remaining space for scrolling */
+    display: flex; /* Helps manage child positioning */
+    flex-direction: column; /* Stack history */
+    justify-content: flex-end; /* Align history to bottom initially? Or let it grow naturally? Natural is better */
 }
 
 /* Chat History (Holds the message bubbles) */
@@ -62,6 +67,7 @@ h1 {
     max-width: 800px; /* Limit content width */
     margin: 0 auto; /* Center the history horizontally */
     padding-bottom: 10px; /* Space at the very end of the scroll */
+    /* Remove align-self if needed */
 }
 
 /* Individual Message Bubble Styling */
@@ -74,12 +80,14 @@ h1 {
     display: flex; /* Use flex for internal alignment if needed */
     flex-direction: column; /* Stack image/text/suggestions */
     gap: 8px; /* Space between stacked items */
+    word-break: break-word; /* Ensure long words break */
 }
 
 /* Paragraphs within messages */
 .message p {
     margin: 0; /* Remove default margins */
     overflow-wrap: break-word; /* Ensure wrapping */
+    word-break: break-word; /* More aggressive breaking if needed */
 }
 
 /* User message specific styles */
@@ -103,16 +111,6 @@ h1 {
     border-bottom-left-radius: 5px; /* Slightly flattened corner */
 }
 
-/* Styling for Images within Messages */
-.message img.message-image {
-    max-width: 100%; /* Don't exceed bubble width */
-    max-height: 300px; /* Limit image display height */
-    border-radius: 10px; /* Rounded corners */
-    object-fit: contain; /* Scale while preserving aspect ratio */
-    cursor: pointer; /* Hint that it might be interactive */
-    margin-top: 5px; /* Space above if text is also present */
-}
-
 /* --- Google Search Suggestion Styling (Minimal Wrapper Only) --- */
 /* Container for Google's renderedContent */
 .search-suggestion-container {
@@ -133,14 +131,16 @@ h1 {
     margin-top: 8px;
     margin-bottom: 8px;
     white-space: pre; /* Preserve whitespace strictly */
+    max-width: 100%; /* Ensure pre doesn't overflow bubble */
 }
 /* Styling for inline and block code */
 .message code {
     font-family: Consolas, Monaco, 'Andale Mono', 'Ubuntu Mono', monospace; /* Monospace font stack */
     font-size: 0.9em; /* Slightly smaller font */
+    word-break: break-all; /* Break long code lines aggressively if needed */
 }
 /* Styling for inline code snippets within paragraphs */
-.message p > code {
+.message p > code, .message li > code {
     background-color: rgba(255, 255, 255, 0.1); /* Subtle inline background */
     padding: 0.2em 0.4em;
     border-radius: 3px;
@@ -152,6 +152,8 @@ h1 {
     padding: 0;
     font-size: inherit; /* Inherit size from pre */
     border-radius: 0;
+    white-space: inherit; /* Inherit whitespace handling from pre */
+    word-break: normal; /* Let pre handle wrapping/scrolling */
 }
 /* Styling for lists */
 .message ul, .message ol {
@@ -176,11 +178,11 @@ h1 {
     margin: 0; /* Reset paragraph margin inside blockquote */
 }
 /* Styling for links in regular markdown text */
-.message p a {
+.message p a, .message li a {
     color: #64b5f6; /* Light blue link color */
     text-decoration: underline;
 }
-.message p a:hover {
+.message p a:hover, .message li a:hover {
     color: #90caf9; /* Lighter blue on hover */
 }
 /* Styling for headings */
@@ -224,40 +226,79 @@ h1 {
     border-radius: 4px;
     border: 1px solid rgba(255, 77, 77, 0.3); /* Faint red border */
     padding: 10px 15px;
+    font-style: normal; /* Errors shouldn't be italic */
+    word-break: break-word; /* Ensure error message wraps */
 }
 
 
-/* Image Preview Area Styling (Fixed below scroll area) */
-#image-preview-container {
+/* --- File Preview Area Styling (UPDATED for generic file preview) --- */
+#file-preview-container { /* Renamed ID */
     background-color: #1f1f1f;
-    /* Border handled conditionally with form below */
     padding: 8px 20px;
-    display: flex; /* Used for centering internal div */
+    display: flex;
     justify-content: center;
     align-items: center;
-    position: relative; /* For remove button positioning */
-    flex-shrink: 0; /* Prevent shrinking */
+    position: relative;
+    flex-shrink: 0;
     width: 100%;
 }
 /* Inner div for positioning remove button */
-#image-preview-container > div {
+#file-preview-content { /* New ID */
     position: relative;
     display: inline-block; /* Allows centering via text-align on parent */
-    max-width: 750px; /* Limit width */
+    max-width: 750px;
     margin: 0 auto; /* Center */
     line-height: 0; /* Prevent extra space below image */
+    min-height: 30px; /* Give it some base height */
+    display: flex; /* Use flex to align PDF items nicely */
+    align-items: center;
 }
 /* The preview image */
-#image-preview {
-    display: block;
-    max-height: 80px; /* Limit preview height */
+#file-preview-image { /* Renamed ID */
+    display: block; /* Ensure it behaves like a block element */
+    max-height: 80px;
     max-width: 100%;
     border-radius: 6px;
     object-fit: contain;
     border: 1px solid #444;
 }
-/* The 'x' button to remove image */
-#remove-image-button {
+#file-preview-image.hidden { /* Utility to hide */
+    display: none;
+}
+
+/* --- NEW: PDF Preview Specific Styles --- */
+#file-preview-pdf {
+    display: flex; /* Default display type when not hidden */
+    align-items: center;
+    gap: 8px;
+    padding: 5px 10px;
+    border: 1px solid #444;
+    border-radius: 6px;
+    background-color: #2c2c2c;
+    max-width: 100%; /* Prevent overflow */
+    box-sizing: border-box; /* Include padding/border in width */
+}
+#file-preview-pdf.hidden { /* Utility to hide */
+    display: none;
+}
+.pdf-icon {
+    font-size: 1.5em;
+    color: #ccc;
+    line-height: 1; /* Adjust icon line height */
+}
+#pdf-filename {
+    font-size: 0.9em;
+    color: #e0e0e0;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    line-height: 1.3; /* Normal text line height */
+    max-width: 300px; /* Limit filename display width */
+}
+/* --- END PDF Preview Styles --- */
+
+/* The 'x' button to remove file */
+#remove-file-button { /* Renamed ID */
     position: absolute;
     top: -5px; /* Position overlap */
     right: -5px; /* Position overlap */
@@ -275,7 +316,7 @@ h1 {
     padding: 0;
     transition: background-color 0.2s, color 0.2s; /* Smooth hover */
 }
-#remove-image-button:hover {
+#remove-file-button:hover {
     background-color: rgba(255, 77, 77, 0.8); /* Reddish on hover */
     color: white;
     border-color: rgba(255, 77, 77, 0.9);
@@ -287,19 +328,17 @@ h1 {
     display: flex;
     align-items: flex-end; /* Align items to bottom edge */
     padding: 15px 20px;
-    /* Border handled conditionally below */
     background-color: #1f1f1f; /* Match header/preview background */
     flex-shrink: 0; /* Prevent shrinking */
     width: 100%;
     justify-content: center; /* Center items horizontally */
     gap: 10px; /* Space between attach, input, send */
+    border-top: 1px solid #333; /* Default top border */
 }
 /* Conditional border-top for form based on preview visibility */
-#image-preview-container.hidden + #chat-form {
-    border-top: 1px solid #333; /* Add border if preview is hidden */
-}
-#image-preview-container:not(.hidden) + #chat-form {
-    border-top: none; /* Remove border if preview is visible (preview has border) */
+/* Remove border if preview is visible (it provides separation) */
+#file-preview-container:not(.hidden) + #chat-form { /* Updated ID */
+    border-top: none;
 }
 
 
@@ -320,7 +359,7 @@ h1 {
 #attach-button:hover {
     color: #ddd; /* Lighter grey on hover */
 }
-/* Style when an image is attached */
+/* Style when an file is attached */
 #attach-button.has-file {
     color: #64b5f6; /* Blue when file selected */
 }
@@ -350,7 +389,7 @@ h1 {
     overflow-wrap: break-word; /* Break long words */
     /* Behavior */
     resize: none; /* Disable manual user resizing handle */
-    overflow-y: auto; /* Show scrollbar only when max-height is reached */
+    overflow-y: hidden; /* Default: hide scrollbar, adjust in JS */
 }
 /* Placeholder text style */
 #message-input::placeholder {
@@ -374,7 +413,9 @@ h1 {
     transition: background-color 0.2s ease; /* Smooth hover */
     flex-shrink: 0; /* Prevent shrinking */
     align-self: flex-end; /* Align to bottom */
-    margin-bottom: 8px; /* Fine-tune vertical alignment */
+    /* margin-bottom: 8px; Fine-tune vertical alignment */
+    height: 42px; /* Match min-height of textarea */
+    line-height: 1.4; /* Align text vertically */
 }
 /* Disabled state */
 #send-button:disabled {
@@ -394,12 +435,59 @@ h1 {
 }
 
 
+/* --- User Message Attachment Preview Styles --- */
+.user-message .attachment-preview {
+    margin-top: 8px; /* Space between text and attachment */
+    padding: 5px 10px;
+    border-radius: 8px;
+    background-color: rgba(255, 255, 255, 0.1); /* Subtle bg */
+    display: inline-flex; /* Keep content tight */
+    align-items: center; /* Align icon/text/image vertically */
+    gap: 6px; /* Space between elements if multiple */
+    max-width: 100%; /* Don't overflow message bubble */
+    border: 1px solid rgba(255, 255, 255, 0.2); /* Subtle border */
+    box-sizing: border-box;
+}
+
+/* Style for image inside the preview container */
+.user-message .attachment-preview img.message-image {
+    max-height: 150px; /* Smaller preview in chat */
+    max-width: 100%; /* Respect container width */
+    margin: 0; /* Remove default margin */
+    display: block; /* Ensure it behaves like a block */
+    border-radius: 4px; /* Slight rounding */
+}
+
+/* Style for PDF info inside the preview container */
+.user-message .attachment-preview .pdf-info {
+    display: flex; /* Use flex for icon and text */
+    align-items: center;
+    gap: 6px;
+}
+
+.user-message .attachment-preview .pdf-icon {
+    font-size: 1.2em;
+    color: #eee; /* Light color for icon */
+    line-height: 1;
+}
+
+.user-message .attachment-preview .pdf-filename-display {
+    font-size: 0.9em;
+    color: #eee; /* Light color for text */
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 200px; /* Limit filename width in bubble */
+}
+/* --- END User Message Attachment Styles --- */
+
+
 /* --- Responsive adjustments --- */
 @media (max-width: 850px) {
      /* On medium screens, allow history/input to take more width */
      #chat-history { max-width: 95%; }
      #message-input { max-width: none; }
-     #image-preview-container > div { max-width: 95%; }
+     #file-preview-content { max-width: 95%; } /* Updated ID */
      #chat-form { padding: 15px; gap: 8px;} /* Adjust form padding/gap */
 }
 
@@ -411,9 +499,16 @@ h1 {
     .message { max-width: 90%; font-size: 0.95rem; padding: 8px 12px; }
     #chat-form { padding: 10px; gap: 5px; }
     #message-input { padding: 8px 12px; font-size: 0.95rem; min-height: 38px; }
-    #send-button { padding: 8px 15px; font-size: 0.95rem; margin-bottom: 6px;}
+    #send-button { padding: 8px 15px; font-size: 0.95rem; height: 38px; /* Match smaller textarea */}
     #attach-button { font-size: 1.3rem; padding: 0 3px; margin-bottom: 8px;}
     #loading, #error { max-width: 95%; font-size: 0.9rem; }
-    #image-preview { max-height: 60px; }
-    #remove-image-button { width: 20px; height: 20px; font-size: 14px; line-height: 18px; top: -4px; right: -4px;}
+    #file-preview-image { max-height: 60px; } /* Updated ID */
+    #file-preview-pdf { padding: 4px 8px; gap: 5px; } /* Adjust PDF preview */
+    #pdf-filename { font-size: 0.8em; max-width: 150px; } /* Smaller filename */
+    .pdf-icon { font-size: 1.3em; }
+    #remove-file-button { width: 20px; height: 20px; font-size: 14px; line-height: 18px; top: -4px; right: -4px;} /* Updated ID */
+
+    /* Adjust attachment preview on small screens */
+    .user-message .attachment-preview img.message-image { max-height: 100px; }
+    .user-message .attachment-preview .pdf-filename-display { max-width: 150px; }
 }
