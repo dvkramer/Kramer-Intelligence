@@ -118,6 +118,10 @@ function handleSendButtonClick() { handleSendMessage(); }
 // --- END Input Handling ---
 
 // --- File Handling Functions ---
+
+// **************************************************
+// START MODIFIED SECTION for processSelectedFile
+// **************************************************
 function processSelectedFile(file) {
     if (!file) return false;
 
@@ -142,20 +146,29 @@ function processSelectedFile(file) {
     const reader = new FileReader();
 
     reader.onload = (e) => {
-        selectedFileBase64 = e.target.result; // This is the Data URL (e.g., data:image/png;base64,...)
+        selectedFileBase64 = e.target.result; // Data URL
         selectedFile = file;
         selectedFileType = isImage ? 'image' : 'pdf';
 
-        // Update UI based on type
+        // --- MINIMAL CHANGE START ---
+        // Configure the preview based on type
         if (isImage) {
-            imagePreview.src = selectedFileBase64;
-            imagePreviewContainer.classList.remove('hidden'); // Show image preview
+            imagePreview.src = selectedFileBase64; // Show actual image
+            imagePreview.alt = `Image Preview: ${file.name}`;
+            imagePreview.title = `Selected Image: ${file.name}`;
         } else { // For PDF
-            imagePreview.src = '#'; // Clear any previous image src
-            imagePreviewContainer.classList.add('hidden'); // Hide the image preview area
-            // Optionally display PDF filename near attach button or input? For minimal change, rely on button state.
+            // Show a generic PDF icon instead of hiding the preview
+            imagePreview.src = '/icons/pdf-icon.png'; // <<< PATH TO YOUR PDF ICON
+            imagePreview.alt = `PDF Preview: ${file.name}`; // Alt text for accessibility
+            imagePreview.title = `Selected PDF: ${file.name}`; // Tooltip with filename
+            // We no longer hide the container for PDFs
         }
-        attachButton.classList.add('has-file'); // Indicate *some* file is attached
+
+        // Common UI updates: Show the preview container and update attach button
+        imagePreviewContainer.classList.remove('hidden'); // Show preview area for BOTH types
+        attachButton.classList.add('has-file');         // Indicate *some* file is attached
+        // --- MINIMAL CHANGE END ---
+
         console.log(`${selectedFileType.toUpperCase()} processed: ${file.name}`);
     };
 
@@ -168,6 +181,10 @@ function processSelectedFile(file) {
     reader.readAsDataURL(file); // Read as Data URL for both types
     return true; // Indicates processing started
 }
+// **************************************************
+// END MODIFIED SECTION for processSelectedFile
+// **************************************************
+
 
 function handleFileSelect(event) {
     const file = event.target.files[0];
