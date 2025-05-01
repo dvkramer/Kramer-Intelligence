@@ -12,11 +12,11 @@ function getBase64Data(dataUrl) {
 // --- Configuration ---
 // Define the models to try, in order of preference
 const MODELS_TO_TRY = [
-	'gemini-2.0-flash',
-	'gemini-2.5-flash-preview-04-17'
+	'gemini-2.5-flash-preview-04-17',
+	'gemini-2.0-flash'
 ];
-const MAX_FILE_SIZE_MB = 15; // Max size for inline upload (images *and* PDFs) - Gemini has ~20MB request limit
-const MAX_TOKENS = 1000000; // Define a maximum token limit for the context window (set to 1 million)
+const MAX_FILE_SIZE_MB = 15; // Max size for inline upload
+const MAX_TOKENS = 1000000; // Max context window tokens
 // --- End Configuration ---
 
 
@@ -40,18 +40,17 @@ export default async function handler(req, res) {
     }
 
     // --- Get history from request body ---
-    const { history } = req.body; // History now contains objects with parts arrays
+    const { history } = req.body;
 
     if (!history || !Array.isArray(history)) {
         return res.status(400).json({ error: 'Invalid request body: Missing/invalid "history".' });
     }
 
-    // --- MODIFIED: Process history to format for Gemini API ---
-    // (Keep your existing history processing logic exactly as it was)
+    // --- Process history to format for Gemini API ---
     const processedContents = history.map(message => {
         if (!message.role || !Array.isArray(message.parts)) {
             console.warn("Skipping invalid message structure in history:", message);
-            return null; // Or handle error more strictly
+            return null;
         }
         const processedParts = message.parts.map(part => {
             if (part.text) {
@@ -60,236 +59,276 @@ export default async function handler(req, res) {
                 const base64Data = getBase64Data(part.inlineData.data);
                 if (!base64Data) {
                      console.error("Failed to extract base64 data for part:", part);
-                     return null; // Skip this invalid part
+                     return null;
                 }
-                 // Gemini API expects just the base64 string for inlineData
                 return {
                     inlineData: {
                         mimeType: part.inlineData.mimeType,
-                        data: base64Data // Use ONLY the base64 data part
+                        data: base64Data
                     }
                 };
             } else {
                  console.warn("Skipping invalid part structure:", part);
-                 return null; // Skip invalid parts
+                 return null;
             }
-        }).filter(part => part !== null); // Remove any null parts resulting from errors
+        }).filter(part => part !== null);
 
         if (processedParts.length > 0) {
             return { role: message.role, parts: processedParts };
         } else {
-            return null; // Skip messages that ended up with no valid parts
+            return null;
         }
-    }).filter(content => content !== null); // Remove any null messages
+    }).filter(content => content !== null);
 
     if (processedContents.length === 0 && history.length > 0) {
          return res.status(400).json({ error: 'Failed to process message history parts.' });
     }
-    // --- END MODIFIED ---
+    // --- END History Processing ---
 
 
-    // --- Generate System Prompt with Current Date --- START DATE ADDITION ---
+    // --- Generate System Prompt with Current Date ---
     const baseSystemPrompt = "You are Kramer Intelligence, an advanced AI assistant developed by Daniel Vincent Kramer.";
-
-    // Get current date on the server (likely UTC on Vercel)
     const today = new Date();
-    const dateOptions = {
-        weekday: 'long',
-        year: 'numeric',
-        month: 'long',
-        day: 'numeric',
-        // timeZone: 'UTC' // Optional: Uncomment if you want to force UTC explicitly
-    };
-    // Format the date (e.g., "Friday, April 26, 2024")
-    const formattedDate = today.toLocaleDateString('en-US', dateOptions); // Using 'en-US' locale for consistency
-
-    // Combine base prompt with the date information
+    const dateOptions = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' };
+    const formattedDate = today.toLocaleDateString('en-US', dateOptions);
     const systemPrompt = `${baseSystemPrompt} Today's date is ${formattedDate}.`;
-    // --- END DATE ADDITION ---
+    // --- END System Prompt ---
 
 
     // --- Initialize variables for the fallback loop ---
     let googleData = null;
-    let googleResponse = null; // Store the last response object
-    let lastErrorData = null; // Store the error details from the last failed attempt
-    let successfulModel = null; // Keep track of which model succeeded
+    let googleResponse = null;
+    let lastErrorData = null;
+    let successfulModel = null;
 
-    // --- NEW: Count tokens and truncate history BEFORE generateContent ---
+    // --- Token Counting and Truncation ---
+    // (Keeping this section as is - it already has good logging)
     try {
-        if (processedContents.length > 0) { // Only count if there's history
-            const firstModel = MODELS_TO_TRY[0]; // Use the preferred model for counting
+        if (processedContents.length > 0) {
+            const firstModel = MODELS_TO_TRY[0];
             const countTokensUrl = `https://generativelanguage.googleapis.com/v1beta/models/${firstModel}:countTokens?key=${apiKey}`;
             let currentTokenCount = 0;
-
-            // Function to get token count for current history
             const getTokenCount = async (contentsToCount) => {
                 if (!contentsToCount || contentsToCount.length === 0) return 0;
-                const countResponse = await fetch(countTokensUrl, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ contents: contentsToCount }),
-                });
-                if (!countResponse.ok) {
-                    const errorData = await countResponse.json().catch(() => ({}));
-                    console.warn(`Token count API failed (${countResponse.status}):`, errorData.error?.message || 'Unknown counting error');
-                    return -1; // Indicate error
+                try {
+                    const countResponse = await fetch(countTokensUrl, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ contents: contentsToCount }),
+                    });
+                    if (!countResponse.ok) {
+                        const errorData = await countResponse.json().catch(() => ({}));
+                        console.warn(`Token count API failed (${countResponse.status}):`, errorData.error?.message || 'Unknown counting error');
+                        return -1;
+                    }
+                    const countData = await countResponse.json();
+                    return countData.totalTokens;
+                } catch (countFetchError) {
+                     console.warn("Fetch error during token count:", countFetchError.message);
+                     return -1;
                 }
-                const countData = await countResponse.json();
-                return countData.totalTokens;
             };
-
-            // Initial count
             currentTokenCount = await getTokenCount(processedContents);
             console.log(`Initial token count: ${currentTokenCount} (Limit: ${MAX_TOKENS})`);
-
             if (currentTokenCount === -1) {
                 console.warn("Proceeding without history truncation due to token count error.");
             } else {
-                // Truncation loop
                 let iterations = 0;
-                const maxIterations = Math.ceil(processedContents.length / 2) + 1; // Safety break
-
+                const maxIterations = Math.ceil(processedContents.length / 2) + 1;
                 while (currentTokenCount > MAX_TOKENS && processedContents.length >= 2 && iterations < maxIterations) {
                     console.log(`Token count ${currentTokenCount} exceeds limit ${MAX_TOKENS}. Truncating...`);
-                    processedContents.shift(); // Remove oldest user message
-                    processedContents.shift(); // Remove oldest model message
-                    // Optimization: Check length before potentially expensive API call
+                    processedContents.shift(); processedContents.shift();
                     if (processedContents.length < 2) break;
-                    currentTokenCount = await getTokenCount(processedContents); // Recalculate
+                    currentTokenCount = await getTokenCount(processedContents);
                     console.log(`New token count after truncation: ${currentTokenCount}`);
-                    if (currentTokenCount === -1) {
-                         console.warn("Token count failed during truncation. Stopping truncation.");
-                         break; // Exit loop on error
-                    }
+                    if (currentTokenCount === -1) { console.warn("Token count failed during truncation. Stopping truncation."); break; }
                     iterations++;
                 }
-                if (iterations >= maxIterations && currentTokenCount > MAX_TOKENS) {
-                     console.warn("Truncation loop hit max iterations, history might still exceed token limit.");
-                } else if (currentTokenCount > MAX_TOKENS && processedContents.length < 2) {
-                     console.warn(`History still exceeds token limit (${currentTokenCount}), but cannot truncate further.`);
-                }
+                if (iterations >= maxIterations && currentTokenCount > MAX_TOKENS) { console.warn("Truncation loop hit max iterations, history might still exceed token limit."); }
+                 else if (currentTokenCount > MAX_TOKENS && processedContents.length < 2) { console.warn(`History still exceeds token limit (${currentTokenCount}), but cannot truncate further.`); }
             }
         }
-
     } catch (truncationError) {
         console.error("Error during history truncation:", truncationError);
-        // Logged and continue, the generateContent call might still fail if too long
     }
     // --- END Token Counting and Truncation ---
 
+    // +++ LOGGING: Log final processed contents before API calls +++
+    console.log("--- Final Processed Contents for API Call ---");
+    // Helper to avoid excessively long base64 logs
+    const loggableContents = processedContents.map(msg => ({
+        ...msg,
+        parts: msg.parts.map(part => {
+            if (part.inlineData && part.inlineData.data?.length > 100) { // Only shorten long data
+                return { ...part, inlineData: { ...part.inlineData, data: part.inlineData.data.substring(0, 50) + "...<omitted>" } };
+            }
+            return part;
+        })
+    }));
+    console.log(JSON.stringify(loggableContents, null, 2));
+    console.log("------------------------------------------");
+
+
     // --- Loop through models and attempt API call ---
     for (const modelName of MODELS_TO_TRY) {
-        console.log(`Attempting API call with model: ${modelName}`);
+        // +++ LOGGING: Log attempt details +++
+        console.log(`--- Attempting Model: ${modelName} ---`);
         const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/${modelName}:generateContent?key=${apiKey}`;
+        console.log(`API URL: ${apiUrl}`); // Log the specific URL being hit
 
         const requestBody = {
             contents: processedContents, // Use potentially truncated history
-            systemInstruction: { parts: [ { text: systemPrompt } ] }, // Use the prompt with the date
+            systemInstruction: { parts: [ { text: systemPrompt } ] },
             tools: [ { googleSearch: {} } ],
-            // generationConfig, safetySettings... could potentially be added here
+            generationConfig: {
+                thinkingConfig: {
+                    includeThoughts: false, // Set to false to hide thought tokens
+                    thinkingBudget: 1000    // Optional budget
+                }
+                // Add other configs like temperature, safetySettings here if needed
+            }
         };
+
+        // +++ LOGGING: Log the request body +++
+        // Stringify with replacer to shorten base64 data in logs
+        const requestBodyString = JSON.stringify(requestBody, (key, value) => {
+             if (key === 'data' && typeof value === 'string' && value.length > 100) {
+                 return value.substring(0, 50) + "...<omitted>";
+             }
+             return value;
+         }, 2); // Pretty print
+        console.log("Request Body Sent:\n", requestBodyString);
 
         try {
             googleResponse = await fetch(apiUrl, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(requestBody),
+                body: JSON.stringify(requestBody), // Send the original, unmodified body
             });
+
+            // +++ LOGGING: Log response status +++
+            console.log(`Response Status for ${modelName}: ${googleResponse.status} ${googleResponse.statusText}`);
 
             if (googleResponse.ok) {
                 googleData = await googleResponse.json();
                 successfulModel = modelName;
+                // +++ LOGGING: Log successful raw response +++
                 console.log(`Success with model: ${successfulModel}`);
+                console.log("Raw Response Data Received:\n", JSON.stringify(googleData, null, 2)); // Log the full response
                 break; // Exit the loop on first successful call
             } else {
                 // API returned an error status (e.g., 4xx, 5xx)
-                console.warn(`Model ${modelName} failed with status: ${googleResponse.status}`);
+                console.warn(`Model ${modelName} failed.`);
                 try {
-                    lastErrorData = await googleResponse.json(); // Try to parse error details
-                    console.warn(`Error details for ${modelName}:`, JSON.stringify(lastErrorData));
+                    lastErrorData = await googleResponse.json();
+                    // +++ LOGGING: Log parsed error details +++
+                    console.warn(`Parsed Error Details for ${modelName}:\n`, JSON.stringify(lastErrorData, null, 2));
+                    if (lastErrorData?.error?.message?.includes('unsupported field')) {
+                         console.warn(`Hint: Model ${modelName} might not support a configured feature (like thinkingConfig).`);
+                    }
                 } catch (parseError) {
-                    // If parsing the error fails, store the raw text
-                    const errorText = await googleResponse.text();
-                    console.warn(`Could not parse error JSON for ${modelName}. Raw response:`, errorText);
+                    const errorText = await googleResponse.text().catch(() => '');
+                    console.warn(`Could not parse error JSON for ${modelName}. Raw Error Response Text:`, errorText || '<empty>');
                     lastErrorData = { error: { message: `API Error: ${googleResponse.status} ${googleResponse.statusText}. Response body was not valid JSON.` } };
                 }
-                // Continue to the next model in the list
             }
         } catch (error) {
-            // Network error or other fetch-related issue
-            console.error(`Fetch error for model ${modelName}:`, error);
+            console.error(`Fetch error for model ${modelName}:`, error.message);
             lastErrorData = { error: { message: `Network or fetch error for ${modelName}: ${error.message}` } };
-            // Ensure googleResponse is null or appropriately handled if fetch itself failed
-            googleResponse = { status: 500, statusText: 'Network Error' }; // Mock response for status code handling later
-            // Continue to the next model
+            googleResponse = { status: 500, statusText: 'Network Error' }; // Mock response
         }
+        console.log(`--- Finished Attempt with Model: ${modelName} ---`);
     } // --- End of model loop ---
 
 
     // --- Process the result (or final error) ---
     try {
-        // If googleData is null after the loop, all models failed
+        // +++ LOGGING: Log which model's result is being processed or if all failed +++
         if (!googleData || !successfulModel) {
             console.error('All models failed. Reporting last encountered error.');
-            const finalStatus = googleResponse?.status || 500; // Use last status or 500
+            console.error("Last Error Data before sending response:", JSON.stringify(lastErrorData, null, 2)); // Log final error
+            const finalStatus = googleResponse?.status || 500;
             let errorMsg = lastErrorData?.error?.message || `API Error: ${finalStatus} ${googleResponse?.statusText || 'Unknown Error'}`;
-
-            // Append specific known error details if helpful
+            // Append specific hints (already present)
             if (lastErrorData?.error?.status === 'FAILED_PRECONDITION') errorMsg += ' (Check API key/billing?)';
-            if (lastErrorData?.error?.message?.includes('400 Bad Request') && lastErrorData?.error?.message?.includes('payload is too large')) errorMsg = `Request too large (image/PDF size or history length). Max file size ~${MAX_FILE_SIZE_MB}MB.`;
-             else if (lastErrorData?.error?.message?.includes('429')) errorMsg += ' (Rate limit exceeded?)'; // Example for rate limit
-            else if (lastErrorData?.error?.code === 400 && lastErrorData?.error?.message?.includes('must be less than or equal to')) errorMsg = `Request failed: History likely exceeds model's token limit even after truncation. ${lastErrorData?.error?.message}`; // Specific token limit error
-
+            if (lastErrorData?.error?.message?.includes('payload is too large')) errorMsg = `Request too large (~${MAX_FILE_SIZE_MB}MB limit).`;
+             else if (lastErrorData?.error?.message?.includes('429')) errorMsg += ' (Rate limit exceeded?)';
+            else if (lastErrorData?.error?.code === 400 && lastErrorData?.error?.message?.includes('must be less than or equal to')) errorMsg = `Request failed: History likely exceeds token limit. ${lastErrorData?.error?.message}`;
+             else if (lastErrorData?.error?.message?.includes('unsupported field')) errorMsg += ` (Check if model supports features like thinkingConfig).`;
 
             return res.status(finalStatus).json({ error: errorMsg });
         }
 
-        // --- SUCCESS: Proceed with processing the successful response from googleData ---
+        // --- SUCCESS: Proceed with processing the successful response ---
+        console.log(`--- Processing Successful Response from Model: ${successfulModel} ---`);
+
         let aiText = null;
         let searchSuggestionHtml = null;
         const candidate = googleData?.candidates?.[0];
+        const usageMetadata = googleData?.usageMetadata;
+        const promptFeedback = googleData?.promptFeedback;
+
+        // +++ LOGGING: Log key parts of the successful response +++
+        console.log("Usage Metadata:", JSON.stringify(usageMetadata, null, 2));
+        console.log("Prompt Feedback:", JSON.stringify(promptFeedback, null, 2));
+        console.log("Selected Candidate for Processing:", JSON.stringify(candidate, null, 2));
 
         if (candidate) {
-            aiText = candidate.content?.parts?.[0]?.text; // Assuming text response is primary
+            // Find first text part, assuming thoughts are excluded by the API when includeThoughts=false
+            const textPart = candidate.content?.parts?.find(part => part.text);
+            aiText = textPart?.text;
+            console.log("Extracted AI Text:", aiText); // Log the final extracted text
+
             const groundingMetadata = candidate.groundingMetadata;
             if (groundingMetadata?.searchEntryPoint?.renderedContent) {
                 searchSuggestionHtml = groundingMetadata.searchEntryPoint.renderedContent;
+                console.log("Extracted Search Suggestion HTML (snippet):", searchSuggestionHtml.substring(0, 100) + "...");
             }
         }
 
         // Check for blocks *after* confirming a candidate exists
-        if (googleData.promptFeedback?.blockReason) {
-            console.warn('Blocked:', googleData.promptFeedback.blockReason);
-            // Return a user-friendly block message
-            return res.status(400).json({ error: `Content blocked by safety settings: ${googleData.promptFeedback.blockReason}` });
+        if (promptFeedback?.blockReason) {
+            console.warn('Prompt Blocked:', promptFeedback.blockReason);
+            return res.status(400).json({ error: `Request blocked by safety settings: ${promptFeedback.blockReason}` });
+        }
+        if (candidate?.finishReason === 'SAFETY') {
+             console.warn('Candidate Blocked for Safety:', candidate.safetyRatings);
+             // You might want to return a generic error or specific safety block message here
+             // Let's be more specific than just "no text found"
+             return res.status(400).json({ error: `Response blocked by safety settings: ${candidate.finishReason}. Check safety ratings in logs.` });
         }
 
-        // Validate the AI response format
+
+        // Validate the AI response format more carefully
         if (typeof aiText !== 'string') {
-            // This case might happen if the model responds but not with text in the expected place
-            // Or if the only part is a tool call response, etc.
+            console.error('Failed to extract valid AI text from the candidate.');
             if (candidate?.content?.parts?.length > 0) {
-                 // If there are parts, but the first isn't text, maybe it's a function call result?
-                 // For now, let's just return an empty string or a placeholder
-                 console.warn('AI response received, but first part was not text:', candidate.content.parts);
-                 aiText = "[Model response did not contain text in the primary position]"; // Placeholder
+                 console.warn('Candidate parts existed but none contained text:', candidate.content.parts);
+                 // Maybe the response was *only* a tool call or something unexpected?
+                 aiText = "[Model response received, but no text content found]";
+            } else if (candidate?.finishReason && candidate.finishReason !== 'STOP') {
+                 // If there are no parts AND a finishReason other than STOP, report that
+                 console.warn(`Candidate finished due to ${candidate.finishReason}, no text content generated.`);
+                 return res.status(500).json({ error: `AI response generation stopped unexpectedly: ${candidate.finishReason}.` });
             } else {
-                 console.error('AI response received, but no valid text content found:', googleData);
-                 return res.status(500).json({ error: 'AI response format error (No text found).' });
+                 // Truly empty or malformed
+                 console.error('AI response structure error: No candidate parts found.', googleData);
+                 return res.status(500).json({ error: 'AI response format error (No valid parts found).' });
             }
         }
 
 
         // --- Send successful response back to client ---
+        console.log("--- Sending successful response to client ---");
         res.status(200).json({
             text: aiText,
             searchSuggestionHtml: searchSuggestionHtml,
-            modelUsed: successfulModel // Optionally include which model succeeded
+            modelUsed: successfulModel
         });
 
     } catch (error) {
-        // Catch any unexpected errors during response processing *after* the fetch loop
-        console.error('Serverless function error after API call:', error);
+        console.error('--- Unexpected error during response processing ---');
+        console.error(error); // Log the full error object
         res.status(500).json({ error: 'Internal server error during response processing.' });
     }
 }
