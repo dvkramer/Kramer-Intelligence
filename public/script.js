@@ -146,28 +146,30 @@ function processSelectedFile(file) {
     const reader = new FileReader();
 
     reader.onload = (e) => {
-        selectedFileBase64 = e.target.result; // Data URL
+        selectedFileBase64 = e.target.result; // Data URL (image or PDF)
         selectedFile = file;
         selectedFileType = isImage ? 'image' : 'pdf';
 
-        // --- MINIMAL CHANGE START ---
+        // --- MINIMAL CHANGE V2 START (Using SVG Data URL) ---
+        // Define the SVG Data URL for PDF icon
+        const pdfSvgDataUrl = 'data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2064%2064%22%20width%3D%2264%22%20height%3D%2264%22%3E%3Cpath%20fill%3D%22%23E2E2E2%22%20d%3D%22M12%200%20H44%20L56%2012%20V60%20H12%20Z%22%2F%3E%3Cpath%20fill%3D%22%23CFCFCF%22%20d%3D%22M44%200%20L56%2012%20H44%20Z%22%2F%3E%3Ctext%20x%3D%2250%25%22%20y%3D%2275%25%22%20font-family%3D%22sans-serif%22%20font-size%3D%2214%22%20fill%3D%22%23555%22%20text-anchor%3D%22middle%22%20font-weight%3D%22bold%22%3EPDF%3C%2Ftext%3E%3C%2Fsvg%3E';
+
         // Configure the preview based on type
         if (isImage) {
-            imagePreview.src = selectedFileBase64; // Show actual image
+            imagePreview.src = selectedFileBase64; // Show actual image data URL
             imagePreview.alt = `Image Preview: ${file.name}`;
             imagePreview.title = `Selected Image: ${file.name}`;
         } else { // For PDF
-            // Show a generic PDF icon instead of hiding the preview
-            imagePreview.src = '/icons/pdf-icon.png'; // <<< PATH TO YOUR PDF ICON
-            imagePreview.alt = `PDF Preview: ${file.name}`; // Alt text for accessibility
+            // Show the embedded SVG icon instead of an external file
+            imagePreview.src = pdfSvgDataUrl; // <<< USE SVG DATA URL
+            imagePreview.alt = `PDF Icon: ${file.name}`; // Alt text for accessibility
             imagePreview.title = `Selected PDF: ${file.name}`; // Tooltip with filename
-            // We no longer hide the container for PDFs
         }
 
         // Common UI updates: Show the preview container and update attach button
         imagePreviewContainer.classList.remove('hidden'); // Show preview area for BOTH types
         attachButton.classList.add('has-file');         // Indicate *some* file is attached
-        // --- MINIMAL CHANGE END ---
+        // --- MINIMAL CHANGE V2 END ---
 
         console.log(`${selectedFileType.toUpperCase()} processed: ${file.name}`);
     };
@@ -178,7 +180,7 @@ function processSelectedFile(file) {
         handleRemoveFile(); // Clear selection on error
     };
 
-    reader.readAsDataURL(file); // Read as Data URL for both types
+    reader.readAsDataURL(file); // Read as Data URL for both types (needed for sending)
     return true; // Indicates processing started
 }
 // **************************************************
@@ -236,7 +238,7 @@ function handleRemoveFile() {
     selectedFile = null;
     selectedFileBase64 = null;
     selectedFileType = null;
-    imagePreview.src = '#'; // Clear preview src
+    imagePreview.src = '#'; // Clear preview src (removes image or SVG)
     imagePreviewContainer.classList.add('hidden'); // Hide preview container
     resetFileInput(); // Clear the actual file input element
     attachButton.classList.remove('has-file'); // Update attach button style
