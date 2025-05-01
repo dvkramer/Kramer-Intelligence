@@ -11,22 +11,16 @@
     <!-- End SEO Meta Tags -->
 
     <!-- Favicon Links - START -->
-    <!-- Modern browsers use rel="icon" and the 'sizes' attribute -->
     <link rel="icon" href="/icons/icon-192x192.png" type="image/png" sizes="192x192">
     <link rel="icon" href="/icons/icon-600x600.png" type="image/png" sizes="600x600">
-
-    <!-- Apple Touch Icon (iOS homescreen icon) -->
-    <!-- Use the largest available size for best quality on high-res iOS devices -->
     <link rel="apple-touch-icon" href="/icons/icon-600x600.png">
     <!-- Favicon Links - END -->
 
     <!-- PWA: Link Manifest -->
-    <!-- Make sure your manifest.json ALSO lists these icons -->
     <link rel="manifest" href="/manifest.json">
 
     <!-- PWA: Theme Color -->
     <meta name="theme-color" content="#1f1f1f">
-
 
     <!-- Your other links -->
     <link rel="stylesheet" href="style.css">
@@ -54,15 +48,16 @@
     </div>
     <!-- END NEW WRAPPER -->
 
-
     <div id="loading" class="hidden">Thinking...</div>
     <div id="error" class="hidden"></div>
 
     <!-- Image Preview Area (Stays outside the main scroll area) -->
-    <!-- Only shown for images, hidden for PDFs -->
+    <!-- Shown for images OR PDFs now -->
     <div id="image-preview-container" class="hidden">
-        <div>
-             <img id="image-preview" src="#" alt="Image preview"/>
+        <div>  <!-- Inner div for positioning -->
+             <img id="image-preview" src="#" alt="File preview"/>
+             <!-- <<< ADDED SPAN FOR PDF FILENAME >>> -->
+             <span id="pdf-filename-preview"></span>
              <button id="remove-image-button" title="Remove file">×</button>
         </div>
     </div>

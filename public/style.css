@@ -137,291 +137,170 @@ h1 {
 /* --- End Search Suggestion Styling --- */
 
 /* --- Markdown Element Styling --- */
-/* Styling for code blocks */
 .message pre {
-    background-color: rgba(0, 0, 0, 0.2); /* Darker background for code */
-    padding: 10px;
-    border-radius: 4px;
-    overflow-x: auto; /* Allow horizontal scrolling for long lines */
-    border: 1px solid #444;
-    margin-top: 8px;
-    margin-bottom: 8px;
-    white-space: pre; /* Preserve whitespace strictly */
+    background-color: rgba(0, 0, 0, 0.2); padding: 10px; border-radius: 4px; overflow-x: auto; border: 1px solid #444; margin-top: 8px; margin-bottom: 8px; white-space: pre;
 }
-/* Styling for inline and block code */
 .message code {
-    font-family: Consolas, Monaco, 'Andale Mono', 'Ubuntu Mono', monospace; /* Monospace font stack */
-    font-size: 0.9em; /* Slightly smaller font */
+    font-family: Consolas, Monaco, 'Andale Mono', 'Ubuntu Mono', monospace; font-size: 0.9em;
 }
-/* Styling for inline code snippets within paragraphs */
 .message p > code {
-    background-color: rgba(255, 255, 255, 0.1); /* Subtle inline background */
-    padding: 0.2em 0.4em;
-    border-radius: 3px;
-    font-size: 0.85em;
+    background-color: rgba(255, 255, 255, 0.1); padding: 0.2em 0.4em; border-radius: 3px; font-size: 0.85em;
 }
-/* Reset background for code inside pre blocks */
 .message pre code {
-    background-color: transparent;
-    padding: 0;
-    font-size: inherit; /* Inherit size from pre */
-    border-radius: 0;
+    background-color: transparent; padding: 0; font-size: inherit; border-radius: 0;
 }
-/* Styling for lists */
 .message ul, .message ol {
-    padding-left: 25px; /* Indentation */
-    margin-top: 8px;
-    margin-bottom: 8px;
+    padding-left: 25px; margin-top: 8px; margin-bottom: 8px;
 }
 .message li {
-    margin-bottom: 4px; /* Space between list items */
+    margin-bottom: 4px;
 }
-/* Styling for blockquotes */
 .message blockquote {
-    border-left: 3px solid #555; /* Left border */
-    padding-left: 10px; /* Indentation */
-    margin-left: 0;
-    margin-top: 8px;
-    margin-bottom: 8px;
-    color: #bbb; /* Lighter text color */
-    font-style: italic;
+    border-left: 3px solid #555; padding-left: 10px; margin-left: 0; margin-top: 8px; margin-bottom: 8px; color: #bbb; font-style: italic;
 }
-.message blockquote p {
-    margin: 0; /* Reset paragraph margin inside blockquote */
-}
-/* Styling for links in regular markdown text */
-.message p a {
-    color: #64b5f6; /* Light blue link color */
-    text-decoration: underline;
-}
-.message p a:hover {
-    color: #90caf9; /* Lighter blue on hover */
-}
-/* Styling for headings */
-.message h1, .message h2, .message h3, .message h4, .message h5, .message h6 {
-    margin-top: 1em;
-    margin-bottom: 0.5em;
-    font-weight: 500; /* Medium weight */
-    color: #ffffff; /* White headings */
-}
+.message blockquote p { margin: 0; }
+.message p a { color: #64b5f6; text-decoration: underline; }
+.message p a:hover { color: #90caf9; }
+.message h1, .message h2, .message h3, .message h4, .message h5, .message h6 { margin-top: 1em; margin-bottom: 0.5em; font-weight: 500; color: #ffffff; }
 .message h1 { font-size: 1.5em; }
 .message h2 { font-size: 1.3em; }
 .message h3 { font-size: 1.15em; }
 .message h4 { font-size: 1em; }
 .message h5 { font-size: 0.9em; }
-.message h6 { font-size: 0.85em; color: #ccc; } /* Smaller, lighter H6 */
-/* Styling for horizontal rules */
-.message hr {
-    border: 0;
-    border-top: 1px solid #444;
-    margin: 1em 0;
-}
+.message h6 { font-size: 0.85em; color: #ccc; }
+.message hr { border: 0; border-top: 1px solid #444; margin: 1em 0; }
 /* --- End Markdown Element Styling --- */
 
 
-/* Loading / Error Indicators (Positioned below scroll area, above form) */
+/* Loading / Error Indicators */
 #loading, #error {
-    text-align: center;
-    padding: 10px;
-    font-style: italic;
-    color: #aaa; /* Grey italic text */
-    width: 100%;
-    max-width: 800px; /* Align with chat history width */
-    margin: 5px auto; /* Centering and vertical space */
-    flex-shrink: 0; /* Prevent shrinking */
+    text-align: center; padding: 10px; font-style: italic; color: #aaa; width: 100%; max-width: 800px; margin: 5px auto; flex-shrink: 0;
 }
-/* Specific error styling */
 #error {
-    color: #ff4d4d; /* Red error text */
-    font-weight: bold;
-    background-color: rgba(255, 77, 77, 0.1); /* Faint red background */
-    border-radius: 4px;
-    border: 1px solid rgba(255, 77, 77, 0.3); /* Faint red border */
-    padding: 10px 15px;
+    color: #ff4d4d; font-weight: bold; background-color: rgba(255, 77, 77, 0.1); border-radius: 4px; border: 1px solid rgba(255, 77, 77, 0.3); padding: 10px 15px;
 }
 
 
-/* Image Preview Area Styling (Fixed below scroll area) */
-/* This area is ONLY shown for images */
+/* ********************************************* */
+/* <<< MODIFIED SECTION: Image Preview Area >>> */
+/* ********************************************* */
 #image-preview-container {
     background-color: #1f1f1f;
-    /* Border handled conditionally with form below */
     padding: 8px 20px;
-    display: flex; /* Used for centering internal div */
+    display: flex; /* Use flex for centering */
     justify-content: center;
     align-items: center;
     position: relative; /* For remove button positioning */
-    flex-shrink: 0; /* Prevent shrinking */
+    flex-shrink: 0;
     width: 100%;
 }
-/* Inner div for positioning remove button */
+/* Inner div for positioning remove button AND content */
 #image-preview-container > div {
     position: relative;
-    display: inline-block; /* Allows centering via text-align on parent */
+    display: flex; /* <<< CHANGED to flex for icon + text alignment */
+    align-items: center; /* <<< Vertically center icon and text */
+    gap: 10px; /* <<< Space between icon and text */
     max-width: 750px; /* Limit width */
     margin: 0 auto; /* Center */
-    line-height: 0; /* Prevent extra space below image */
 }
-/* The preview image */
+/* The preview image/icon */
 #image-preview {
     display: block;
-    max-height: 80px; /* Limit preview height */
-    max-width: 100%;
-    border-radius: 6px;
+    max-height: 50px; /* <<< REDUCED slightly to make space */
+    max-width: 50px;  /* <<< Optional: limit width for icon */
     object-fit: contain;
     border: 1px solid #444;
+    border-radius: 6px; /* <<< Keep rounded corners */
+    flex-shrink: 0; /* Prevent icon from shrinking */
 }
-/* The 'x' button to remove image */
+
+/* <<< NEW Styles for PDF Filename Preview >>> */
+#pdf-filename-preview {
+    font-size: 0.85em;
+    color: #ccc;
+    white-space: nowrap;         /* Prevent wrapping */
+    overflow: hidden;            /* Hide overflow */
+    text-overflow: ellipsis;     /* Show ... for overflow */
+    max-width: calc(100% - 70px); /* Limit width (adjust based on icon size/gap) */
+    display: none; /* Hidden by default, shown only for PDFs */
+}
+
+/* The 'x' button to remove image/file */
 #remove-image-button {
     position: absolute;
-    top: -5px; /* Position overlap */
-    right: -5px; /* Position overlap */
+    top: -8px; /* Adjust positioning slightly if needed */
+    right: -8px;
     width: 22px;
     height: 22px;
-    background-color: rgba(40, 40, 40, 0.8); /* Semi-transparent dark */
+    background-color: rgba(40, 40, 40, 0.8);
     color: #ccc;
     border: 1px solid #555;
-    border-radius: 50%; /* Circular */
+    border-radius: 50%;
     cursor: pointer;
     font-size: 16px;
     font-weight: bold;
-    line-height: 18px; /* Vertical center 'x' */
+    line-height: 18px;
     text-align: center;
     padding: 0;
-    transition: background-color 0.2s, color 0.2s; /* Smooth hover */
+    transition: background-color 0.2s, color 0.2s;
 }
 #remove-image-button:hover {
-    background-color: rgba(255, 77, 77, 0.8); /* Reddish on hover */
+    background-color: rgba(255, 77, 77, 0.8);
     color: white;
     border-color: rgba(255, 77, 77, 0.9);
 }
+/* ********************************************* */
+/* <<< END MODIFIED SECTION >>> */
+/* ********************************************* */
 
 
-/* Input Form Styling (Fixed at the very bottom) */
+/* Input Form Styling */
 #chat-form {
-    display: flex;
-    align-items: flex-end; /* Align items to bottom edge */
-    padding: 15px 20px;
-    /* Border handled conditionally below */
-    background-color: #1f1f1f; /* Match header/preview background */
-    flex-shrink: 0; /* Prevent shrinking */
-    width: 100%;
-    justify-content: center; /* Center items horizontally */
-    gap: 10px; /* Space between attach, input, send */
+    display: flex; align-items: flex-end; padding: 15px 20px; background-color: #1f1f1f; flex-shrink: 0; width: 100%; justify-content: center; gap: 10px;
 }
-/* Conditional border-top for form based on preview visibility */
-/* Add border if preview is hidden (which it always is for PDFs or no file) */
-#image-preview-container.hidden + #chat-form {
-    border-top: 1px solid #333;
-}
-/* Remove border if preview is visible (only for images) */
-#image-preview-container:not(.hidden) + #chat-form {
-    border-top: none;
-}
+/* Conditional border-top for form */
+#image-preview-container.hidden + #chat-form { border-top: 1px solid #333; }
+#image-preview-container:not(.hidden) + #chat-form { border-top: none; }
 
 
 /* Attach Button Styling */
 #attach-button {
-    background: none;
-    border: none;
-    color: #aaa; /* Default grey */
-    font-size: 1.5rem; /* Icon size */
-    cursor: pointer;
-    padding: 0 5px; /* Minimal padding */
-    line-height: 1; /* Align icon better */
-    transition: color 0.2s; /* Smooth hover */
-    flex-shrink: 0;
-    align-self: flex-end; /* Align to bottom */
-    margin-bottom: 10px; /* Fine-tune vertical alignment with textarea */
+    background: none; border: none; color: #aaa; font-size: 1.5rem; cursor: pointer; padding: 0 5px; line-height: 1; transition: color 0.2s; flex-shrink: 0; align-self: flex-end; margin-bottom: 10px;
 }
-#attach-button:hover {
-    color: #ddd; /* Lighter grey on hover */
-}
-/* Style when an image or PDF is attached */
-#attach-button.has-file {
-    color: #64b5f6; /* Blue when file selected */
-}
+#attach-button:hover { color: #ddd; }
+#attach-button.has-file { color: #64b5f6; }
 
 
 /* Textarea Input Styling */
 #message-input {
-    /* Sizing & Box Model */
-    flex-grow: 1; /* Take up available horizontal space */
-    max-width: 700px; /* Limit width on large screens */
-    padding: 10px 15px; /* Internal spacing */
-    border: 1px solid #444;
-    border-radius: 20px; /* Rounded corners */
-    box-sizing: border-box; /* Include padding/border in element's total width/height */
-    display: block; /* Needed for height adjustments */
-    min-height: 42px; /* Set minimum height (approx 1 row + padding) */
-    max-height: 25vh; /* Limit growth to 1/4 viewport height */
-    /* Appearance */
-    background-color: #2c2c2c; /* Dark input background */
-    color: #e0e0e0; /* Light text */
-    outline: none; /* Remove default focus outline */
-    /* Font & Text */
-    font-family: inherit; /* Use body font (Roboto) */
-    font-size: 1rem; /* Standard font size */
-    line-height: 1.4; /* Spacing for multi-line text */
-    white-space: pre-wrap; /* Allow wrapping and preserve typed newlines */
-    overflow-wrap: break-word; /* Break long words */
-    /* Behavior */
-    resize: none; /* Disable manual user resizing handle */
-    overflow-y: auto; /* Show scrollbar only when max-height is reached */
+    flex-grow: 1; max-width: 700px; padding: 10px 15px; border: 1px solid #444; border-radius: 20px; box-sizing: border-box; display: block; min-height: 42px; max-height: 25vh; background-color: #2c2c2c; color: #e0e0e0; outline: none; font-family: inherit; font-size: 1rem; line-height: 1.4; white-space: pre-wrap; overflow-wrap: break-word; resize: none; overflow-y: auto;
 }
-/* Placeholder text style */
-#message-input::placeholder {
-    color: #888; /* Grey placeholder */
-}
-/* Focus style */
-#message-input:focus {
-    border-color: #4a90e2; /* Blue border on focus */
-    box-shadow: 0 0 0 2px rgba(74, 144, 226, 0.3); /* Subtle blue glow */
-}
+#message-input::placeholder { color: #888; }
+#message-input:focus { border-color: #4a90e2; box-shadow: 0 0 0 2px rgba(74, 144, 226, 0.3); }
 
 /* Send Button Styling */
 #send-button {
-    padding: 10px 20px;
-    background-color: #007bff; /* Blue background */
-    color: white;
-    border: none;
-    border-radius: 20px; /* Match input rounding */
-    cursor: pointer;
-    font-size: 1rem;
-    transition: background-color 0.2s ease; /* Smooth hover */
-    flex-shrink: 0; /* Prevent shrinking */
-    align-self: flex-end; /* Align to bottom */
-    margin-bottom: 8px; /* Fine-tune vertical alignment */
+    padding: 10px 20px; background-color: #007bff; color: white; border: none; border-radius: 20px; cursor: pointer; font-size: 1rem; transition: background-color 0.2s ease; flex-shrink: 0; align-self: flex-end; margin-bottom: 8px;
 }
-/* Disabled state */
-#send-button:disabled {
-    background-color: #004a9e; /* Darker blue */
-    cursor: not-allowed;
-    opacity: 0.7; /* Slightly faded */
-}
-/* Hover state (when not disabled) */
-#send-button:hover:not(:disabled) {
-    background-color: #0056b3; /* Darker blue on hover */
-}
+#send-button:disabled { background-color: #004a9e; cursor: not-allowed; opacity: 0.7; }
+#send-button:hover:not(:disabled) { background-color: #0056b3; }
 
 
 /* Utility class to hide elements */
-.hidden {
-    display: none !important; /* Force override display */
-}
+.hidden { display: none !important; }
 
 
 /* --- Responsive adjustments --- */
 @media (max-width: 850px) {
-     /* On medium screens, allow history/input to take more width */
      #chat-history { max-width: 95%; }
      #message-input { max-width: none; }
      #image-preview-container > div { max-width: 95%; }
-     #chat-form { padding: 15px; gap: 8px;} /* Adjust form padding/gap */
+     #chat-form { padding: 15px; gap: 8px;}
+     /* Adjust max-width for filename preview if needed */
+     #pdf-filename-preview { max-width: calc(95% - 70px); }
 }
 
 @media (max-width: 600px) {
-    /* On small screens, further reduce sizes/padding */
     h1 { font-size: 1.2rem; padding: 12px 15px; }
     #chat-container { padding: 10px; }
     #chat-history { gap: 12px; }
@@ -431,6 +310,8 @@ h1 {
     #send-button { padding: 8px 15px; font-size: 0.95rem; margin-bottom: 6px;}
     #attach-button { font-size: 1.3rem; padding: 0 3px; margin-bottom: 8px;}
     #loading, #error { max-width: 95%; font-size: 0.9rem; }
-    #image-preview { max-height: 60px; }
-    #remove-image-button { width: 20px; height: 20px; font-size: 14px; line-height: 18px; top: -4px; right: -4px;}
+    #image-preview { max-height: 40px; max-width: 40px; } /* Smaller icon */
+    #pdf-filename-preview { font-size: 0.8em; max-width: calc(100% - 60px); } /* Adjust filename size/width */
+    #image-preview-container > div { gap: 5px; } /* Less gap */
+    #remove-image-button { width: 20px; height: 20px; font-size: 14px; line-height: 18px; top: -5px; right: -5px;}
 }
