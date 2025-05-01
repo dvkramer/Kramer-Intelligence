@@ -13,7 +13,8 @@ function getBase64Data(dataUrl) {
 // Define the models to try, in order of preference
 const MODELS_TO_TRY = [
 	'gemini-2.5-flash-preview-04-17',
-	'gemini-2.0-flash'
+	'gemini-2.0-flash',
+	'gemini-2.5-pro-preview-03-25'
 ];
 const MAX_FILE_SIZE_MB = 15; // Max size for inline upload
 const MAX_TOKENS = 1000000; // Max context window tokens
@@ -102,7 +103,6 @@ export default async function handler(req, res) {
     let successfulModel = null;
 
     // --- Token Counting and Truncation ---
-    // (Keeping this section as is - it already has good logging)
     try {
         if (processedContents.length > 0) {
             const firstModel = MODELS_TO_TRY[0];
@@ -129,7 +129,7 @@ export default async function handler(req, res) {
                 }
             };
             currentTokenCount = await getTokenCount(processedContents);
-            console.log(`Initial token count: ${currentTokenCount} (Limit: ${MAX_TOKENS})`);
+            console.log(`Initial token count: ${currentTokenCount} (Limit: ${MAX_TOKENS})`); // Keep this basic log
             if (currentTokenCount === -1) {
                 console.warn("Proceeding without history truncation due to token count error.");
             } else {
@@ -153,173 +153,116 @@ export default async function handler(req, res) {
     }
     // --- END Token Counting and Truncation ---
 
-    // +++ LOGGING: Log final processed contents before API calls +++
-    console.log("--- Final Processed Contents for API Call ---");
-    // Helper to avoid excessively long base64 logs
-    const loggableContents = processedContents.map(msg => ({
-        ...msg,
-        parts: msg.parts.map(part => {
-            if (part.inlineData && part.inlineData.data?.length > 100) { // Only shorten long data
-                return { ...part, inlineData: { ...part.inlineData, data: part.inlineData.data.substring(0, 50) + "...<omitted>" } };
-            }
-            return part;
-        })
-    }));
-    console.log(JSON.stringify(loggableContents, null, 2));
-    console.log("------------------------------------------");
-
 
     // --- Loop through models and attempt API call ---
     for (const modelName of MODELS_TO_TRY) {
-        // +++ LOGGING: Log attempt details +++
-        console.log(`--- Attempting Model: ${modelName} ---`);
+        console.log(`Attempting API call with model: ${modelName}`); // Keep basic attempt log
         const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/${modelName}:generateContent?key=${apiKey}`;
-        console.log(`API URL: ${apiUrl}`); // Log the specific URL being hit
 
+        // --- REMOVED generationConfig/thinkingConfig ---
         const requestBody = {
-            contents: processedContents, // Use potentially truncated history
+            contents: processedContents,
             systemInstruction: { parts: [ { text: systemPrompt } ] },
-            tools: [ { googleSearch: {} } ],
-            generationConfig: {
-                thinkingConfig: {
-                    includeThoughts: false, // Set to false to hide thought tokens
-                    thinkingBudget: 1000    // Optional budget
-                }
-                // Add other configs like temperature, safetySettings here if needed
-            }
+            tools: [ { googleSearch: {} } ]
+            // Add safetySettings etc. here directly if needed
         };
-
-        // +++ LOGGING: Log the request body +++
-        // Stringify with replacer to shorten base64 data in logs
-        const requestBodyString = JSON.stringify(requestBody, (key, value) => {
-             if (key === 'data' && typeof value === 'string' && value.length > 100) {
-                 return value.substring(0, 50) + "...<omitted>";
-             }
-             return value;
-         }, 2); // Pretty print
-        console.log("Request Body Sent:\n", requestBodyString);
 
         try {
             googleResponse = await fetch(apiUrl, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(requestBody), // Send the original, unmodified body
+                body: JSON.stringify(requestBody),
             });
-
-            // +++ LOGGING: Log response status +++
-            console.log(`Response Status for ${modelName}: ${googleResponse.status} ${googleResponse.statusText}`);
 
             if (googleResponse.ok) {
                 googleData = await googleResponse.json();
                 successfulModel = modelName;
-                // +++ LOGGING: Log successful raw response +++
-                console.log(`Success with model: ${successfulModel}`);
-                console.log("Raw Response Data Received:\n", JSON.stringify(googleData, null, 2)); // Log the full response
+                console.log(`Success with model: ${successfulModel}`); // Keep basic success log
                 break; // Exit the loop on first successful call
             } else {
                 // API returned an error status (e.g., 4xx, 5xx)
-                console.warn(`Model ${modelName} failed.`);
+                console.warn(`Model ${modelName} failed with status: ${googleResponse.status}`); // Keep basic failure log
                 try {
                     lastErrorData = await googleResponse.json();
-                    // +++ LOGGING: Log parsed error details +++
-                    console.warn(`Parsed Error Details for ${modelName}:\n`, JSON.stringify(lastErrorData, null, 2));
-                    if (lastErrorData?.error?.message?.includes('unsupported field')) {
-                         console.warn(`Hint: Model ${modelName} might not support a configured feature (like thinkingConfig).`);
-                    }
+                    // Log DETAILED error only on failure
+                    console.warn(`Error details for ${modelName}:`, JSON.stringify(lastErrorData));
                 } catch (parseError) {
                     const errorText = await googleResponse.text().catch(() => '');
-                    console.warn(`Could not parse error JSON for ${modelName}. Raw Error Response Text:`, errorText || '<empty>');
+                    console.warn(`Could not parse error JSON for ${modelName}. Raw response:`, errorText);
                     lastErrorData = { error: { message: `API Error: ${googleResponse.status} ${googleResponse.statusText}. Response body was not valid JSON.` } };
                 }
             }
         } catch (error) {
-            console.error(`Fetch error for model ${modelName}:`, error.message);
+            console.error(`Fetch error for model ${modelName}:`, error); // Keep fetch error log
             lastErrorData = { error: { message: `Network or fetch error for ${modelName}: ${error.message}` } };
-            googleResponse = { status: 500, statusText: 'Network Error' }; // Mock response
+            googleResponse = { status: 500, statusText: 'Network Error' };
         }
-        console.log(`--- Finished Attempt with Model: ${modelName} ---`);
     } // --- End of model loop ---
 
 
     // --- Process the result (or final error) ---
     try {
-        // +++ LOGGING: Log which model's result is being processed or if all failed +++
         if (!googleData || !successfulModel) {
-            console.error('All models failed. Reporting last encountered error.');
-            console.error("Last Error Data before sending response:", JSON.stringify(lastErrorData, null, 2)); // Log final error
+            console.error('All models failed. Reporting last encountered error.'); // Keep final failure log
             const finalStatus = googleResponse?.status || 500;
             let errorMsg = lastErrorData?.error?.message || `API Error: ${finalStatus} ${googleResponse?.statusText || 'Unknown Error'}`;
-            // Append specific hints (already present)
+            // Append specific known error details (Keep these hints)
             if (lastErrorData?.error?.status === 'FAILED_PRECONDITION') errorMsg += ' (Check API key/billing?)';
             if (lastErrorData?.error?.message?.includes('payload is too large')) errorMsg = `Request too large (~${MAX_FILE_SIZE_MB}MB limit).`;
              else if (lastErrorData?.error?.message?.includes('429')) errorMsg += ' (Rate limit exceeded?)';
             else if (lastErrorData?.error?.code === 400 && lastErrorData?.error?.message?.includes('must be less than or equal to')) errorMsg = `Request failed: History likely exceeds token limit. ${lastErrorData?.error?.message}`;
-             else if (lastErrorData?.error?.message?.includes('unsupported field')) errorMsg += ` (Check if model supports features like thinkingConfig).`;
 
             return res.status(finalStatus).json({ error: errorMsg });
         }
 
         // --- SUCCESS: Proceed with processing the successful response ---
-        console.log(`--- Processing Successful Response from Model: ${successfulModel} ---`);
+        console.log(`Processing successful response from model: ${successfulModel}`); // Keep basic processing log
 
         let aiText = null;
         let searchSuggestionHtml = null;
         const candidate = googleData?.candidates?.[0];
-        const usageMetadata = googleData?.usageMetadata;
-        const promptFeedback = googleData?.promptFeedback;
-
-        // +++ LOGGING: Log key parts of the successful response +++
-        console.log("Usage Metadata:", JSON.stringify(usageMetadata, null, 2));
-        console.log("Prompt Feedback:", JSON.stringify(promptFeedback, null, 2));
-        console.log("Selected Candidate for Processing:", JSON.stringify(candidate, null, 2));
+        const promptFeedback = googleData?.promptFeedback; // Keep reference for safety check
 
         if (candidate) {
-            // Find first text part, assuming thoughts are excluded by the API when includeThoughts=false
+            // <<< REVERTED LOGIC: Find the first text part. This assumes thoughts are NOT sent by default >>>
+            // If thoughts *still* appear unexpectedly, this will grab them again.
             const textPart = candidate.content?.parts?.find(part => part.text);
             aiText = textPart?.text;
-            console.log("Extracted AI Text:", aiText); // Log the final extracted text
 
             const groundingMetadata = candidate.groundingMetadata;
             if (groundingMetadata?.searchEntryPoint?.renderedContent) {
                 searchSuggestionHtml = groundingMetadata.searchEntryPoint.renderedContent;
-                console.log("Extracted Search Suggestion HTML (snippet):", searchSuggestionHtml.substring(0, 100) + "...");
             }
         }
 
         // Check for blocks *after* confirming a candidate exists
         if (promptFeedback?.blockReason) {
-            console.warn('Prompt Blocked:', promptFeedback.blockReason);
+            console.warn('Prompt Blocked:', promptFeedback.blockReason); // Keep safety warning
             return res.status(400).json({ error: `Request blocked by safety settings: ${promptFeedback.blockReason}` });
         }
         if (candidate?.finishReason === 'SAFETY') {
-             console.warn('Candidate Blocked for Safety:', candidate.safetyRatings);
-             // You might want to return a generic error or specific safety block message here
-             // Let's be more specific than just "no text found"
-             return res.status(400).json({ error: `Response blocked by safety settings: ${candidate.finishReason}. Check safety ratings in logs.` });
+            console.warn('Candidate Blocked for Safety:', candidate.safetyRatings); // Keep safety warning
+            return res.status(400).json({ error: `Response blocked by safety settings: ${candidate.finishReason}.` });
         }
 
 
-        // Validate the AI response format more carefully
+        // Validate the AI response format
         if (typeof aiText !== 'string') {
-            console.error('Failed to extract valid AI text from the candidate.');
-            if (candidate?.content?.parts?.length > 0) {
+             // Log only if text extraction genuinely fails
+             console.error('Failed to extract valid AI text from the candidate.');
+             if (candidate?.content?.parts?.length > 0) {
                  console.warn('Candidate parts existed but none contained text:', candidate.content.parts);
-                 // Maybe the response was *only* a tool call or something unexpected?
                  aiText = "[Model response received, but no text content found]";
-            } else if (candidate?.finishReason && candidate.finishReason !== 'STOP') {
-                 // If there are no parts AND a finishReason other than STOP, report that
+             } else if (candidate?.finishReason && candidate.finishReason !== 'STOP') {
                  console.warn(`Candidate finished due to ${candidate.finishReason}, no text content generated.`);
                  return res.status(500).json({ error: `AI response generation stopped unexpectedly: ${candidate.finishReason}.` });
-            } else {
-                 // Truly empty or malformed
+             } else {
                  console.error('AI response structure error: No candidate parts found.', googleData);
                  return res.status(500).json({ error: 'AI response format error (No valid parts found).' });
-            }
+             }
         }
 
-
         // --- Send successful response back to client ---
-        console.log("--- Sending successful response to client ---");
         res.status(200).json({
             text: aiText,
             searchSuggestionHtml: searchSuggestionHtml,
@@ -327,8 +270,7 @@ export default async function handler(req, res) {
         });
 
     } catch (error) {
-        console.error('--- Unexpected error during response processing ---');
-        console.error(error); // Log the full error object
+        console.error('Serverless function error after API call:', error); // Keep general error log
         res.status(500).json({ error: 'Internal server error during response processing.' });
     }
 }
