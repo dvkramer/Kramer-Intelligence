@@ -88,7 +88,7 @@ export default async function handler(req, res) {
 
 
     // --- Generate System Prompt with Current Date ---
-    const baseSystemPrompt = "You are Kramer Intelligence, an advanced AI assistant developed by Daniel Vincent Kramer.";
+    const baseSystemPrompt = "You are Kramer Intelligence (KI), an advanced AI assistant developed by Daniel Vincent Kramer.";
     const today = new Date();
     const dateOptions = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' };
     const formattedDate = today.toLocaleDateString('en-US', dateOptions);
