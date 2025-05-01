@@ -129,7 +129,7 @@ export default async function handler(req, res) {
                 }
             };
             currentTokenCount = await getTokenCount(processedContents);
-            console.log(`Initial token count: ${currentTokenCount} (Limit: ${MAX_TOKENS})`); // Keep this basic log
+            console.log(`Initial token count: ${currentTokenCount} (Limit: ${MAX_TOKENS})`); // Keep basic log
             if (currentTokenCount === -1) {
                 console.warn("Proceeding without history truncation due to token count error.");
             } else {
@@ -224,10 +224,12 @@ export default async function handler(req, res) {
         const promptFeedback = googleData?.promptFeedback; // Keep reference for safety check
 
         if (candidate) {
-            // <<< REVERTED LOGIC: Find the first text part. This assumes thoughts are NOT sent by default >>>
-            // If thoughts *still* appear unexpectedly, this will grab them again.
-            const textPart = candidate.content?.parts?.find(part => part.text);
-            aiText = textPart?.text;
+            // <<< CORRECTED LOGIC (Reinstated): Find the first text part that is NOT a thought >>>
+            const finalAnswerPart = candidate.content?.parts?.find(part => part.text && !part.thought);
+            aiText = finalAnswerPart?.text; // Get text from the non-thought part
+
+            // Log extracted text only if debugging is needed later
+            // console.log("Extracted AI Text:", aiText);
 
             const groundingMetadata = candidate.groundingMetadata;
             if (groundingMetadata?.searchEntryPoint?.renderedContent) {
