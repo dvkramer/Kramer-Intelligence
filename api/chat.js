@@ -12,7 +12,8 @@ function getBase64Data(dataUrl) {
 // --- Configuration ---
 // Define the models to try, in order of preference
 const MODELS_TO_TRY = [
-	'gemini-2.0-flash'
+	'gemini-2.0-flash',
+	'gemini-2.5-flash-preview-04-17'
 ];
 const MAX_FILE_SIZE_MB = 15; // Max size for inline upload (images *and* PDFs) - Gemini has ~20MB request limit
 const MAX_TOKENS = 1000000; // Define a maximum token limit for the context window (set to 1 million)
