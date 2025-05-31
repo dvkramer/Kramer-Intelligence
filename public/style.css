@@ -12,8 +12,10 @@ html {
 
 body {
     font-family: 'Roboto', sans-serif;
-    background-color: #121212; /* Dark background */
-    color: #e0e0e0; /* Light text */
+    background-color: #1A1A1A; /* Dark background */
+    color: #EAEAEA; /* Light text */
+    font-size: 16px; /* Establish base font size */
+    line-height: 1.6; /* Improved overall readability */
     margin: 0;
     padding: 0;
     display: flex;
@@ -37,12 +39,12 @@ body {
 /* Header Styling (Inside scrollable area) */
 h1 {
     text-align: center;
-    color: #ffffff;
-    background-color: #1f1f1f; /* Slightly lighter dark bg */
+    color: #FFFFFF;
+    background-color: #242424; /* Slightly lighter dark bg */
     padding: 15px 20px;
     margin: 0; /* Remove default margin */
     font-weight: 500; /* Medium weight */
-    border-bottom: 1px solid #333; /* Separator line */
+    border-bottom: 1px solid #383838; /* Separator line */
     /* This element will scroll with the content */
 }
 
@@ -61,19 +63,20 @@ h1 {
     width: 100%;
     max-width: 800px; /* Limit content width */
     margin: 0 auto; /* Center the history horizontally */
-    padding-bottom: 10px; /* Space at the very end of the scroll */
+    padding-bottom: 20px; /* More space at the very end of the scroll */
 }
 
 /* Individual Message Bubble Styling */
 .message {
     padding: 10px 15px; /* Internal padding */
-    border-radius: 18px; /* Rounded corners */
+    border-radius: 16px; /* Rounded corners */
     max-width: 80%; /* Limit bubble width */
-    line-height: 1.4; /* Text line spacing */
+    line-height: 1.5; /* Text line spacing */
     overflow-wrap: break-word; /* Break long words/URLs */
     display: flex; /* Use flex for internal alignment if needed */
     flex-direction: column; /* Stack image/text/suggestions */
     gap: 8px; /* Space between stacked items */
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
 }
 
 /* --- MODIFIED PARAGRAPH STYLING --- */
@@ -81,6 +84,7 @@ h1 {
 .message p {
     margin: 0; /* Remove default margins */
     overflow-wrap: break-word; /* Ensure wrapping */
+    line-height: 1.5; /* Match message bubble */
 }
 
 /* Apply newline preservation to user message paragraphs */
@@ -97,25 +101,25 @@ h1 {
 
 /* User message specific styles */
 .user-message {
-    background-color: #007bff; /* Blue background */
+    background-color: #007ACC; /* Blue background */
     color: white;
     align-self: flex-end; /* Align to the right */
-    border-bottom-right-radius: 5px; /* Slightly flattened corner */
+    border-bottom-right-radius: 4px; /* Slightly flattened corner */
 }
 
 /* AI message specific styles */
 .ai-message {
     background-color: #333333; /* Dark grey background */
-    color: #e0e0e0;
+    color: #EAEAEA;
     align-self: flex-start; /* Align to the left */
-    border-bottom-left-radius: 5px; /* Slightly flattened corner */
+    border-bottom-left-radius: 4px; /* Slightly flattened corner */
 }
 
 /* Styling for Images within Messages */
 .message img.message-image {
     max-width: 100%; /* Don't exceed bubble width */
     max-height: 300px; /* Limit image display height */
-    border-radius: 10px; /* Rounded corners */
+    border-radius: 8px; /* Rounded corners */
     object-fit: contain; /* Scale while preserving aspect ratio */
     cursor: pointer; /* Hint that it might be interactive */
     margin-top: 5px; /* Space above if text is also present */
@@ -125,7 +129,7 @@ h1 {
 .message .pdf-info {
     font-size: 0.85em;
     font-style: italic;
-    color: #bbb;
+    color: #A0A0A0; /* Updated for new palette */
     margin-top: 5px;
     padding: 3px 8px;
     background-color: rgba(255, 255, 255, 0.05); /* Subtle background */
@@ -140,57 +144,57 @@ h1 {
 /* --- End Search Suggestion Styling --- */
 
 /* --- Markdown Element Styling --- */
-.message pre { background-color: rgba(0, 0, 0, 0.2); padding: 10px; border-radius: 4px; overflow-x: auto; border: 1px solid #444; margin-top: 8px; margin-bottom: 8px; white-space: pre; }
-.message code { font-family: Consolas, Monaco, 'Andale Mono', 'Ubuntu Mono', monospace; font-size: 0.9em; }
-.message p > code { background-color: rgba(255, 255, 255, 0.1); padding: 0.2em 0.4em; border-radius: 3px; font-size: 0.85em; }
-.message pre code { background-color: transparent; padding: 0; font-size: inherit; border-radius: 0; }
-.message ul, .message ol { padding-left: 25px; margin-top: 8px; margin-bottom: 8px; }
+.message pre { background-color: #2C2C2C; padding: 10px; border-radius: 4px; overflow-x: auto; border: 1px solid #383838; margin-top: 8px; margin-bottom: 8px; white-space: pre; color: #EAEAEA; line-height: 1.4; }
+.message code { font-family: Consolas, Monaco, 'Andale Mono', 'Ubuntu Mono', monospace; font-size: 0.9em; } /* General code styling, color inherited or can be set if needed */
+.message p > code { background-color: #303030; padding: 0.2em 0.4em; border-radius: 3px; font-size: 0.85em; color: #EAEAEA; }
+.message pre code { background-color: transparent; padding: 0; font-size: inherit; border-radius: 0; color: inherit; } /* Ensure pre code inherits pre's color */
+.message ul, .message ol { padding-left: 25px; margin-top: 8px; margin-bottom: 8px; color: #EAEAEA; }
 .message li { margin-bottom: 4px; }
-.message blockquote { border-left: 3px solid #555; padding-left: 10px; margin-left: 0; margin-top: 8px; margin-bottom: 8px; color: #bbb; font-style: italic; }
+.message blockquote { border-left: 3px solid #555555; padding-left: 10px; margin-left: 0; margin-top: 8px; margin-bottom: 8px; color: #A0A0A0; font-style: italic; }
 .message blockquote p { margin: 0; } /* Keep margin 0 for p inside blockquote */
-.message p a { color: #64b5f6; text-decoration: underline; }
-.message p a:hover { color: #90caf9; }
-.message h1, .message h2, .message h3, .message h4, .message h5, .message h6 { margin-top: 1em; margin-bottom: 0.5em; font-weight: 500; color: #ffffff; }
-.message h1 { font-size: 1.5em; } .message h2 { font-size: 1.3em; } .message h3 { font-size: 1.15em; } .message h4 { font-size: 1em; } .message h5 { font-size: 0.9em; } .message h6 { font-size: 0.85em; color: #ccc; }
-.message hr { border: 0; border-top: 1px solid #444; margin: 1em 0; }
+.message p a { color: #007ACC; text-decoration: underline; }
+.message p a:hover { color: #3399DD; } /* Lighter shade of accent for hover */
+.message h1, .message h2, .message h3, .message h4, .message h5, .message h6 { margin-top: 1em; margin-bottom: 0.5em; font-weight: 500; color: #FFFFFF; }
+.message h1 { font-size: 1.5em; } .message h2 { font-size: 1.3em; } .message h3 { font-size: 1.15em; } .message h4 { font-size: 1em; } .message h5 { font-size: 0.9em; } .message h6 { font-size: 0.85em; color: #A0A0A0; }
+.message hr { border: 0; border-top: 1px solid #383838; margin: 1em 0; }
 /* --- End Markdown Element Styling --- */
 
 
 /* Loading / Error Indicators */
-#loading, #error { text-align: center; padding: 10px; font-style: italic; color: #aaa; width: 100%; max-width: 800px; margin: 5px auto; flex-shrink: 0; }
-#error { color: #ff4d4d; font-weight: bold; background-color: rgba(255, 77, 77, 0.1); border-radius: 4px; border: 1px solid rgba(255, 77, 77, 0.3); padding: 10px 15px; }
+#loading, #error { text-align: center; padding: 10px; font-style: italic; color: #A0A0A0; width: 100%; max-width: 800px; margin: 5px auto; flex-shrink: 0; }
+#error { color: #ff4d4d; font-weight: bold; background-color: #2C2C2C; border-radius: 4px; border: 1px solid #555555; padding: 10px 15px; }
 
 
 /* Image Preview Area Styling */
-#image-preview-container { background-color: #1f1f1f; padding: 8px 20px; display: flex; justify-content: center; align-items: center; position: relative; flex-shrink: 0; width: 100%; }
+#image-preview-container { background-color: #242424; padding: 8px 20px; display: flex; justify-content: center; align-items: center; position: relative; flex-shrink: 0; width: 100%; }
 #image-preview-container > div { position: relative; display: flex; align-items: center; gap: 10px; max-width: 750px; margin: 0 auto; }
-#image-preview { display: block; max-height: 50px; max-width: 50px; object-fit: contain; border: 1px solid #444; border-radius: 6px; flex-shrink: 0; }
-#pdf-filename-preview { font-size: 0.85em; color: #ccc; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: calc(100% - 70px); display: none; }
-#remove-image-button { position: absolute; top: -8px; right: -8px; width: 22px; height: 22px; background-color: rgba(40, 40, 40, 0.8); color: #ccc; border: 1px solid #555; border-radius: 50%; cursor: pointer; font-size: 16px; font-weight: bold; line-height: 18px; text-align: center; padding: 0; transition: background-color 0.2s, color 0.2s; }
+#image-preview { display: block; max-height: 50px; max-width: 50px; object-fit: contain; border: 1px solid #404040; border-radius: 6px; flex-shrink: 0; }
+#pdf-filename-preview { font-size: 0.85em; color: #A0A0A0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: calc(100% - 70px); display: none; }
+#remove-image-button { position: absolute; top: -8px; right: -8px; width: 22px; height: 22px; background-color: rgba(50, 50, 50, 0.8); color: #A0A0A0; border: 1px solid #555555; border-radius: 50%; cursor: pointer; font-size: 16px; font-weight: bold; line-height: 18px; text-align: center; padding: 0; transition: background-color 0.2s, color 0.2s; }
 #remove-image-button:hover { background-color: rgba(255, 77, 77, 0.8); color: white; border-color: rgba(255, 77, 77, 0.9); }
 
 
 /* Input Form Styling */
-#chat-form { display: flex; align-items: flex-end; padding: 15px 20px; background-color: #1f1f1f; flex-shrink: 0; width: 100%; justify-content: center; gap: 10px; }
-#image-preview-container.hidden + #chat-form { border-top: 1px solid #333; }
+#chat-form { display: flex; align-items: flex-end; padding: 15px 20px; background-color: #242424; flex-shrink: 0; width: 100%; justify-content: center; gap: 10px; }
+#image-preview-container.hidden + #chat-form { border-top: 1px solid #383838; }
 #image-preview-container:not(.hidden) + #chat-form { border-top: none; }
 
 
 /* Attach Button Styling */
-#attach-button { background: none; border: none; color: #aaa; font-size: 1.5rem; cursor: pointer; padding: 0 5px; line-height: 1; transition: color 0.2s; flex-shrink: 0; align-self: flex-end; margin-bottom: 10px; }
-#attach-button:hover { color: #ddd; }
-#attach-button.has-file { color: #64b5f6; }
+#attach-button { background: none; border: none; color: #A0A0A0; font-size: 1.4rem; cursor: pointer; padding: 8px; line-height: 1; transition: color 0.2s; flex-shrink: 0; align-self: flex-end; margin-bottom: 8px; }
+#attach-button:hover { color: #EAEAEA; }
+#attach-button.has-file { color: #007ACC; }
 
 
 /* Textarea Input Styling */
-#message-input { flex-grow: 1; max-width: 700px; padding: 10px 15px; border: 1px solid #444; border-radius: 20px; box-sizing: border-box; display: block; min-height: 42px; max-height: 25vh; background-color: #2c2c2c; color: #e0e0e0; outline: none; font-family: inherit; font-size: 1rem; line-height: 1.4; white-space: pre-wrap; overflow-wrap: break-word; resize: none; overflow-y: auto; }
-#message-input::placeholder { color: #888; }
-#message-input:focus { border-color: #4a90e2; box-shadow: 0 0 0 2px rgba(74, 144, 226, 0.3); }
+#message-input { flex-grow: 1; max-width: 700px; padding: 10px 15px; border: 1px solid #404040; border-radius: 10px; box-sizing: border-box; display: block; min-height: 42px; max-height: 25vh; background-color: #2C2C2C; color: #EAEAEA; outline: none; font-family: inherit; font-size: 1rem; line-height: 1.5; white-space: pre-wrap; overflow-wrap: break-word; resize: none; overflow-y: auto; }
+#message-input::placeholder { color: #A0A0A0; }
+#message-input:focus { border-color: #007ACC; box-shadow: 0 0 0 2px rgba(0, 122, 204, 0.3); }
 
 /* Send Button Styling */
-#send-button { padding: 10px 20px; background-color: #007bff; color: white; border: none; border-radius: 20px; cursor: pointer; font-size: 1rem; transition: background-color 0.2s ease; flex-shrink: 0; align-self: flex-end; margin-bottom: 8px; }
-#send-button:disabled { background-color: #004a9e; cursor: not-allowed; opacity: 0.7; }
-#send-button:hover:not(:disabled) { background-color: #0056b3; }
+#send-button { padding: 10px 20px; background-color: #007ACC; color: white; border: none; border-radius: 10px; cursor: pointer; font-size: 1rem; font-weight: 500; transition: background-color 0.2s ease; flex-shrink: 0; align-self: flex-end; margin-bottom: 8px; }
+#send-button:disabled { background-color: #004C80; cursor: not-allowed; opacity: 0.7; }
+#send-button:hover:not(:disabled) { background-color: #005C99; }
 
 
 /* Utility class to hide elements */
@@ -214,10 +218,42 @@ h1 {
     #chat-form { padding: 10px; gap: 5px; }
     #message-input { padding: 8px 12px; font-size: 0.95rem; min-height: 38px; }
     #send-button { padding: 8px 15px; font-size: 0.95rem; margin-bottom: 6px;}
-    #attach-button { font-size: 1.3rem; padding: 0 3px; margin-bottom: 8px;}
+    #attach-button { font-size: 1.2rem; padding: 6px; margin-bottom: 6px;} /* Adjusted for mobile */
     #loading, #error { max-width: 95%; font-size: 0.9rem; }
     #image-preview { max-height: 40px; max-width: 40px; }
     #pdf-filename-preview { font-size: 0.8em; max-width: calc(100% - 60px); }
     #image-preview-container > div { gap: 5px; }
     #remove-image-button { width: 20px; height: 20px; font-size: 14px; line-height: 18px; top: -5px; right: -5px;}
 }
+
+/* --- Custom Scrollbar Styling --- */
+/* For WebKit-based browsers (Chrome, Safari, Edge) */
+#main-content-area::-webkit-scrollbar,
+#message-input::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+}
+
+#main-content-area::-webkit-scrollbar-track,
+#message-input::-webkit-scrollbar-track {
+    background: #242424; /* Slightly lighter than main background */
+}
+
+#main-content-area::-webkit-scrollbar-thumb,
+#message-input::-webkit-scrollbar-thumb {
+    background: #555555;
+    border-radius: 4px;
+}
+
+#main-content-area::-webkit-scrollbar-thumb:hover,
+#message-input::-webkit-scrollbar-thumb:hover {
+    background: #777777;
+}
+
+/* For Firefox */
+#main-content-area,
+#message-input {
+    scrollbar-width: thin;
+    scrollbar-color: #555555 #242424;
+}
+/* --- End Custom Scrollbar Styling --- */
