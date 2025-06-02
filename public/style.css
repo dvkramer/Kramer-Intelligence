@@ -98,7 +98,7 @@ h1 {
 .message p {
     margin: 0; /* Remove default margins */
     overflow-wrap: break-word; /* Ensure wrapping for text content */
-    word-break: break-all;     /* ADDED - for unbreakable strings */
+    /* word-break: break-all; */     /* REVERTED - Rely on overflow-wrap */
     line-height: 1.5; /* Match message bubble */
 }
 
