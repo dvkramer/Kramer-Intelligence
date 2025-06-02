@@ -98,12 +98,45 @@ h1 {
 }
 /* --- END MODIFIED PARAGRAPH STYLING --- */
 
+/* --- Message Entry Structure & Alignment --- */
+.message-entry {
+    /* Behaves like a block, takes width from parent #chat-history context */
+    /* Spacing between entries is handled by #chat-history's gap */
+}
+
+.user-message-entry {
+    margin-left: auto;
+    width: fit-content;
+    max-width: 85%;
+}
+.ai-message-entry {
+    margin-right: auto;
+    width: fit-content;
+    max-width: 85%;
+}
+
+.message-action-buttons { /* The bar itself */
+    display: flex;
+    padding-top: 2px;
+    padding-bottom: 4px;
+}
+
+.user-actions-align { /* For content within the bar for user messages */
+    justify-content: flex-end; /* Pushes buttons to the right */
+    gap: 6px; /* Space between buttons */
+}
+
+.ai-actions-align { /* For content within the bar for AI messages */
+    justify-content: flex-start; /* Pushes buttons to the left */
+    gap: 6px; /* Space between buttons */
+}
+/* --- End Message Entry Structure & Alignment --- */
 
 /* User message specific styles */
 .user-message {
     background-color: #007ACC; /* Blue background */
     color: white;
-    align-self: flex-end; /* Align to the right */
+    /* align-self: flex-end; */ /* Removed: Handled by .user-message-entry */
     border-bottom-right-radius: 4px; /* Slightly flattened corner */
 }
 
@@ -111,7 +144,7 @@ h1 {
 .ai-message {
     background-color: #333333; /* Dark grey background */
     color: #EAEAEA;
-    align-self: flex-start; /* Align to the left */
+    /* align-self: flex-start; */ /* Removed: Handled by .ai-message-entry */
     border-bottom-left-radius: 4px; /* Slightly flattened corner */
 }
 
@@ -200,30 +233,33 @@ h1 {
 /* Utility class to hide elements */
 .hidden { display: none !important; }
 
-/* --- Base Action Button Styling (for icon-like buttons) --- */
+/* --- Action Button Styling (Tag-like) --- */
 .regenerate-btn,
 .edit-btn,
 .save-edit-btn,
 .cancel-edit-btn {
     background: none;
     border: none;
-    color: #A0A0A0; /* Default subtle color */
-    padding: 2px;   /* Minimal padding */
-    margin: 0;      /* Reset margin, specific margins will be applied below */
-    font-size: 1.1em; /* Adjusted for emoji/char size */
-    line-height: 1;   /* Prevent extra vertical space */
+    color: #888; /* Slightly darker grey for less prominence */
+    padding: 1px 3px;   /* Minimal padding */
+    margin: 0 2px;      /* Small horizontal margin for spacing if side-by-side */
+    font-size: 0.75em;  /* Significantly smaller */
+    line-height: 1;       /* Compact */
     cursor: pointer;
-    border-radius: 4px; /* Optional: for hover/focus background effect */
-    transition: opacity 0.2s, background-color 0.2s, color 0.2s; /* Added color transition */
-    vertical-align: middle; /* Align emojis better */
+    border-radius: 3px;   /* Subtle rounding */
+    transition: color 0.2s, opacity 0.2s;
+    vertical-align: middle;
+    -webkit-appearance: none;
+    -moz-appearance: none;
+    appearance: none;
 }
 
 .regenerate-btn:hover,
 .edit-btn:hover,
 .save-edit-btn:hover,
 .cancel-edit-btn:hover {
-    opacity: 0.7;
-    color: #EAEAEA; /* Brighter on hover */
+    color: #E0E0E0; /* Brighter on hover */
+    opacity: 0.85;
 }
 
 .regenerate-btn:focus,
@@ -231,29 +267,26 @@ h1 {
 .save-edit-btn:focus,
 .cancel-edit-btn:focus {
     outline: 1px solid #007ACC;
-    outline-offset: 2px; /* Ensure outline is visible around the character */
+    outline-offset: 1px;
 }
 
 .regenerate-btn:disabled,
 .edit-btn:disabled,
 .save-edit-btn:disabled,
 .cancel-edit-btn:disabled {
-    opacity: 0.4;
-    cursor: not-allowed;
-}
-/* --- End Base Action Button Styling --- */
-
-/* --- Specific Action Button Layouts --- */
-.edit-btn {
-    margin-top: 8px;
-    align-self: flex-end;
+    opacity: 0.4 !important;
+    cursor: not-allowed !important;
+    color: #666 !important;
 }
 
-.regenerate-btn {
-    margin-top: 8px;
-    align-self: flex-start;
-}
-/* --- End Specific Action Button Layouts --- */
+/* Specific positioning for Edit and Regenerate buttons (now within .message-action-buttons) */
+/* Their alignment (flex-start/flex-end) is handled by .ai-actions-align / .user-actions-align on the parent */
+/* So, explicit align-self here might not be needed if the parent exclusively handles it. */
+/* However, if they are the *only* child, align-self on item is fine. */
+/* Let's rely on parent justify-content for now and remove individual align-self. */
+/* margin-top is also handled by padding on .message-action-buttons */
+
+/* --- End Action Button Styling (Tag-like) --- */
 
 
 /* --- Inline Editing UI Styling (Textarea and Action Buttons Container) --- */
@@ -273,10 +306,11 @@ h1 {
     border-radius: 6px;
     padding: 8px 10px;
     font-family: inherit;
-    font-size: 0.95em;
+    font-size: 1em; /* Match message font size */
     line-height: 1.5;
     resize: vertical;
     box-sizing: border-box;
+    margin-bottom: 8px; /* Space below textarea, before action bar with save/cancel */
 }
 
 .edit-message-textarea:focus {

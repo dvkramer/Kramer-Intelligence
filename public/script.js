@@ -323,12 +323,23 @@ async function handleSendMessage() {
 
 // --- Display & Formatting ---
 function displayMessage(role, text, fileInfo = null, searchSuggestionHtml = null, messageId) {
-    const messageDiv = document.createElement('div');
-    messageDiv.classList.add('message', role === 'user' ? 'user-message' : 'ai-message');
+    const messageEntryDiv = document.createElement('div');
+    messageEntryDiv.classList.add('message-entry');
     if (messageId) {
-        messageDiv.dataset.messageId = messageId;
+        messageEntryDiv.dataset.messageEntryId = messageId;
     }
-    let contentAdded = false;
+    if (role === 'user') {
+        messageEntryDiv.classList.add('user-message-entry');
+    } else {
+        messageEntryDiv.classList.add('ai-message-entry');
+    }
+
+    const messageBubbleDiv = document.createElement('div');
+    messageBubbleDiv.classList.add('message', role === 'user' ? 'user-message' : 'ai-message');
+    if (messageId) {
+        messageBubbleDiv.dataset.messageId = messageId;
+    }
+    let contentAddedToBubble = false;
 
     if (fileInfo && role === 'user') {
         if (fileInfo.type === 'image' && fileInfo.dataUrl) {
@@ -338,14 +349,14 @@ function displayMessage(role, text, fileInfo = null, searchSuggestionHtml = null
             imgElement.alt = `User uploaded image: ${fileInfo.name || 'image'}`;
             imgElement.title = `Click to view image: ${fileInfo.name || 'image'}`;
             imgElement.addEventListener('click', () => window.open(fileInfo.dataUrl, '_blank'));
-            messageDiv.appendChild(imgElement);
-            contentAdded = true;
+            messageBubbleDiv.appendChild(imgElement);
+            contentAddedToBubble = true;
         } else if (fileInfo.type === 'pdf' && fileInfo.name) {
             const pdfInfoDiv = document.createElement('div');
             pdfInfoDiv.classList.add('pdf-info');
             pdfInfoDiv.textContent = `📎 Sent PDF: ${fileInfo.name}`;
-            messageDiv.appendChild(pdfInfoDiv);
-            contentAdded = true;
+            messageBubbleDiv.appendChild(pdfInfoDiv);
+            contentAddedToBubble = true;
         }
     }
 
@@ -364,148 +375,9 @@ function displayMessage(role, text, fileInfo = null, searchSuggestionHtml = null
             paragraph.textContent = text;
         }
         if (paragraph.innerHTML.trim() || paragraph.textContent.trim()) {
-             messageDiv.appendChild(paragraph);
-             contentAdded = true;
+             messageBubbleDiv.appendChild(paragraph);
+             contentAddedToBubble = true;
         }
-    }
-
-    // Add Edit button for user messages
-    if (role === 'user' && contentAdded) { // Ensure there's content before adding edit button
-        const editButton = document.createElement('button');
-        editButton.classList.add('edit-btn');
-        editButton.textContent = '✏️';
-        editButton.title = 'Edit this message';
-
-        editButton.addEventListener('click', (event) => {
-            const button = event.currentTarget;
-            const messageDiv = button.closest('.user-message');
-            if (!messageDiv) return;
-
-            const messageId = messageDiv.dataset.messageId;
-            if (!messageId) {
-                console.error('Could not find message ID for editing.');
-                return;
-            }
-
-            // Find the original message object in conversationHistory
-            const messageIndex = conversationHistory.findIndex(msg => msg.id === messageId);
-            if (messageIndex === -1) {
-                console.error('Message to edit not found in history.');
-                return;
-            }
-            const messageObject = conversationHistory[messageIndex];
-
-            const textPart = messageObject.parts.find(part => typeof part.text === 'string');
-            const originalText = textPart ? textPart.text : '';
-
-            const existingTextParagraphs = messageDiv.querySelectorAll('p');
-            existingTextParagraphs.forEach(p => p.style.display = 'none');
-            button.style.display = 'none'; // Hide the "Edit" button
-
-            const textarea = document.createElement('textarea');
-            textarea.classList.add('edit-message-textarea');
-            textarea.value = originalText;
-            textarea.style.width = '100%';
-            textarea.style.minHeight = '50px';
-            textarea.style.marginTop = '5px';
-
-            // Define cancelButton before saveButton's listener to make it accessible
-            const cancelButton = document.createElement('button');
-            cancelButton.classList.add('cancel-edit-btn');
-            cancelButton.textContent = '❌';
-            cancelButton.style.marginTop = '5px';
-
-            cancelButton.addEventListener('click', () => {
-                // messageDiv, button (original Edit btn), and existingTextParagraphs
-                // are available from the outer scope of editButton's listener.
-
-                const editControlsContainer = messageDiv.querySelector('.edit-controls-container');
-                if (editControlsContainer) {
-                    editControlsContainer.remove();
-                }
-
-                existingTextParagraphs.forEach(p => p.style.display = ''); // Re-show original paragraphs
-                button.style.display = ''; // Re-show original Edit button
-            });
-
-            const saveButton = document.createElement('button');
-            saveButton.classList.add('save-edit-btn');
-            saveButton.textContent = '✅';
-            saveButton.style.marginRight = '5px';
-            saveButton.style.marginTop = '5px';
-
-            saveButton.addEventListener('click', async () => {
-                // Disable buttons in edit mode
-                saveButton.disabled = true;
-                cancelButton.disabled = true; // Now cancelButton is in scope
-                textarea.disabled = true;
-
-                const newText = textarea.value.trim();
-
-                // messageId, messageObject, messageIndex, messageDiv, button (original Edit btn)
-                // are available from the outer scope (editButton listener)
-
-                let textPart = messageObject.parts.find(part => typeof part.text === 'string');
-                if (textPart) {
-                    textPart.text = newText;
-                } else {
-                    messageObject.parts.push({ text: newText });
-                }
-
-                if (messageIndex < conversationHistory.length - 1) {
-                    conversationHistory.splice(messageIndex + 1);
-                }
-
-                let currentMessageDiv = messageDiv.nextElementSibling;
-                while (currentMessageDiv) {
-                    const nextSibling = currentMessageDiv.nextElementSibling;
-                    currentMessageDiv.remove();
-                    currentMessageDiv = nextSibling;
-                }
-
-                const editControlsContainer = messageDiv.querySelector('.edit-controls-container');
-                if (editControlsContainer) {
-                    editControlsContainer.remove();
-                }
-
-                let textDisplayParagraph = messageDiv.querySelector('p');
-                if (!textDisplayParagraph) {
-                    textDisplayParagraph = document.createElement('p');
-                    const mediaElement = messageDiv.querySelector('.message-image, .pdf-info');
-                    const refNode = messageDiv.querySelector('.edit-btn'); // original edit button
-                    if (mediaElement) {
-                        mediaElement.insertAdjacentElement('afterend', textDisplayParagraph);
-                    } else if (refNode) {
-                         messageDiv.insertBefore(textDisplayParagraph, refNode);
-                    } else { // Should not happen if edit-btn was there
-                        messageDiv.appendChild(textDisplayParagraph);
-                    }
-                }
-                textDisplayParagraph.textContent = newText;
-                textDisplayParagraph.style.display = '';
-
-                button.style.display = ''; // Re-show original Edit button
-
-                await _sendMessageToServer(conversationHistory);
-            });
-
-            // cancelButton is already defined above
-
-            const editControlsContainer = document.createElement('div');
-            editControlsContainer.classList.add('edit-controls-container');
-            editControlsContainer.appendChild(textarea);
-
-            const actionButtonsDiv = document.createElement('div');
-            actionButtonsDiv.classList.add('edit-action-buttons');
-            actionButtonsDiv.appendChild(saveButton);
-            actionButtonsDiv.appendChild(cancelButton);
-            editControlsContainer.appendChild(actionButtonsDiv); // Append the div containing both buttons
-
-            messageDiv.appendChild(editControlsContainer);
-            textarea.focus();
-        });
-
-        messageDiv.appendChild(editButton);
     }
 
     if (role === 'ai' && searchSuggestionHtml) {
@@ -514,78 +386,192 @@ function displayMessage(role, text, fileInfo = null, searchSuggestionHtml = null
         try {
             suggestionContainer.innerHTML = searchSuggestionHtml;
             if (suggestionContainer.innerHTML.trim()) {
-                 messageDiv.appendChild(suggestionContainer);
-                 contentAdded = true;
+                 messageBubbleDiv.appendChild(suggestionContainer);
+                 contentAddedToBubble = true;
             }
         } catch (error) { console.error("Error setting innerHTML for search suggestions:", error); }
     }
 
-    if (contentAdded) {
-        // Prepare regenerate button for AI messages before appending messageDiv
-        if (role === 'ai') {
-            // First, remove any regenerate buttons from existing AI messages in chatHistory
-            const existingRegenerateButtons = chatHistory.querySelectorAll('.ai-message .regenerate-btn');
-            existingRegenerateButtons.forEach(btn => {
-                btn.remove();
+    const actionButtonBar = document.createElement('div');
+    actionButtonBar.classList.add('action-button-bar'); // Base class
+    actionButtonBar.classList.add('message-action-buttons'); // New generic class for the bar itself
+    if (role === 'user') {
+        actionButtonBar.classList.add('user-actions-align'); // For aligning content (buttons) inside
+    } else {
+        actionButtonBar.classList.add('ai-actions-align');   // For aligning content (buttons) inside
+    }
+    if (messageId) {
+        actionButtonBar.dataset.controlsMessageId = messageId;
+    }
+
+    // Add Edit button for user messages
+    if (role === 'user' && contentAddedToBubble) {
+        const editButton = document.createElement('button');
+        editButton.classList.add('edit-btn');
+        editButton.textContent = '✏️';
+        editButton.title = 'Edit this message';
+
+        editButton.addEventListener('click', (event) => {
+            const originalEditButton = event.currentTarget;
+            const currentActionBar = originalEditButton.closest('.action-button-bar');
+            if (!currentActionBar) return;
+
+            const messageIdForEdit = currentActionBar.dataset.controlsMessageId;
+            if (!messageIdForEdit) {
+                console.error('Could not find message ID for editing from action bar.');
+                return;
+            }
+
+            const messageEntry = currentActionBar.closest('.message-entry');
+            if (!messageEntry) return;
+            const messageBubble = messageEntry.querySelector('.message.user-message');
+            if(!messageBubble) return;
+
+            const messageIndex = conversationHistory.findIndex(msg => msg.id === messageIdForEdit);
+            if (messageIndex === -1) {
+                console.error('Message to edit not found in history.');
+                return;
+            }
+            const messageObject = conversationHistory[messageIndex];
+
+            const textPart = messageObject.parts.find(part => typeof part.text === 'string');
+            const originalText = textPart ? textPart.text : '';
+            const originalBubbleHTML = messageBubble.innerHTML; // Store original HTML
+
+            originalEditButton.style.display = 'none';
+            messageBubble.innerHTML = ''; // Clear the bubble for textarea
+
+            const textarea = document.createElement('textarea');
+            textarea.classList.add('edit-message-textarea');
+            textarea.value = originalText;
+            messageBubble.appendChild(textarea); // Place textarea directly in bubble
+
+            const saveButton = document.createElement('button');
+            saveButton.classList.add('save-edit-btn');
+            saveButton.textContent = '✅';
+            saveButton.title = 'Save changes';
+
+            const cancelButton = document.createElement('button');
+            cancelButton.classList.add('cancel-edit-btn');
+            cancelButton.textContent = '❌';
+            cancelButton.title = 'Cancel edit';
+
+            cancelButton.addEventListener('click', () => {
+                messageBubble.innerHTML = originalBubbleHTML; // Restore original content
+                currentActionBar.innerHTML = ''; // Clear save/cancel
+                currentActionBar.appendChild(originalEditButton); // Add original edit button back
+                originalEditButton.style.display = '';
             });
 
-            const regenerateButton = document.createElement('button');
-            regenerateButton.classList.add('regenerate-btn');
-            regenerateButton.textContent = '↺'; // U+21BB
-            regenerateButton.title = 'Regenerate this response';
+            saveButton.addEventListener('click', async () => {
+                saveButton.disabled = true;
+                cancelButton.disabled = true;
+                textarea.disabled = true;
 
-            regenerateButton.addEventListener('click', async (event) => {
-                const button = event.currentTarget;
-                button.disabled = true; // Disable button to prevent multiple clicks
-
-                const messageDivToRegenerate = button.closest('.ai-message');
-                if (!messageDivToRegenerate) return;
-
-                const messageIdToRegenerate = messageDivToRegenerate.dataset.messageId;
-                if (!messageIdToRegenerate) {
-                    console.error('Could not find message ID for regeneration.');
-                    button.disabled = false;
-                    return;
+                const newText = textarea.value.trim();
+                let textPartToUpdate = messageObject.parts.find(part => typeof part.text === 'string');
+                if (textPartToUpdate) {
+                    textPartToUpdate.text = newText;
+                } else {
+                    messageObject.parts.push({ text: newText });
                 }
 
-                // Find index of the message to regenerate in conversationHistory
-                const messageIndex = conversationHistory.findIndex(msg => msg.id === messageIdToRegenerate);
-
-                if (messageIndex === -1) {
-                    console.error('Message to regenerate not found in history.');
-                    button.disabled = false; // Re-enable if something went wrong early
-                    return;
+                if (messageIndex < conversationHistory.length - 1) {
+                    conversationHistory.splice(messageIndex + 1);
                 }
 
-                // Ensure it's actually an AI message we're about to remove
-                if (conversationHistory[messageIndex].role !== 'model') {
-                    console.error('Attempted to regenerate a non-AI message. Aborting.');
-                    button.disabled = false;
-                    return;
+                let currentMsgEntry = messageEntry.nextElementSibling;
+                while (currentMsgEntry) {
+                    const nextEntry = currentMsgEntry.nextElementSibling;
+                    currentMsgEntry.remove();
+                    currentMsgEntry = nextEntry;
                 }
 
-                // Remove the AI message from conversationHistory
-                conversationHistory.splice(messageIndex, 1);
+                messageBubble.innerHTML = ''; // Clear textarea
+                const p = document.createElement('p');
+                p.textContent = newText;
+                messageBubble.appendChild(p); // Display new text
 
-                // Remove the AI message div from the DOM
-                messageDivToRegenerate.remove();
+                currentActionBar.innerHTML = ''; // Clear save/cancel
+                currentActionBar.appendChild(originalEditButton);
+                originalEditButton.style.display = '';
 
-                // Call _sendMessageToServer. It will handle UI updates like loading indicators.
                 await _sendMessageToServer(conversationHistory);
             });
 
-            messageDiv.appendChild(regenerateButton); // Add button to the current messageDiv
-        }
+            currentActionBar.innerHTML = ''; // Clear Edit button
+            currentActionBar.appendChild(saveButton);
+            currentActionBar.appendChild(cancelButton);
+            textarea.focus();
+        });
+        actionButtonBar.appendChild(editButton);
+    }
 
-        chatHistory.appendChild(messageDiv); // Now append the fully prepared messageDiv
+    // Add Regenerate button for AI messages
+    if (role === 'ai' && contentAddedToBubble) {
+        // Remove regenerate buttons from previous AI messages' action bars
+        const allActionBars = chatHistory.querySelectorAll('.action-button-bar');
+        allActionBars.forEach(bar => {
+            const oldRegenBtn = bar.querySelector('.regenerate-btn');
+            if (oldRegenBtn) oldRegenBtn.remove();
+        });
+
+        const regenerateButton = document.createElement('button');
+        regenerateButton.classList.add('regenerate-btn');
+        regenerateButton.textContent = '↺';
+        regenerateButton.title = 'Regenerate this response';
+
+        regenerateButton.addEventListener('click', async (event) => {
+            const button = event.currentTarget;
+            button.disabled = true;
+
+            const currentActionBar = button.closest('.action-button-bar');
+            if (!currentActionBar) return;
+            const messageIdToRegenerate = currentActionBar.dataset.controlsMessageId;
+
+            if (!messageIdToRegenerate) {
+                console.error('Could not find message ID for regeneration from action bar.');
+                button.disabled = false;
+                return;
+            }
+
+            const messageIndex = conversationHistory.findIndex(msg => msg.id === messageIdToRegenerate);
+            if (messageIndex === -1) {
+                console.error('Message to regenerate not found in history.');
+                button.disabled = false;
+                return;
+            }
+
+            if (conversationHistory[messageIndex].role !== 'model') {
+                console.error('Attempted to regenerate a non-AI message.');
+                button.disabled = false;
+                return;
+            }
+
+            conversationHistory.splice(messageIndex, 1);
+
+            const entryToRemove = currentActionBar.closest('.message-entry');
+            if (entryToRemove) {
+                entryToRemove.remove();
+            }
+
+            await _sendMessageToServer(conversationHistory);
+        });
+        actionButtonBar.appendChild(regenerateButton);
+    }
+
+    if (contentAddedToBubble) {
+        messageEntryDiv.appendChild(messageBubbleDiv);
+        messageEntryDiv.appendChild(actionButtonBar);
+        chatHistory.appendChild(messageEntryDiv);
 
         if (role === 'user') {
             scrollChatToBottom();
         } else if (role === 'ai') {
-             setTimeout(() => scrollToMessageTop(messageDiv), 50);
+             setTimeout(() => scrollToMessageTop(messageBubbleDiv), 50);
         }
     } else {
-         console.warn("Skipped appending an empty message bubble.");
+         console.warn("Skipped appending an empty message.");
     }
 }
 // --- END Display & Formatting ---
