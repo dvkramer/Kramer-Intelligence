@@ -70,9 +70,11 @@ h1 {
 .message {
     padding: 10px 15px; /* Internal padding */
     border-radius: 16px; /* Rounded corners */
-    max-width: 80%; /* Limit bubble width */
+    max-width: 80%; /* Limit bubble width */ /* This max-width is relative to the parent .message-entry's 100% width */
+    width: 100%; /* Make the bubble take full width of its .message-entry parent's content box */
+    box-sizing: border-box; /* Ensure padding/border don't add to this 100% */
     line-height: 1.5; /* Text line spacing */
-    overflow-wrap: break-word; /* Break long words/URLs */
+    overflow-wrap: break-word; /* Break long words/URLs */ /* Note: This was changed to normal for diagnostics, should be break-word */
     display: flex; /* Use flex for internal alignment if needed */
     flex-direction: column; /* Stack image/text/suggestions */
     gap: 8px; /* Space between stacked items */
@@ -83,7 +85,8 @@ h1 {
 /* Paragraphs within messages - Keep general reset */
 .message p {
     margin: 0; /* Remove default margins */
-    overflow-wrap: break-word; /* Ensure wrapping */
+    /* overflow-wrap: normal; */ /* REVERTED diagnostic change */
+    /* word-break: normal;    */ /* REVERTED diagnostic change */
     line-height: 1.5; /* Match message bubble */
 }
 
@@ -106,19 +109,23 @@ h1 {
 
 .user-message-entry {
     margin-left: auto;
-    width: fit-content;
+    /* width: fit-content; */ /* REMOVED */
     max-width: 85%;
+    width: 100%; /* Let it try to be as wide as possible up to max-width */
 }
 .ai-message-entry {
     margin-right: auto;
-    width: fit-content;
+    /* width: fit-content; */ /* REMOVED */
     max-width: 85%;
+    width: 100%;
 }
 
 .message-action-buttons { /* The bar itself */
     display: flex;
     padding-top: 2px;
     padding-bottom: 4px;
+    width: 100%;
+    box-sizing: border-box;
 }
 
 .user-actions-align { /* For content within the bar for user messages */
