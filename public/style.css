@@ -70,23 +70,35 @@ h1 {
 .message {
     padding: 10px 15px; /* Internal padding */
     border-radius: 16px; /* Rounded corners */
-    max-width: 80%; /* Limit bubble width */ /* This max-width is relative to the parent .message-entry's 100% width */
-    width: 100%; /* Make the bubble take full width of its .message-entry parent's content box */
-    box-sizing: border-box; /* Ensure padding/border don't add to this 100% */
+    display: inline-grid;   /* CHANGED to inline-grid */
+    grid-template-columns: 1fr; /* Single column for stacking */
+    gap: 8px;               /* RE-ADD gap for internal spacing */
+    max-width: 600px;      /* Pixel-based max-width for the bubble itself */
+    box-sizing: border-box;
     line-height: 1.5; /* Text line spacing */
-    overflow-wrap: break-word; /* Break long words/URLs */ /* Note: This was changed to normal for diagnostics, should be break-word */
-    display: flex; /* Use flex for internal alignment if needed */
-    flex-direction: column; /* Stack image/text/suggestions */
-    gap: 8px; /* Space between stacked items */
+    /* overflow-wrap: break-word; */ /* MOVED to .message p */
+    vertical-align: top; /* Good for inline-block/grid alignment */
     box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
 }
+
+/* Ensure child elements of .message take full width of the grid column */
+.message > p,
+.message > img.message-image, /* More specific selector */
+.message > div.pdf-info,    /* More specific selector */
+.message > pre,
+.message > div.search-suggestion-container { /* More specific selector */
+    width: 100%;
+    display: block; /* Ensures elements like <img> behave as blocks in grid cell */
+    box-sizing: border-box; /* If they have padding/border themselves */
+}
+
 
 /* --- MODIFIED PARAGRAPH STYLING --- */
 /* Paragraphs within messages - Keep general reset */
 .message p {
     margin: 0; /* Remove default margins */
-    /* overflow-wrap: normal; */ /* REVERTED diagnostic change */
-    /* word-break: normal;    */ /* REVERTED diagnostic change */
+    overflow-wrap: break-word; /* Ensure wrapping for text content */
+    word-break: normal;    /* Allow breaking normally, overflow-wrap handles tough cases */
     line-height: 1.5; /* Match message bubble */
 }
 
@@ -109,22 +121,22 @@ h1 {
 
 .user-message-entry {
     margin-left: auto;
-    /* width: fit-content; */ /* REMOVED */
     max-width: 85%;
-    width: 100%; /* Let it try to be as wide as possible up to max-width */
+    width: fit-content; /* Make entry only as wide as its content (bubble + action bar) */
+    text-align: right; /* ADDED */
 }
 .ai-message-entry {
     margin-right: auto;
-    /* width: fit-content; */ /* REMOVED */
     max-width: 85%;
-    width: 100%;
+    width: fit-content; /* Make entry only as wide as its content (bubble + action bar) */
+    text-align: left; /* ADDED */
 }
 
 .message-action-buttons { /* The bar itself */
     display: flex;
     padding-top: 2px;
     padding-bottom: 4px;
-    width: 100%;
+    /* width: 100%; */ /* REMOVED - let it be sized by content (buttons) & parent fit-content */
     box-sizing: border-box;
 }
 
@@ -143,16 +155,18 @@ h1 {
 .user-message {
     background-color: #007ACC; /* Blue background */
     color: white;
-    /* align-self: flex-end; */ /* Removed: Handled by .user-message-entry */
+    /* align-self: flex-end; */
     border-bottom-right-radius: 4px; /* Slightly flattened corner */
+    /* max-width: 80%; */ /* REMOVE - Handled by .message's pixel max-width */
 }
 
 /* AI message specific styles */
 .ai-message {
     background-color: #333333; /* Dark grey background */
     color: #EAEAEA;
-    /* align-self: flex-start; */ /* Removed: Handled by .ai-message-entry */
+    /* align-self: flex-start; */
     border-bottom-left-radius: 4px; /* Slightly flattened corner */
+    /* max-width: 80%; */ /* REMOVE - Handled by .message's pixel max-width */
 }
 
 /* Styling for Images within Messages */
@@ -358,7 +372,7 @@ h1 {
     h1 { font-size: 1.2rem; padding: 12px 15px; }
     #chat-container { padding: 10px; }
     #chat-history { gap: 12px; }
-    .message { max-width: 90%; font-size: 0.95rem; padding: 8px 12px; }
+    .message { max-width: 100%; /* On mobile, let bubble take full width of its fit-content entry */ font-size: 0.95rem; padding: 8px 12px; }
     #chat-form { padding: 10px; gap: 5px; }
     #message-input { padding: 8px 12px; font-size: 0.95rem; min-height: 38px; }
     #send-button { padding: 8px 15px; font-size: 0.95rem; margin-bottom: 6px;}
