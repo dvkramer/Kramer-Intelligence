@@ -200,6 +200,139 @@ h1 {
 /* Utility class to hide elements */
 .hidden { display: none !important; }
 
+/* --- Edit Message Button Styling --- */
+.edit-btn {
+    background-color: #2c2c2c;
+    color: #A0A0A0;
+    border: 1px solid #404040;
+    padding: 4px 8px;
+    font-size: 0.8em;
+    border-radius: 6px;
+    cursor: pointer;
+    transition: background-color 0.2s, color 0.2s;
+    margin-top: 8px;
+    align-self: flex-end; /* Align to the right within the flex column of .user-message */
+}
+
+.edit-btn:hover {
+    background-color: #383838;
+    color: #EAEAEA;
+}
+
+.edit-btn:focus {
+    outline: 1px solid #007ACC;
+    outline-offset: 1px;
+}
+
+.edit-btn:disabled { /* Although it's hidden during edit, good to have */
+    opacity: 0.6;
+    cursor: not-allowed;
+}
+
+/* --- Inline Editing UI Styling --- */
+.edit-controls-container {
+    margin-top: 8px; /* Space from message content or image */
+    display: flex;
+    flex-direction: column; /* Stack textarea above buttons */
+    gap: 8px; /* Space between textarea and button row */
+}
+
+.edit-message-textarea {
+    width: 100%;
+    min-height: 60px; /* Decent starting height */
+    background-color: #2C2C2C;
+    color: #EAEAEA;
+    border: 1px solid #404040;
+    border-radius: 6px; /* Consistent with other smaller elements */
+    padding: 8px 10px;
+    font-family: inherit; /* Inherit Roboto */
+    font-size: 0.95em; /* Slightly smaller than main message text if desired, or 1em */
+    line-height: 1.5; /* Consistent line height */
+    resize: vertical;
+    box-sizing: border-box; /* Include padding and border in width/height */
+}
+
+.edit-message-textarea:focus {
+    border-color: #007ACC;
+    outline: 1px solid #007ACC; /* Or use box-shadow like main input */
+    outline-offset: -1px; /* Bring outline inside */
+}
+
+/* Container for Save/Cancel buttons to sit side-by-side */
+.edit-action-buttons {
+    display: flex;
+    justify-content: flex-end; /* Align buttons to the right */
+    gap: 8px; /* Space between Save and Cancel */
+}
+
+.save-edit-btn,
+.cancel-edit-btn {
+    padding: 6px 12px;
+    font-size: 0.85em;
+    border-radius: 6px;
+    cursor: pointer;
+    transition: background-color 0.2s, opacity 0.2s;
+    border: none; /* Assuming solid background buttons */
+}
+
+.save-edit-btn {
+    background-color: #007ACC; /* Accent color for primary action */
+    color: white;
+}
+
+.save-edit-btn:hover {
+    background-color: #005C99; /* Darker accent */
+}
+
+.cancel-edit-btn {
+    background-color: #484848; /* Neutral dark */
+    color: #EAEAEA;
+}
+
+.cancel-edit-btn:hover {
+    background-color: #5a5a5a;
+}
+
+.save-edit-btn:disabled,
+.cancel-edit-btn:disabled,
+.edit-message-textarea:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+}
+/* --- End Inline Editing UI Styling --- */
+
+/* --- Regenerate Button Styling --- */
+.regenerate-btn {
+    background-color: #2c2c2c; /* Dark, subtle background */
+    color: #A0A0A0; /* Muted text color */
+    border: 1px solid #404040; /* Subtle border */
+    padding: 4px 8px; /* Small padding */
+    font-size: 0.8em; /* Smaller than message text */
+    border-radius: 6px; /* Consistent border radius */
+    cursor: pointer;
+    transition: background-color 0.2s, color 0.2s;
+    margin-top: 8px; /* Space above the button */
+    display: inline-block; /* Or block if it needs to be on its own line */
+    align-self: flex-start; /* If messageDiv is flex and column */
+}
+
+.regenerate-btn:hover {
+    background-color: #383838; /* Slightly lighter on hover */
+    color: #EAEAEA; /* Brighter text on hover */
+}
+
+.regenerate-btn:focus {
+    outline: 1px solid #007ACC; /* Accent color focus outline */
+    outline-offset: 1px;
+}
+
+.regenerate-btn:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+    background-color: #2c2c2c; /* Keep background same or more muted */
+    color: #777777;
+}
+/* --- End Regenerate Button Styling --- */
 
 /* --- Responsive adjustments --- */
 @media (max-width: 850px) {

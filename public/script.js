@@ -229,13 +229,54 @@ function resetFileInput() {
 
 
 // --- Core Message Sending Logic ---
+
+async function _sendMessageToServer(historyToProcess) {
+    showLoading(); // Show loading at the start of the async operation
+    try {
+        const payload = { history: [...historyToProcess] };
+        console.log("Sending payload to /api/chat:", { historyLength: payload.history.length });
+
+        const response = await fetch('/api/chat', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload),
+        });
+
+        if (!response.ok) {
+            let errorMsg = `API Error: ${response.statusText} (${response.status})`;
+            try { const errorData = await response.json(); errorMsg = errorData.error || errorMsg; } catch (e) { console.warn("Could not parse API error JSON."); try { const txt = await response.text(); if(txt) errorMsg += `\nResponse: ${txt.substring(0,200)}...`; } catch(e2){} }
+            if (response.status === 413) errorMsg = `Request Failed: Payload too large (${response.statusText}). Max file size is ~${MAX_FILE_SIZE_MB}MB.`;
+            throw new Error(errorMsg);
+        }
+
+        const data = await response.json();
+        const aiResponseText = data.text;
+        const searchSuggestionHtml = data.searchSuggestionHtml;
+        console.log(`AI Response received (using ${data.modelUsed || 'unknown model'})`);
+
+        const aiMessageId = Date.now() + '-' + Math.random().toString(36).substring(2, 9);
+        // Update global conversationHistory from within this function
+        conversationHistory.push({ role: 'model', parts: [{ text: aiResponseText }], id: aiMessageId });
+        displayMessage('ai', aiResponseText, null, searchSuggestionHtml, aiMessageId);
+
+    } catch (err) {
+        console.error("Error during send/receive:", err);
+        showError(err.message || "Failed to get response.");
+        // No history rollback here for now, simplifying error recovery.
+        // The user message that triggered this remains in history and UI.
+    } finally {
+        hideLoading();
+        sendButton.disabled = false; // Re-enable send button in all cases
+    }
+}
+
 async function handleSendMessage() {
     const userMessageText = messageInput.value.trim();
     if (!userMessageText && !selectedFile) return;
 
-    sendButton.disabled = true;
-    hideError();
-    showLoading();
+    sendButton.disabled = true; // Disable here, _sendMessageToServer will re-enable in its finally.
+    // hideError(); // handleRemoveFile called later will hide error.
+    // showLoading(); // _sendMessageToServer will handle its own loading indicator.
 
     const messageParts = [];
     let fileInfoForDisplay = null;
@@ -254,17 +295,18 @@ async function handleSendMessage() {
         messageParts.push({ text: userMessageText });
     }
 
-    if (messageParts.length === 0) {
-        hideLoading();
-        sendButton.disabled = false;
+    if (messageParts.length === 0) { // Re-check if only file was selected then removed, or text was only spaces
+        sendButton.disabled = false; // Re-enable send button
         console.warn("Message sending aborted: No parts prepared.");
         return;
     }
 
-    displayMessage('user', userMessageText || '', fileInfoForDisplay);
-    conversationHistory.push({ role: 'user', parts: messageParts });
+    const userMessageId = Date.now() + '-' + Math.random().toString(36).substring(2, 9);
+    conversationHistory.push({ role: 'user', parts: messageParts, id: userMessageId });
+    displayMessage('user', userMessageText || '', fileInfoForDisplay, null, userMessageId);
+
     messageInput.value = '';
-    handleRemoveFile();
+    handleRemoveFile(); // This also hides error via its own logic, which is fine.
     adjustTextareaHeight();
 
     if (isMobileDevice()) {
@@ -273,54 +315,19 @@ async function handleSendMessage() {
         messageInput.focus();
     }
 
-    try {
-        const payload = { history: [...conversationHistory] };
-        console.log("Sending payload to /api/chat:", { historyLength: payload.history.length });
-
-        const response = await fetch('/api/chat', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(payload),
-        });
-        hideLoading();
-
-        if (!response.ok) {
-            let errorMsg = `API Error: ${response.statusText} (${response.status})`;
-            try { const errorData = await response.json(); errorMsg = errorData.error || errorMsg; } catch (e) { console.warn("Could not parse API error JSON."); try { const txt = await response.text(); if(txt) errorMsg += `\nResponse: ${txt.substring(0,200)}...`; } catch(e2){} }
-            if (response.status === 413) errorMsg = `Request Failed: Payload too large (${response.statusText}). Max file size is ~${MAX_FILE_SIZE_MB}MB.`;
-            throw new Error(errorMsg);
-        }
-
-        const data = await response.json();
-        const aiResponseText = data.text;
-        const searchSuggestionHtml = data.searchSuggestionHtml;
-        console.log(`AI Response received (using ${data.modelUsed || 'unknown model'})`);
-
-        conversationHistory.push({ role: 'model', parts: [{ text: aiResponseText }] });
-        displayMessage('ai', aiResponseText, null, searchSuggestionHtml);
-
-    } catch (err) {
-        console.error("Error during send/receive:", err);
-        showError(err.message || "Failed to get response.");
-        hideLoading();
-        // Attempt rollback
-        conversationHistory.pop();
-        const userMessages = chatHistory.querySelectorAll('.user-message');
-        if (userMessages.length > 0) {
-            userMessages[userMessages.length - 1].remove();
-            console.log("Removed last user message bubble due to API error.");
-        }
-    } finally {
-        sendButton.disabled = false;
-    }
+    await _sendMessageToServer(conversationHistory); // Call the refactored function
+    // sendButton state will be managed by _sendMessageToServer's finally block.
 }
 // --- END Core Message Sending Logic ---
 
 
 // --- Display & Formatting ---
-function displayMessage(role, text, fileInfo = null, searchSuggestionHtml = null) {
+function displayMessage(role, text, fileInfo = null, searchSuggestionHtml = null, messageId) {
     const messageDiv = document.createElement('div');
     messageDiv.classList.add('message', role === 'user' ? 'user-message' : 'ai-message');
+    if (messageId) {
+        messageDiv.dataset.messageId = messageId;
+    }
     let contentAdded = false;
 
     if (fileInfo && role === 'user') {
@@ -362,6 +369,145 @@ function displayMessage(role, text, fileInfo = null, searchSuggestionHtml = null
         }
     }
 
+    // Add Edit button for user messages
+    if (role === 'user' && contentAdded) { // Ensure there's content before adding edit button
+        const editButton = document.createElement('button');
+        editButton.classList.add('edit-btn');
+        editButton.textContent = 'Edit';
+        editButton.title = 'Edit this message';
+
+        editButton.addEventListener('click', (event) => {
+            const button = event.currentTarget;
+            const messageDiv = button.closest('.user-message');
+            if (!messageDiv) return;
+
+            const messageId = messageDiv.dataset.messageId;
+            if (!messageId) {
+                console.error('Could not find message ID for editing.');
+                return;
+            }
+
+            // Find the original message object in conversationHistory
+            const messageIndex = conversationHistory.findIndex(msg => msg.id === messageId);
+            if (messageIndex === -1) {
+                console.error('Message to edit not found in history.');
+                return;
+            }
+            const messageObject = conversationHistory[messageIndex];
+
+            const textPart = messageObject.parts.find(part => typeof part.text === 'string');
+            const originalText = textPart ? textPart.text : '';
+
+            const existingTextParagraphs = messageDiv.querySelectorAll('p');
+            existingTextParagraphs.forEach(p => p.style.display = 'none');
+            button.style.display = 'none'; // Hide the "Edit" button
+
+            const textarea = document.createElement('textarea');
+            textarea.classList.add('edit-message-textarea');
+            textarea.value = originalText;
+            textarea.style.width = '100%';
+            textarea.style.minHeight = '50px';
+            textarea.style.marginTop = '5px';
+
+            // Define cancelButton before saveButton's listener to make it accessible
+            const cancelButton = document.createElement('button');
+            cancelButton.classList.add('cancel-edit-btn');
+            cancelButton.textContent = 'Cancel';
+            cancelButton.style.marginTop = '5px';
+
+            cancelButton.addEventListener('click', () => {
+                // messageDiv, button (original Edit btn), and existingTextParagraphs
+                // are available from the outer scope of editButton's listener.
+
+                const editControlsContainer = messageDiv.querySelector('.edit-controls-container');
+                if (editControlsContainer) {
+                    editControlsContainer.remove();
+                }
+
+                existingTextParagraphs.forEach(p => p.style.display = ''); // Re-show original paragraphs
+                button.style.display = ''; // Re-show original Edit button
+            });
+
+            const saveButton = document.createElement('button');
+            saveButton.classList.add('save-edit-btn');
+            saveButton.textContent = 'Save';
+            saveButton.style.marginRight = '5px';
+            saveButton.style.marginTop = '5px';
+
+            saveButton.addEventListener('click', async () => {
+                // Disable buttons in edit mode
+                saveButton.disabled = true;
+                cancelButton.disabled = true; // Now cancelButton is in scope
+                textarea.disabled = true;
+
+                const newText = textarea.value.trim();
+
+                // messageId, messageObject, messageIndex, messageDiv, button (original Edit btn)
+                // are available from the outer scope (editButton listener)
+
+                let textPart = messageObject.parts.find(part => typeof part.text === 'string');
+                if (textPart) {
+                    textPart.text = newText;
+                } else {
+                    messageObject.parts.push({ text: newText });
+                }
+
+                if (messageIndex < conversationHistory.length - 1) {
+                    conversationHistory.splice(messageIndex + 1);
+                }
+
+                let currentMessageDiv = messageDiv.nextElementSibling;
+                while (currentMessageDiv) {
+                    const nextSibling = currentMessageDiv.nextElementSibling;
+                    currentMessageDiv.remove();
+                    currentMessageDiv = nextSibling;
+                }
+
+                const editControlsContainer = messageDiv.querySelector('.edit-controls-container');
+                if (editControlsContainer) {
+                    editControlsContainer.remove();
+                }
+
+                let textDisplayParagraph = messageDiv.querySelector('p');
+                if (!textDisplayParagraph) {
+                    textDisplayParagraph = document.createElement('p');
+                    const mediaElement = messageDiv.querySelector('.message-image, .pdf-info');
+                    const refNode = messageDiv.querySelector('.edit-btn'); // original edit button
+                    if (mediaElement) {
+                        mediaElement.insertAdjacentElement('afterend', textDisplayParagraph);
+                    } else if (refNode) {
+                         messageDiv.insertBefore(textDisplayParagraph, refNode);
+                    } else { // Should not happen if edit-btn was there
+                        messageDiv.appendChild(textDisplayParagraph);
+                    }
+                }
+                textDisplayParagraph.textContent = newText;
+                textDisplayParagraph.style.display = '';
+
+                button.style.display = ''; // Re-show original Edit button
+
+                await _sendMessageToServer(conversationHistory);
+            });
+
+            // cancelButton is already defined above
+
+            const editControlsContainer = document.createElement('div');
+            editControlsContainer.classList.add('edit-controls-container');
+            editControlsContainer.appendChild(textarea);
+
+            const actionButtonsDiv = document.createElement('div');
+            actionButtonsDiv.classList.add('edit-action-buttons');
+            actionButtonsDiv.appendChild(saveButton);
+            actionButtonsDiv.appendChild(cancelButton);
+            editControlsContainer.appendChild(actionButtonsDiv); // Append the div containing both buttons
+
+            messageDiv.appendChild(editControlsContainer);
+            textarea.focus();
+        });
+
+        messageDiv.appendChild(editButton);
+    }
+
     if (role === 'ai' && searchSuggestionHtml) {
         const suggestionContainer = document.createElement('div');
         suggestionContainer.classList.add('search-suggestion-container');
@@ -375,7 +521,64 @@ function displayMessage(role, text, fileInfo = null, searchSuggestionHtml = null
     }
 
     if (contentAdded) {
-        chatHistory.appendChild(messageDiv);
+        // Prepare regenerate button for AI messages before appending messageDiv
+        if (role === 'ai') {
+            // First, remove any regenerate buttons from existing AI messages in chatHistory
+            const existingRegenerateButtons = chatHistory.querySelectorAll('.ai-message .regenerate-btn');
+            existingRegenerateButtons.forEach(btn => {
+                btn.remove();
+            });
+
+            const regenerateButton = document.createElement('button');
+            regenerateButton.classList.add('regenerate-btn');
+            regenerateButton.textContent = 'Regenerate';
+            regenerateButton.title = 'Regenerate this response';
+
+            regenerateButton.addEventListener('click', async (event) => {
+                const button = event.currentTarget;
+                button.disabled = true; // Disable button to prevent multiple clicks
+
+                const messageDivToRegenerate = button.closest('.ai-message');
+                if (!messageDivToRegenerate) return;
+
+                const messageIdToRegenerate = messageDivToRegenerate.dataset.messageId;
+                if (!messageIdToRegenerate) {
+                    console.error('Could not find message ID for regeneration.');
+                    button.disabled = false;
+                    return;
+                }
+
+                // Find index of the message to regenerate in conversationHistory
+                const messageIndex = conversationHistory.findIndex(msg => msg.id === messageIdToRegenerate);
+
+                if (messageIndex === -1) {
+                    console.error('Message to regenerate not found in history.');
+                    button.disabled = false; // Re-enable if something went wrong early
+                    return;
+                }
+
+                // Ensure it's actually an AI message we're about to remove
+                if (conversationHistory[messageIndex].role !== 'model') {
+                    console.error('Attempted to regenerate a non-AI message. Aborting.');
+                    button.disabled = false;
+                    return;
+                }
+
+                // Remove the AI message from conversationHistory
+                conversationHistory.splice(messageIndex, 1);
+
+                // Remove the AI message div from the DOM
+                messageDivToRegenerate.remove();
+
+                // Call _sendMessageToServer. It will handle UI updates like loading indicators.
+                await _sendMessageToServer(conversationHistory);
+            });
+
+            messageDiv.appendChild(regenerateButton); // Add button to the current messageDiv
+        }
+
+        chatHistory.appendChild(messageDiv); // Now append the fully prepared messageDiv
+
         if (role === 'user') {
             scrollChatToBottom();
         } else if (role === 'ai') {
