@@ -100,6 +100,7 @@ h1 {
     overflow-wrap: break-word; /* Ensure wrapping for text content */
     /* word-break: break-all; */     /* REVERTED - Rely on overflow-wrap */
     line-height: 1.5; /* Match message bubble */
+    min-width: 0; /* ADDED - Help with overflow in flex/grid items */
 }
 
 /* Apply newline preservation to user message paragraphs */
