@@ -373,7 +373,7 @@ function displayMessage(role, text, fileInfo = null, searchSuggestionHtml = null
     if (role === 'user' && contentAdded) { // Ensure there's content before adding edit button
         const editButton = document.createElement('button');
         editButton.classList.add('edit-btn');
-        editButton.textContent = 'Edit';
+        editButton.textContent = '✏️';
         editButton.title = 'Edit this message';
 
         editButton.addEventListener('click', (event) => {
@@ -412,7 +412,7 @@ function displayMessage(role, text, fileInfo = null, searchSuggestionHtml = null
             // Define cancelButton before saveButton's listener to make it accessible
             const cancelButton = document.createElement('button');
             cancelButton.classList.add('cancel-edit-btn');
-            cancelButton.textContent = 'Cancel';
+            cancelButton.textContent = '❌';
             cancelButton.style.marginTop = '5px';
 
             cancelButton.addEventListener('click', () => {
@@ -430,7 +430,7 @@ function displayMessage(role, text, fileInfo = null, searchSuggestionHtml = null
 
             const saveButton = document.createElement('button');
             saveButton.classList.add('save-edit-btn');
-            saveButton.textContent = 'Save';
+            saveButton.textContent = '✅';
             saveButton.style.marginRight = '5px';
             saveButton.style.marginTop = '5px';
 
@@ -531,7 +531,7 @@ function displayMessage(role, text, fileInfo = null, searchSuggestionHtml = null
 
             const regenerateButton = document.createElement('button');
             regenerateButton.classList.add('regenerate-btn');
-            regenerateButton.textContent = 'Regenerate';
+            regenerateButton.textContent = '↺'; // U+21BB
             regenerateButton.title = 'Regenerate this response';
 
             regenerateButton.addEventListener('click', async (event) => {
