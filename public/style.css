@@ -316,6 +316,49 @@ h1 {
 /* --- End Action Button Styling (Tag-like) --- */
 
 
+/* --- Branching UI Styling --- */
+.branch-nav {
+    display: flex;
+    align-items: center;
+    gap: 5px; /* Space between prev button, indicator, and next button */
+    font-size: 0.75em; /* Smaller than main message text, similar to other action buttons */
+    color: #AAA; /* Subtle color for the indicator text */
+}
+
+.branch-prev,
+.branch-next {
+    background: none;
+    border: 1px solid #555; /* Subtle border */
+    color: #AAA;
+    padding: 2px 5px;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 0.9em; /* Relative to .branch-nav font-size */
+    line-height: 1;
+    transition: background-color 0.2s, color 0.2s, border-color 0.2s;
+}
+
+.branch-prev:hover:not(:disabled),
+.branch-next:hover:not(:disabled) {
+    background-color: #444;
+    color: #EAEAEA;
+    border-color: #777;
+}
+
+.branch-prev:disabled,
+.branch-next:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+    border-color: #444;
+}
+
+.branch-indicator {
+    padding: 0 3px; /* Some spacing around the text */
+    font-style: italic;
+}
+/* --- End Branching UI Styling --- */
+
+
 /* --- Inline Editing UI Styling (Textarea and Action Buttons Container) --- */
 .edit-controls-container {
     margin-top: 8px;
