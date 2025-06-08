@@ -195,7 +195,12 @@ h1 {
 
 
 /* --- Google Search Suggestion Styling (Minimal Wrapper Only) --- */
-.search-suggestion-container { margin-top: 12px; }
+.search-suggestion-container {
+    margin-top: 12px;
+    overflow-x: auto; /* Enable horizontal scrolling if content overflows */
+    max-width: 100%;  /* Ensure container does not exceed parent's width */
+    box-sizing: border-box; /* Include padding and border in the element's total width and height */
+}
 /* --- End Search Suggestion Styling --- */
 
 /* --- Markdown Element Styling --- */
