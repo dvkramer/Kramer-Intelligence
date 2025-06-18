@@ -229,13 +229,54 @@ function resetFileInput() {
 
 
 // --- Core Message Sending Logic ---
+
+async function _sendMessageToServer(historyToProcess) {
+    showLoading(); // Show loading at the start of the async operation
+    try {
+        const payload = { history: [...historyToProcess] };
+        console.log("Sending payload to /api/chat:", { historyLength: payload.history.length });
+
+        const response = await fetch('/api/chat', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload),
+        });
+
+        if (!response.ok) {
+            let errorMsg = `API Error: ${response.statusText} (${response.status})`;
+            try { const errorData = await response.json(); errorMsg = errorData.error || errorMsg; } catch (e) { console.warn("Could not parse API error JSON."); try { const txt = await response.text(); if(txt) errorMsg += `\nResponse: ${txt.substring(0,200)}...`; } catch(e2){} }
+            if (response.status === 413) errorMsg = `Request Failed: Payload too large (${response.statusText}). Max file size is ~${MAX_FILE_SIZE_MB}MB.`;
+            throw new Error(errorMsg);
+        }
+
+        const data = await response.json();
+        const aiResponseText = data.text;
+        const searchSuggestionHtml = data.searchSuggestionHtml;
+        console.log(`AI Response received (using ${data.modelUsed || 'unknown model'})`);
+
+        const aiMessageId = Date.now() + '-' + Math.random().toString(36).substring(2, 9);
+        // Update global conversationHistory from within this function
+        conversationHistory.push({ role: 'model', parts: [{ text: aiResponseText }], id: aiMessageId });
+        displayMessage('ai', aiResponseText, null, searchSuggestionHtml, aiMessageId);
+
+    } catch (err) {
+        console.error("Error during send/receive:", err);
+        showError(err.message || "Failed to get response.");
+        // No history rollback here for now, simplifying error recovery.
+        // The user message that triggered this remains in history and UI.
+    } finally {
+        hideLoading();
+        sendButton.disabled = false; // Re-enable send button in all cases
+    }
+}
+
 async function handleSendMessage() {
     const userMessageText = messageInput.value.trim();
     if (!userMessageText && !selectedFile) return;
 
-    sendButton.disabled = true;
-    hideError();
-    showLoading();
+    sendButton.disabled = true; // Disable here, _sendMessageToServer will re-enable in its finally.
+    // hideError(); // handleRemoveFile called later will hide error.
+    // showLoading(); // _sendMessageToServer will handle its own loading indicator.
 
     const messageParts = [];
     let fileInfoForDisplay = null;
@@ -254,17 +295,18 @@ async function handleSendMessage() {
         messageParts.push({ text: userMessageText });
     }
 
-    if (messageParts.length === 0) {
-        hideLoading();
-        sendButton.disabled = false;
+    if (messageParts.length === 0) { // Re-check if only file was selected then removed, or text was only spaces
+        sendButton.disabled = false; // Re-enable send button
         console.warn("Message sending aborted: No parts prepared.");
         return;
     }
 
-    displayMessage('user', userMessageText || '', fileInfoForDisplay);
-    conversationHistory.push({ role: 'user', parts: messageParts });
+    const userMessageId = Date.now() + '-' + Math.random().toString(36).substring(2, 9);
+    conversationHistory.push({ role: 'user', parts: messageParts, id: userMessageId });
+    displayMessage('user', userMessageText || '', fileInfoForDisplay, null, userMessageId);
+
     messageInput.value = '';
-    handleRemoveFile();
+    handleRemoveFile(); // This also hides error via its own logic, which is fine.
     adjustTextareaHeight();
 
     if (isMobileDevice()) {
@@ -273,55 +315,31 @@ async function handleSendMessage() {
         messageInput.focus();
     }
 
-    try {
-        const payload = { history: [...conversationHistory] };
-        console.log("Sending payload to /api/chat:", { historyLength: payload.history.length });
-
-        const response = await fetch('/api/chat', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(payload),
-        });
-        hideLoading();
-
-        if (!response.ok) {
-            let errorMsg = `API Error: ${response.statusText} (${response.status})`;
-            try { const errorData = await response.json(); errorMsg = errorData.error || errorMsg; } catch (e) { console.warn("Could not parse API error JSON."); try { const txt = await response.text(); if(txt) errorMsg += `\nResponse: ${txt.substring(0,200)}...`; } catch(e2){} }
-            if (response.status === 413) errorMsg = `Request Failed: Payload too large (${response.statusText}). Max file size is ~${MAX_FILE_SIZE_MB}MB.`;
-            throw new Error(errorMsg);
-        }
-
-        const data = await response.json();
-        const aiResponseText = data.text;
-        const searchSuggestionHtml = data.searchSuggestionHtml;
-        console.log(`AI Response received (using ${data.modelUsed || 'unknown model'})`);
-
-        conversationHistory.push({ role: 'model', parts: [{ text: aiResponseText }] });
-        displayMessage('ai', aiResponseText, null, searchSuggestionHtml);
-
-    } catch (err) {
-        console.error("Error during send/receive:", err);
-        showError(err.message || "Failed to get response.");
-        hideLoading();
-        // Attempt rollback
-        conversationHistory.pop();
-        const userMessages = chatHistory.querySelectorAll('.user-message');
-        if (userMessages.length > 0) {
-            userMessages[userMessages.length - 1].remove();
-            console.log("Removed last user message bubble due to API error.");
-        }
-    } finally {
-        sendButton.disabled = false;
-    }
+    await _sendMessageToServer(conversationHistory); // Call the refactored function
+    // sendButton state will be managed by _sendMessageToServer's finally block.
 }
 // --- END Core Message Sending Logic ---
 
 
 // --- Display & Formatting ---
-function displayMessage(role, text, fileInfo = null, searchSuggestionHtml = null) {
-    const messageDiv = document.createElement('div');
-    messageDiv.classList.add('message', role === 'user' ? 'user-message' : 'ai-message');
-    let contentAdded = false;
+function displayMessage(role, text, fileInfo = null, searchSuggestionHtml = null, messageId) {
+    const messageEntryDiv = document.createElement('div');
+    messageEntryDiv.classList.add('message-entry');
+    if (messageId) {
+        messageEntryDiv.dataset.messageEntryId = messageId;
+    }
+    if (role === 'user') {
+        messageEntryDiv.classList.add('user-message-entry');
+    } else {
+        messageEntryDiv.classList.add('ai-message-entry');
+    }
+
+    const messageBubbleDiv = document.createElement('div');
+    messageBubbleDiv.classList.add('message', role === 'user' ? 'user-message' : 'ai-message');
+    if (messageId) {
+        messageBubbleDiv.dataset.messageId = messageId;
+    }
+    let contentAddedToBubble = false;
 
     if (fileInfo && role === 'user') {
         if (fileInfo.type === 'image' && fileInfo.dataUrl) {
@@ -331,14 +349,14 @@ function displayMessage(role, text, fileInfo = null, searchSuggestionHtml = null
             imgElement.alt = `User uploaded image: ${fileInfo.name || 'image'}`;
             imgElement.title = `Click to view image: ${fileInfo.name || 'image'}`;
             imgElement.addEventListener('click', () => window.open(fileInfo.dataUrl, '_blank'));
-            messageDiv.appendChild(imgElement);
-            contentAdded = true;
+            messageBubbleDiv.appendChild(imgElement);
+            contentAddedToBubble = true;
         } else if (fileInfo.type === 'pdf' && fileInfo.name) {
             const pdfInfoDiv = document.createElement('div');
             pdfInfoDiv.classList.add('pdf-info');
             pdfInfoDiv.textContent = `📎 Sent PDF: ${fileInfo.name}`;
-            messageDiv.appendChild(pdfInfoDiv);
-            contentAdded = true;
+            messageBubbleDiv.appendChild(pdfInfoDiv);
+            contentAddedToBubble = true;
         }
     }
 
@@ -357,8 +375,8 @@ function displayMessage(role, text, fileInfo = null, searchSuggestionHtml = null
             paragraph.textContent = text;
         }
         if (paragraph.innerHTML.trim() || paragraph.textContent.trim()) {
-             messageDiv.appendChild(paragraph);
-             contentAdded = true;
+             messageBubbleDiv.appendChild(paragraph);
+             contentAddedToBubble = true;
         }
     }
 
@@ -368,21 +386,192 @@ function displayMessage(role, text, fileInfo = null, searchSuggestionHtml = null
         try {
             suggestionContainer.innerHTML = searchSuggestionHtml;
             if (suggestionContainer.innerHTML.trim()) {
-                 messageDiv.appendChild(suggestionContainer);
-                 contentAdded = true;
+                 messageBubbleDiv.appendChild(suggestionContainer);
+                 contentAddedToBubble = true;
             }
         } catch (error) { console.error("Error setting innerHTML for search suggestions:", error); }
     }
 
-    if (contentAdded) {
-        chatHistory.appendChild(messageDiv);
+    const actionButtonBar = document.createElement('div');
+    actionButtonBar.classList.add('action-button-bar'); // Base class
+    actionButtonBar.classList.add('message-action-buttons'); // New generic class for the bar itself
+    if (role === 'user') {
+        actionButtonBar.classList.add('user-actions-align'); // For aligning content (buttons) inside
+    } else {
+        actionButtonBar.classList.add('ai-actions-align');   // For aligning content (buttons) inside
+    }
+    if (messageId) {
+        actionButtonBar.dataset.controlsMessageId = messageId;
+    }
+
+    // Add Edit button for user messages
+    if (role === 'user' && contentAddedToBubble) {
+        const editButton = document.createElement('button');
+        editButton.classList.add('edit-btn');
+        editButton.textContent = '✏️';
+        editButton.title = 'Edit this message';
+
+        editButton.addEventListener('click', (event) => {
+            const originalEditButton = event.currentTarget;
+            const currentActionBar = originalEditButton.closest('.action-button-bar');
+            if (!currentActionBar) return;
+
+            const messageIdForEdit = currentActionBar.dataset.controlsMessageId;
+            if (!messageIdForEdit) {
+                console.error('Could not find message ID for editing from action bar.');
+                return;
+            }
+
+            const messageEntry = currentActionBar.closest('.message-entry');
+            if (!messageEntry) return;
+            const messageBubble = messageEntry.querySelector('.message.user-message');
+            if(!messageBubble) return;
+
+            const messageIndex = conversationHistory.findIndex(msg => msg.id === messageIdForEdit);
+            if (messageIndex === -1) {
+                console.error('Message to edit not found in history.');
+                return;
+            }
+            const messageObject = conversationHistory[messageIndex];
+
+            const textPart = messageObject.parts.find(part => typeof part.text === 'string');
+            const originalText = textPart ? textPart.text : '';
+            const originalBubbleHTML = messageBubble.innerHTML; // Store original HTML
+
+            originalEditButton.style.display = 'none';
+            messageBubble.innerHTML = ''; // Clear the bubble for textarea
+
+            const textarea = document.createElement('textarea');
+            textarea.classList.add('edit-message-textarea');
+            textarea.value = originalText;
+            messageBubble.appendChild(textarea); // Place textarea directly in bubble
+
+            const saveButton = document.createElement('button');
+            saveButton.classList.add('save-edit-btn');
+            saveButton.textContent = '✅';
+            saveButton.title = 'Save changes';
+
+            const cancelButton = document.createElement('button');
+            cancelButton.classList.add('cancel-edit-btn');
+            cancelButton.textContent = '❌';
+            cancelButton.title = 'Cancel edit';
+
+            cancelButton.addEventListener('click', () => {
+                messageBubble.innerHTML = originalBubbleHTML; // Restore original content
+                currentActionBar.innerHTML = ''; // Clear save/cancel
+                currentActionBar.appendChild(originalEditButton); // Add original edit button back
+                originalEditButton.style.display = '';
+            });
+
+            saveButton.addEventListener('click', async () => {
+                saveButton.disabled = true;
+                cancelButton.disabled = true;
+                textarea.disabled = true;
+
+                const newText = textarea.value.trim();
+                let textPartToUpdate = messageObject.parts.find(part => typeof part.text === 'string');
+                if (textPartToUpdate) {
+                    textPartToUpdate.text = newText;
+                } else {
+                    messageObject.parts.push({ text: newText });
+                }
+
+                if (messageIndex < conversationHistory.length - 1) {
+                    conversationHistory.splice(messageIndex + 1);
+                }
+
+                let currentMsgEntry = messageEntry.nextElementSibling;
+                while (currentMsgEntry) {
+                    const nextEntry = currentMsgEntry.nextElementSibling;
+                    currentMsgEntry.remove();
+                    currentMsgEntry = nextEntry;
+                }
+
+                messageBubble.innerHTML = ''; // Clear textarea
+                const p = document.createElement('p');
+                p.textContent = newText;
+                messageBubble.appendChild(p); // Display new text
+
+                currentActionBar.innerHTML = ''; // Clear save/cancel
+                currentActionBar.appendChild(originalEditButton);
+                originalEditButton.style.display = '';
+
+                await _sendMessageToServer(conversationHistory);
+            });
+
+            currentActionBar.innerHTML = ''; // Clear Edit button
+            currentActionBar.appendChild(saveButton);
+            currentActionBar.appendChild(cancelButton);
+            textarea.focus();
+        });
+        actionButtonBar.appendChild(editButton);
+    }
+
+    // Add Regenerate button for AI messages
+    if (role === 'ai' && contentAddedToBubble) {
+        // Remove regenerate buttons from previous AI messages' action bars
+        const allActionBars = chatHistory.querySelectorAll('.action-button-bar');
+        allActionBars.forEach(bar => {
+            const oldRegenBtn = bar.querySelector('.regenerate-btn');
+            if (oldRegenBtn) oldRegenBtn.remove();
+        });
+
+        const regenerateButton = document.createElement('button');
+        regenerateButton.classList.add('regenerate-btn');
+        regenerateButton.textContent = '↺';
+        regenerateButton.title = 'Regenerate this response';
+
+        regenerateButton.addEventListener('click', async (event) => {
+            const button = event.currentTarget;
+            button.disabled = true;
+
+            const currentActionBar = button.closest('.action-button-bar');
+            if (!currentActionBar) return;
+            const messageIdToRegenerate = currentActionBar.dataset.controlsMessageId;
+
+            if (!messageIdToRegenerate) {
+                console.error('Could not find message ID for regeneration from action bar.');
+                button.disabled = false;
+                return;
+            }
+
+            const messageIndex = conversationHistory.findIndex(msg => msg.id === messageIdToRegenerate);
+            if (messageIndex === -1) {
+                console.error('Message to regenerate not found in history.');
+                button.disabled = false;
+                return;
+            }
+
+            if (conversationHistory[messageIndex].role !== 'model') {
+                console.error('Attempted to regenerate a non-AI message.');
+                button.disabled = false;
+                return;
+            }
+
+            conversationHistory.splice(messageIndex, 1);
+
+            const entryToRemove = currentActionBar.closest('.message-entry');
+            if (entryToRemove) {
+                entryToRemove.remove();
+            }
+
+            await _sendMessageToServer(conversationHistory);
+        });
+        actionButtonBar.appendChild(regenerateButton);
+    }
+
+    if (contentAddedToBubble) {
+        messageEntryDiv.appendChild(messageBubbleDiv);
+        messageEntryDiv.appendChild(actionButtonBar);
+        chatHistory.appendChild(messageEntryDiv);
+
         if (role === 'user') {
             scrollChatToBottom();
         } else if (role === 'ai') {
-             setTimeout(() => scrollToMessageTop(messageDiv), 50);
+             setTimeout(() => scrollToMessageTop(messageBubbleDiv), 50);
         }
     } else {
-         console.warn("Skipped appending an empty message bubble.");
+         console.warn("Skipped appending an empty message.");
     }
 }
 // --- END Display & Formatting ---
