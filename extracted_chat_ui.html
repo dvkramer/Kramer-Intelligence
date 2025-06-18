@@ -1,0 +1,55 @@
+<!-- Extracted HTML structures from public/index.html -->
+
+<!-- Main container for chat messages -->
+<!-- Manipulated by `displayMessage` in script.js to add new user and AI message bubbles. -->
+<div id="chat-history">
+    <!-- Chat messages will appear here -->
+</div>
+
+<!-- Loading indicator -->
+<!-- Visibility toggled by `showLoading()` and `hideLoading()` in script.js during API calls. -->
+<div id="loading" class="hidden">Thinking...</div>
+
+<!-- Error display area -->
+<!-- Content and visibility managed by `showError()` and `hideError()` in script.js. -->
+<div id="error" class="hidden"></div>
+
+<!-- File preview area -->
+<!-- Visibility and content (image src, PDF filename) managed by `processSelectedFile` and `handleRemoveFile` in script.js. -->
+<div id="image-preview-container" class="hidden">
+    <div>  <!-- Inner div for positioning -->
+         <!-- `src` attribute set by `processSelectedFile` for image previews or PDF icon. -->
+         <img id="image-preview" src="#" alt="File preview"/>
+         <!-- Text content set by `processSelectedFile` for PDF filenames. -->
+         <span id="pdf-filename-preview"></span>
+         <!-- `click` event handled by `handleRemoveFile` in script.js. -->
+         <button id="remove-image-button" title="Remove file">×</button>
+    </div>
+</div>
+
+<!-- Input form for sending messages and attaching files -->
+<!-- `submit` event on this form is (implicitly) handled by `handleSendMessage` via `sendButton` click or Enter key in `messageInput`. -->
+<form id="chat-form">
+    <!-- File input, hidden. `change` event handled by `handleFileSelect` in script.js. Click triggered by `attachButton`. -->
+    <input type="file" id="file-upload-input" accept="image/png, image/jpeg, image/webp, image/heic, image/heif, application/pdf" style="display: none;">
+
+    <!-- Attach button. `click` event triggers `fileUploadInput.click()` in script.js. -->
+    <button type="button" id="attach-button" title="Attach Image or PDF">
+        📎
+    </button>
+
+    <!-- Message textarea. Value read by `handleSendMessage`. `keydown` (Enter) and `input` events handled in script.js. -->
+    <textarea id="message-input" placeholder="Ask me anything..." rows="1" autocomplete="off"></textarea>
+
+    <!-- Send button. `click` event handled by `handleSendButtonClick` (which calls `handleSendMessage`) in script.js. -->
+    <button type="submit" id="send-button">Send</button>
+</form>
+
+<!-- Script tags for Markdown and DOMPurify -->
+<!-- Used by `displayMessage` in script.js to render AI responses safely. -->
+<script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js" defer></script>
+<script src="https://cdn.jsdelivr.net/npm/dompurify@latest/dist/purify.min.js" defer></script>
+
+<!-- Main application script -->
+<!-- <script src="script.js" defer></script> -->
+<!-- This loads the script.js file, which contains all the client-side logic interacting with the above elements. -->
