@@ -161,7 +161,7 @@ export default async function handler(req, res) {
         // --- REMOVED generationConfig/thinkingConfig ---
         const requestBody = {
             contents: processedContents,
-            systemInstruction: { parts: [ { text: systemPrompt } ] },
+            system_instruction: { parts: [ { text: systemPrompt } ] },
             tools: [ { googleSearch: {} } ]
             // Add safetySettings etc. here directly if needed
         };
