@@ -1,12 +1,27 @@
-const { app, BrowserWindow } = require('electron');
+const { app, BrowserWindow, ipcMain } = require('electron');
 const path = require('path');
+const { exec } = require('child_process');
+
+ipcMain.handle('run-powershell', async (event, command) => {
+  return new Promise((resolve) => {
+    exec(command, { 'shell': 'powershell.exe' }, (error, stdout, stderr) => {
+      if (error) {
+        console.error(`exec error: ${error}`);
+        return resolve(stderr);
+      }
+      return resolve(stdout);
+    });
+  });
+});
 
 function createWindow() {
   const mainWindow = new BrowserWindow({
     width: 800,
     height: 600,
     webPreferences: {
-      preload: path.join(__dirname, 'preload.js') // We'll create this file, but it can be empty for now
+      preload: path.join(__dirname, 'preload.js'),
+      nodeIntegration: false,
+      contextIsolation: true,
     }
   });
 

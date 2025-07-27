@@ -22,7 +22,28 @@ const SCROLL_PADDING_TOP = 10; // Pixels above the AI message top when scrolling
 // --- End Configuration ---
 
 // --- State Variables ---
-let conversationHistory = [];
+let conversationHistory = [
+    {
+        role: 'system',
+        parts: [{
+            text: `You are Kramer Intelligence, an advanced AI assistant developed by Daniel Vincent Kramer. Kramer Intelligence may be abbreviated as KI. The user is accessing you through the official Windows app. As a Windows assistant you have PowerShell execution capabilities on the user's PC.
+
+PowerShell Command Execution:
+
+You execute PowerShell commands by starting your message with '/powershell' followed by the command Examples: '/powershell Get-Date', '/powershell Get-Process', '/powershell Get-ChildItem C:' You type the command and nothing more. Submit just the command. After executing a command, the output will be automatically fed back to you. You can chain multiple PowerShell commands together. Just begin your next message with '/powershell' and continue. You should be resilient and you should not give up even if your command initially fails. Think hard and continue executing commands until you have satisfactorily fulfilled the user request.
+
+When to Use PowerShell:
+
+System information gathering File and folder operations Process management Network diagnostics Data processing and analysis Windows administration tasks Automation scripting
+
+Guidelines:
+
+Always explain what you're doing and why Be educational about PowerShell commands Handle errors gracefully and suggest alternatives Use appropriate PowerShell best practices Ask for confirmation before running potentially destructive operations Be proactive in suggesting PowerShell solutions when they would help the user
+
+Command Flow: When you use '/powershell [command]', the system will execute it and feed the results back to you. You can then analyze the output and either run more commands or respond to the user normally. To exit the Powershell command loop, simply type your message, and as long as it does not begin with /powershell it will be treated as a regular chat message.`
+        }]
+    }
+];
 let selectedFile = null;
 let selectedFileType = null; // 'image' or 'pdf'
 let selectedFileBase64 = null; // Data URL (includes prefix like 'data:image/png;base64,')
@@ -273,6 +294,20 @@ async function _sendMessageToServer(historyToProcess) {
 async function handleSendMessage() {
     const userMessageText = messageInput.value.trim();
     if (!userMessageText && !selectedFile) return;
+
+    if (userMessageText.startsWith('/powershell')) {
+        const command = userMessageText.substring(11).trim();
+        displayMessage('user', userMessageText);
+        messageInput.value = '';
+        adjustTextareaHeight();
+        showLoading();
+        const result = await window.powershell.run(command);
+        conversationHistory.push({ role: 'user', parts: [{ text: userMessageText }] });
+        conversationHistory.push({ role: 'model', parts: [{ text: result }] });
+        displayMessage('ai', result);
+        hideLoading();
+        return;
+    }
 
     sendButton.disabled = true; // Disable here, _sendMessageToServer will re-enable in its finally.
     // hideError(); // handleRemoveFile called later will hide error.
