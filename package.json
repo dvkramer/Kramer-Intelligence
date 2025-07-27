@@ -1,0 +1,30 @@
+{
+  "name": "kramer-intelligence-desktop",
+  "version": "1.0.0",
+  "description": "Kramer Intelligence is an advanced AI assistant built by Daniel Vincent Kramer.",
+  "author": "Daniel Vincent Kramer",
+  "main": "main.js",
+  "scripts": {
+    "start": "electron .",
+    "dist": "electron-builder"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "devDependencies": {
+    "electron": "^31.2.1",
+    "electron-builder": "^24.13.3"
+  },
+  "build": {
+    "appId": "com.kramer.intelligence",
+    "productName": "Kramer Intelligence",
+    "files": [
+      "main.js",
+      "public/**/*"
+    ],
+    "win": {
+      "target": "nsis",
+      "icon": "build/icon.ico"
+    }
+  }
+}

@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Kramer Intelligence</title>
+
+    <!-- SEO Meta Tags -->
+    <meta name="description" content="Chat with Kramer Intelligence, an AI assistant created by Daniel Vincent Kramer. Get answers, engage in conversation, and even upload images or PDFs.">
+    <link rel="canonical" href="https://kramer-intelligence.vercel.app/"> <!-- Adjust if your URL changes -->
+    <!-- End SEO Meta Tags -->
+
+    <!-- Favicon Links - START -->
+    <link rel="icon" href="/icons/icon-192x192.png" type="image/png" sizes="192x192">
+    <link rel="icon" href="/icons/icon-600x600.png" type="image/png" sizes="600x600">
+    <link rel="apple-touch-icon" href="/icons/icon-600x600.png">
+    <!-- Favicon Links - END -->
+
+    <!-- PWA: Link Manifest -->
+    <link rel="manifest" href="/manifest.json">
+
+    <!-- PWA: Theme Color -->
+    <meta name="theme-color" content="#1f1f1f">
+
+    <!-- Your other links -->
+    <link rel="stylesheet" href="style.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500&display=swap" rel="stylesheet">
+
+    <!-- Added Libraries for Markdown/Sanitization -->
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js" defer></script>
+    <script src="https://cdn.jsdelivr.net/npm/dompurify@latest/dist/purify.min.js" defer></script>
+    <!-- End Added Libraries -->
+
+</head>
+<body>
+
+    <!-- NEW WRAPPER for scrollable content -->
+    <div id="main-content-area">
+        <h1>Kramer Intelligence</h1>
+
+        <div id="chat-container">
+            <div id="chat-history">
+                <!-- Chat messages will appear here -->
+            </div>
+        </div>
+    </div>
+    <!-- END NEW WRAPPER -->
+
+    <div id="loading" class="hidden">Thinking...</div>
+    <div id="error" class="hidden"></div>
+
+    <!-- Image Preview Area (Stays outside the main scroll area) -->
+    <!-- Shown for images OR PDFs now -->
+    <div id="image-preview-container" class="hidden">
+        <div>  <!-- Inner div for positioning -->
+             <img id="image-preview" src="#" alt="File preview"/>
+             <!-- <<< ADDED SPAN FOR PDF FILENAME >>> -->
+             <span id="pdf-filename-preview"></span>
+             <button id="remove-image-button" title="Remove file">×</button>
+        </div>
+    </div>
+    <!-- END Image Preview Area -->
+
+    <!-- Form Area (Stays outside the main scroll area) -->
+    <form id="chat-form">
+        <input type="file" id="file-upload-input" accept="image/png, image/jpeg, image/webp, image/heic, image/heif, application/pdf" style="display: none;">
+        <button type="button" id="attach-button" title="Attach Image or PDF">
+            📎
+        </button>
+        <textarea id="message-input" placeholder="Ask me anything..." rows="1" autocomplete="off"></textarea>
+        <button type="submit" id="send-button">Send</button>
+    </form>
+
+    <script src="script.js" defer></script>
+</body>
+</html>
