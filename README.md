@@ -1,8 +1,10 @@
-# Kramer-Intel-Win
+# Kramer Intelligence for Windows
 
-This is a Windows application for Kramer Intelligence.
+## Download (For users)
 
-## Getting Started
+Download from the [Releases](../../releases) page.
+
+## For Developers
 
 To get started with this application, you'll need to have Node.js and npm installed on your machine.
 
@@ -34,10 +36,4 @@ This will launch the application on your desktop.
 
 ## Contributing
 
-If you'd like to contribute to the project, please follow these steps:
-
-1.  Fork the repository.
-2.  Create a new branch for your feature or bug fix.
-3.  Make your changes and commit them.
-4.  Push your changes to your fork.
-5.  Create a pull request to the main repository.
+Contributions are always welcome. Feel free to create issues, pull requests, etc.
