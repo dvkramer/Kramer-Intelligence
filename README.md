@@ -2,9 +2,9 @@
 
 Kramer Intelligence is an experimental AI assistant powered by the Gemini 2.5 series of models. It can answer questions, assist with tasks, and read documents via a web interface.
 
-## Live Demo
+## Try it out
 
-👉 [kramer-intelligence.vercel.app](https://kramer-intelligence.vercel.app)
+[kramer-intelligence.vercel.app](https://kramer-intelligence.vercel.app)
 
 ## Windows App
 
