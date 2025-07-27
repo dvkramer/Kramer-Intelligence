@@ -9,7 +9,6 @@
     "dist": "electron-builder"
   },
   "keywords": [],
-  "author": "",
   "license": "ISC",
   "devDependencies": {
     "electron": "^31.2.1",
@@ -25,6 +24,10 @@
     "win": {
       "target": "nsis",
       "icon": "build/icon.ico"
+    },
+    "nsis": {
+      "oneClick": false,
+      "deleteAppDataOnUninstall": true
     }
   }
 }
