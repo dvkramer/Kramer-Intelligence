@@ -124,7 +124,7 @@ h1 {
     margin-left: auto;
     max-width: 85%;
     width: fit-content; /* Make entry only as wide as its content (bubble + action bar) */
-    text-align: right; /* ADDED */
+    text-align: left; /* ADDED */
 }
 .ai-message-entry {
     margin-right: auto;
