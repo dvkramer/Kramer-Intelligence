@@ -1,6 +1,6 @@
 # Kramer Intelligence for Windows
 
-Built on Electron.
+This Windows app is built on Electron and reuses code from the webapp on the main branch.
 
 ## Download (For users)
 
