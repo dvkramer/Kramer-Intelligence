@@ -36,6 +36,12 @@ To get started with this application, you'll need to have Node.js and npm instal
 
 This will launch the application on your desktop.
 
+To build an installer, run
+
+```bash
+npm run dist
+```
+
 ## Contributing
 
 Contributions are always welcome. Feel free to create issues, pull requests, etc.
