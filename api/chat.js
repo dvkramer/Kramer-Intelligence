@@ -11,8 +11,8 @@ function getBase64Data(dataUrl) {
 // --- Configuration ---
 // Define the models to try, in order of preference
 const MODELS_TO_TRY = [
-    'gemini-2.5-pro',
     'gemini-2.5-flash',
+    'gemini-2.5-pro',
     'gemini-2.5-flash-lite'
 ];
 const MAX_FILE_SIZE_MB = 15; // Max size for inline upload
