@@ -1,4 +1,3 @@
-// api/chat.js
 
 // Helper function to extract Base64 data from Data URL
 function getBase64Data(dataUrl) {
@@ -12,8 +11,9 @@ function getBase64Data(dataUrl) {
 // --- Configuration ---
 // Define the models to try, in order of preference
 const MODELS_TO_TRY = [
-	'gemini-2.5-flash',
-	'gemini-2.5-flash-lite-preview-06-17'
+    'gemini-2.5-flash',
+    'gemini-2.5-flash-lite',
+    'gemini-2.5-pro'
 ];
 const MAX_FILE_SIZE_MB = 15; // Max size for inline upload
 const MAX_TOKENS = 1000000; // Max context window tokens
@@ -86,13 +86,22 @@ export default async function handler(req, res) {
     // --- END History Processing ---
 
 
-    // --- Generate System Prompt with Current Date ---
+    // --- FIXED: Generate System Prompt and Inject into Contents ---
     const baseSystemPrompt = "You are Kramer Intelligence, an advanced AI assistant developed by Daniel Vincent Kramer. Kramer Intelligence may be abbreviated as KI.";
     const today = new Date();
     const dateOptions = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' };
     const formattedDate = today.toLocaleDateString('en-US', dateOptions);
-    const systemPrompt = `${baseSystemPrompt} Today's date is ${formattedDate}.`;
-    // --- END System Prompt ---
+    const systemPrompt = `${baseSystemPrompt} Today's date is ${formattedDate}.\n\n`;
+
+    // Inject the system prompt at the beginning of the first user message
+    if (processedContents.length > 0 && processedContents[0].role === 'user' && processedContents[0].parts.length > 0) {
+        // Find the first part with text and prepend to it
+        const firstTextPart = processedContents[0].parts.find(p => 'text' in p);
+        if (firstTextPart) {
+            firstTextPart.text = systemPrompt + firstTextPart.text;
+        }
+    }
+    // --- END System Prompt Injection ---
 
 
     // --- Initialize variables for the fallback loop ---
@@ -101,7 +110,7 @@ export default async function handler(req, res) {
     let lastErrorData = null;
     let successfulModel = null;
 
-    // --- Token Counting and Truncation ---
+    // --- Token Counting and Truncation (No changes needed here) ---
     try {
         if (processedContents.length > 0) {
             const firstModel = MODELS_TO_TRY[0];
@@ -128,7 +137,7 @@ export default async function handler(req, res) {
                 }
             };
             currentTokenCount = await getTokenCount(processedContents);
-            console.log(`Initial token count: ${currentTokenCount} (Limit: ${MAX_TOKENS})`); // Keep basic log
+            console.log(`Initial token count: ${currentTokenCount} (Limit: ${MAX_TOKENS})`);
             if (currentTokenCount === -1) {
                 console.warn("Proceeding without history truncation due to token count error.");
             } else {
@@ -155,15 +164,22 @@ export default async function handler(req, res) {
 
     // --- Loop through models and attempt API call ---
     for (const modelName of MODELS_TO_TRY) {
-        console.log(`Attempting API call with model: ${modelName}`); // Keep basic attempt log
+        console.log(`Attempting API call with model: ${modelName}`);
         const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/${modelName}:generateContent?key=${apiKey}`;
 
-        // --- REMOVED generationConfig/thinkingConfig ---
+        // --- FIXED: Request body now matches the structure of the provided example ---
         const requestBody = {
             contents: processedContents,
-            system_instruction: { parts: [ { text: systemPrompt } ] },
-            tools: [ { googleSearch: {} } ]
-            // Add safetySettings etc. here directly if needed
+            tools: [
+                {
+                    "google_search": {}
+                }
+            ],
+            generationConfig: {
+                temperature: 1,
+                topP: 0.95,
+                maxOutputTokens: 8192,
+            }
         };
 
         try {
@@ -176,14 +192,12 @@ export default async function handler(req, res) {
             if (googleResponse.ok) {
                 googleData = await googleResponse.json();
                 successfulModel = modelName;
-                console.log(`Success with model: ${successfulModel}`); // Keep basic success log
+                console.log(`Success with model: ${successfulModel}`);
                 break; // Exit the loop on first successful call
             } else {
-                // API returned an error status (e.g., 4xx, 5xx)
-                console.warn(`Model ${modelName} failed with status: ${googleResponse.status}`); // Keep basic failure log
+                console.warn(`Model ${modelName} failed with status: ${googleResponse.status}`);
                 try {
                     lastErrorData = await googleResponse.json();
-                    // Log DETAILED error only on failure
                     console.warn(`Error details for ${modelName}:`, JSON.stringify(lastErrorData));
                 } catch (parseError) {
                     const errorText = await googleResponse.text().catch(() => '');
@@ -192,7 +206,7 @@ export default async function handler(req, res) {
                 }
             }
         } catch (error) {
-            console.error(`Fetch error for model ${modelName}:`, error); // Keep fetch error log
+            console.error(`Fetch error for model ${modelName}:`, error);
             lastErrorData = { error: { message: `Network or fetch error for ${modelName}: ${error.message}` } };
             googleResponse = { status: 500, statusText: 'Network Error' };
         }
@@ -202,10 +216,9 @@ export default async function handler(req, res) {
     // --- Process the result (or final error) ---
     try {
         if (!googleData || !successfulModel) {
-            console.error('All models failed. Reporting last encountered error.'); // Keep final failure log
+            console.error('All models failed. Reporting last encountered error.');
             const finalStatus = googleResponse?.status || 500;
             let errorMsg = lastErrorData?.error?.message || `API Error: ${finalStatus} ${googleResponse?.statusText || 'Unknown Error'}`;
-            // Append specific known error details (Keep these hints)
             if (lastErrorData?.error?.status === 'FAILED_PRECONDITION') errorMsg += ' (Check API key/billing?)';
             if (lastErrorData?.error?.message?.includes('payload is too large')) errorMsg = `Request too large (~${MAX_FILE_SIZE_MB}MB limit).`;
              else if (lastErrorData?.error?.message?.includes('429')) errorMsg += ' (Rate limit exceeded?)';
@@ -215,20 +228,16 @@ export default async function handler(req, res) {
         }
 
         // --- SUCCESS: Proceed with processing the successful response ---
-        console.log(`Processing successful response from model: ${successfulModel}`); // Keep basic processing log
+        console.log(`Processing successful response from model: ${successfulModel}`);
 
         let aiText = null;
         let searchSuggestionHtml = null;
         const candidate = googleData?.candidates?.[0];
-        const promptFeedback = googleData?.promptFeedback; // Keep reference for safety check
+        const promptFeedback = googleData?.promptFeedback;
 
         if (candidate) {
-            // <<< CORRECTED LOGIC (Reinstated): Find the first text part that is NOT a thought >>>
             const finalAnswerPart = candidate.content?.parts?.find(part => part.text && !part.thought);
-            aiText = finalAnswerPart?.text; // Get text from the non-thought part
-
-            // Log extracted text only if debugging is needed later
-            // console.log("Extracted AI Text:", aiText);
+            aiText = finalAnswerPart?.text;
 
             const groundingMetadata = candidate.groundingMetadata;
             if (groundingMetadata?.searchEntryPoint?.renderedContent) {
@@ -236,20 +245,16 @@ export default async function handler(req, res) {
             }
         }
 
-        // Check for blocks *after* confirming a candidate exists
         if (promptFeedback?.blockReason) {
-            console.warn('Prompt Blocked:', promptFeedback.blockReason); // Keep safety warning
+            console.warn('Prompt Blocked:', promptFeedback.blockReason);
             return res.status(400).json({ error: `Request blocked by safety settings: ${promptFeedback.blockReason}` });
         }
         if (candidate?.finishReason === 'SAFETY') {
-            console.warn('Candidate Blocked for Safety:', candidate.safetyRatings); // Keep safety warning
+            console.warn('Candidate Blocked for Safety:', candidate.safetyRatings);
             return res.status(400).json({ error: `Response blocked by safety settings: ${candidate.finishReason}.` });
         }
 
-
-        // Validate the AI response format
         if (typeof aiText !== 'string') {
-             // Log only if text extraction genuinely fails
              console.error('Failed to extract valid AI text from the candidate.');
              if (candidate?.content?.parts?.length > 0) {
                  console.warn('Candidate parts existed but none contained text:', candidate.content.parts);
@@ -271,7 +276,7 @@ export default async function handler(req, res) {
         });
 
     } catch (error) {
-        console.error('Serverless function error after API call:', error); // Keep general error log
+        console.error('Serverless function error after API call:', error);
         res.status(500).json({ error: 'Internal server error during response processing.' });
     }
 }
