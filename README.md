@@ -1,5 +1,7 @@
 # Kramer Intelligence for Windows
 
+Built on Electron.
+
 ## Download (For users)
 
 Download from the [Releases](../../releases) page.
