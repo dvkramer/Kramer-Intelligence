@@ -9,3 +9,4 @@ Kramer Intelligence is 100% free of charge. Try it out at [kramer-intelligence.v
 ## Windows App
 
 Kramer Intelligence is finally available on Windows! Download the Electron app from [Releases](../../releases).
+Auto-update and study mode for the Windows app are coming soon.
