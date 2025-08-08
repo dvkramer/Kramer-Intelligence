@@ -251,6 +251,28 @@ h1 {
 #message-input::placeholder { color: #A0A0A0; }
 #message-input:focus { border-color: #007ACC; box-shadow: 0 0 0 2px rgba(0, 122, 204, 0.3); }
 
+/* Study Mode Button Styling */
+#study-mode-button {
+    padding: 10px 20px;
+    background-color: #333333; /* Dark grey background for OFF state */
+    color: white;
+    border: 1px solid #404040;
+    border-radius: 10px;
+    cursor: pointer;
+    font-size: 1rem;
+    font-weight: 500;
+    transition: background-color 0.2s ease, color 0.2s ease;
+    flex-shrink: 0;
+    align-self: flex-end;
+    margin-bottom: 8px;
+}
+
+#study-mode-button.active {
+    background-color: #B0B0B0; /* Light grey background for ON state */
+    color: #1A1A1A; /* Dark text for ON state */
+    border-color: #909090;
+}
+
 /* Send Button Styling */
 #send-button { padding: 10px 20px; background-color: #007ACC; color: white; border: none; border-radius: 10px; cursor: pointer; font-size: 1rem; font-weight: 500; transition: background-color 0.2s ease; flex-shrink: 0; align-self: flex-end; margin-bottom: 8px; }
 #send-button:disabled { background-color: #004C80; cursor: not-allowed; opacity: 0.7; }

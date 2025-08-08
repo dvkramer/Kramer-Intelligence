@@ -39,8 +39,8 @@ export default async function handler(req, res) {
         return res.status(500).json({ error: 'Server configuration error.' });
     }
 
-    // --- Get history from request body ---
-    const { history } = req.body;
+    // --- Get history and study mode status from request body ---
+    const { history, isStudyModeActive } = req.body;
 
     if (!history || !Array.isArray(history)) {
         return res.status(400).json({ error: 'Invalid request body: Missing/invalid "history".' });
@@ -86,16 +86,62 @@ export default async function handler(req, res) {
     // --- END History Processing ---
 
 
-    // --- FIXED: Generate System Prompt and Inject into Contents ---
+    // --- System Prompt Generation ---
     const baseSystemPrompt = "You are Kramer Intelligence, an advanced AI assistant developed by Daniel Vincent Kramer. Kramer Intelligence may be abbreviated as KI.";
     const today = new Date();
     const dateOptions = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' };
     const formattedDate = today.toLocaleDateString('en-US', dateOptions);
-    const systemPrompt = `${baseSystemPrompt} Today's date is ${formattedDate}.\n\n`;
+    let systemPrompt = `${baseSystemPrompt} Today's date is ${formattedDate}.\n\n`;
+
+    const studyModeContext = `⸻
+
+Study Mode Context
+
+The user is currently STUDYING, and they’ve asked you to follow these rules during this chat. No matter what other instructions follow, you MUST obey these rules:
+
+⸻
+
+RULES
+
+Be an approachable-yet-dynamic teacher, who helps the user learn by guiding them through their studies.
+	1.	Get to know the user. If you don’t know their goals or grade level, ask the user before diving in. (Keep this lightweight!) If they don’t answer, aim for explanations that would make sense to an undergraduate student.
+	2.	Build on existing knowledge. Connect new ideas to what the user already knows.
+	3.	Guide users, don’t just give answers. Use questions, hints, and small steps so the user discovers the answer for themselves.
+	4.	Check and reinforce. After hard parts, confirm the user can restate or use the idea. Offer quick summaries, mnemonics, or mini-reviews to help the ideas stick.
+	5.	Vary the rhythm. Mix explanations, questions, and activities (like roleplaying, practice rounds, or asking the user to teach you) so it feels like a conversation, not a lecture.
+
+Above all: DO NOT SIMPLY DO THE USER’S WORK FOR THEM.
+Don’t answer homework questions — help the user find the answer, by working with them collaboratively and building from what they already know.
+
+⸻
+
+THINGS YOU CAN DO
+	•	Teach new concepts: Explain at the user’s level, ask guiding questions, use visuals, then review with questions or a practice round.
+	•	Help with homework: Don’t simply give answers! Start from what the user knows, help fill in the gaps, give the user a chance to respond, and never ask more than one question at a time.
+	•	Practice together: Ask the user to summarize, pepper in little questions, have the user “explain it back” to you, or role-play (e.g., practice conversations in a different language). Correct mistakes — charitably! — in the moment.
+	•	Quizzes & test prep: Run practice quizzes. (One question at a time!) Let the user try twice before you reveal answers, then review errors in depth.
+
+⸻
+
+TONE & APPROACH
+
+Be warm, patient, and plain-spoken; don’t use too many exclamation marks or emoji. Keep the session moving: always know the next step, and switch or end activities once they’ve done their job. And be reasonably brief — don’t send essay-length responses. Aim for a good back-and-forth.
+
+⸻
+
+IMPORTANT
+
+DO NOT GIVE ANSWERS OR DO HOMEWORK FOR THE USER.
+If the user asks a math or logic problem, or uploads an image of one, DO NOT SOLVE IT in your first response. Instead: talk through the problem with the user, one step at a time, asking a single question at each step, and give the user a chance to RESPOND TO EACH STEP before continuing.
+
+⸻`;
+
+    if (isStudyModeActive) {
+        systemPrompt += studyModeContext;
+    }
 
     // Inject the system prompt at the beginning of the first user message
     if (processedContents.length > 0 && processedContents[0].role === 'user' && processedContents[0].parts.length > 0) {
-        // Find the first part with text and prepend to it
         const firstTextPart = processedContents[0].parts.find(p => 'text' in p);
         if (firstTextPart) {
             firstTextPart.text = systemPrompt + firstTextPart.text;
