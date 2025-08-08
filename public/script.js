@@ -13,6 +13,7 @@ const imagePreviewContainer = document.getElementById('image-preview-container')
 const imagePreview = document.getElementById('image-preview');
 const removeImageButton = document.getElementById('remove-image-button');
 const mainContentArea = document.getElementById('main-content-area');
+const studyModeButton = document.getElementById('study-mode-button');
 // <<< NEW DOM REFERENCE >>>
 const pdfFilenamePreview = document.getElementById('pdf-filename-preview');
 
@@ -26,11 +27,13 @@ let conversationHistory = [];
 let selectedFile = null;
 let selectedFileType = null; // 'image' or 'pdf'
 let selectedFileBase64 = null; // Data URL (includes prefix like 'data:image/png;base64,')
+let isStudyModeActive = false;
 // --- End State Variables ---
 
 // --- Event Listeners ---
 messageInput.addEventListener('keydown', handleInputKeyDown);
 sendButton.addEventListener('click', handleSendButtonClick);
+studyModeButton.addEventListener('click', handleStudyModeToggle);
 attachButton.addEventListener('click', () => {
     resetFileInput();
     fileUploadInput.click();
@@ -228,13 +231,27 @@ function resetFileInput() {
 // --- END File Handling Functions ---
 
 
+// --- Study Mode ---
+function handleStudyModeToggle() {
+    isStudyModeActive = !isStudyModeActive;
+    studyModeButton.classList.toggle('active', isStudyModeActive);
+    console.log(`Study Mode toggled: ${isStudyModeActive ? 'ON' : 'OFF'}`);
+}
+// --- END Study Mode ---
+
 // --- Core Message Sending Logic ---
 
 async function _sendMessageToServer(historyToProcess) {
     showLoading(); // Show loading at the start of the async operation
     try {
-        const payload = { history: [...historyToProcess] };
-        console.log("Sending payload to /api/chat:", { historyLength: payload.history.length });
+        const payload = {
+            history: [...historyToProcess],
+            isStudyModeActive: isStudyModeActive
+        };
+        console.log("Sending payload to /api/chat:", {
+            historyLength: payload.history.length,
+            studyMode: payload.isStudyModeActive
+        });
 
         const response = await fetch('/api/chat', {
             method: 'POST',
