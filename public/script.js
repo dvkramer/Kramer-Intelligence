@@ -889,11 +889,26 @@ async function loadChat(chatId) {
             snapshot.forEach(doc => {
                 const message = doc.data();
                 conversationHistory.push(message);
-                const textPart = message.parts.find(p => 'text' in p)?.text || '';
-                const searchPart = message.parts.find(p => 'searchSuggestionHtml' in p);
-                const searchSuggestionHtml = searchPart ? searchPart.searchSuggestionHtml : null;
-                const fileInfoPart = message.parts.find(p => p.fileInfoForDisplay);
-                const fileInfoForDisplay = fileInfoPart ? fileInfoPart.fileInfoForDisplay : null;
+
+                let textPart = '';
+                let searchSuggestionHtml = null;
+                let fileInfoForDisplay = null;
+
+                if (Array.isArray(message.parts)) {
+                    for (const part of message.parts) {
+                        if (part && typeof part === 'object') {
+                            if ('text' in part) {
+                                textPart = part.text;
+                            }
+                            if ('searchSuggestionHtml' in part) {
+                                searchSuggestionHtml = part.searchSuggestionHtml;
+                            }
+                            if ('fileInfoForDisplay' in part) {
+                                fileInfoForDisplay = part.fileInfoForDisplay;
+                            }
+                        }
+                    }
+                }
 
                 displayMessage(message.role, textPart, fileInfoForDisplay, searchSuggestionHtml, message.id);
             });
