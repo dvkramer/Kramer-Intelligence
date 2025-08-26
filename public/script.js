@@ -1,6 +1,55 @@
 // public/script.js
 
-// DOM element references
+// --- Firebase Services ---
+const {
+    auth,
+    firestore,
+    createUserWithEmailAndPassword,
+    signInWithEmailAndPassword,
+    onAuthStateChanged,
+    signOut,
+    doc,
+    setDoc,
+    getDoc,
+    addDoc,
+    collection,
+    query,
+    where,
+    getDocs,
+    onSnapshot,
+    serverTimestamp,
+    orderBy,
+    updateDoc,
+    arrayUnion
+} = window.firebase;
+
+
+// --- DOM Element References ---
+const menuButton = document.getElementById('menu-button');
+
+// Auth
+const loginButton = document.getElementById('login-button');
+const logoutButton = document.getElementById('logout-button');
+const authModal = document.getElementById('auth-modal');
+const modalCloseButton = document.querySelector('.modal-close-button');
+const loginForm = document.getElementById('login-form');
+const signupForm = document.getElementById('signup-form');
+const showSignup = document.getElementById('show-signup');
+const showLogin = document.getElementById('show-login');
+const loginView = document.getElementById('login-view');
+const signupView = document.getElementById('signup-view');
+const userInfo = document.getElementById('user-info');
+const userEmail = document.getElementById('user-email');
+
+// Sidebar and Chat Controls
+const sidebar = document.getElementById('sidebar');
+const chatList = document.getElementById('chat-list');
+const newChatButton = document.getElementById('new-chat-button');
+const chatControls = document.getElementById('chat-controls');
+const saveChatButton = document.getElementById('save-chat-button');
+const shareChatButton = document.getElementById('share-chat-button');
+
+// Existing Chat Elements
 const chatForm = document.getElementById('chat-form');
 const messageInput = document.getElementById('message-input'); // Textarea
 const sendButton = document.getElementById('send-button');
@@ -14,8 +63,8 @@ const imagePreview = document.getElementById('image-preview');
 const removeImageButton = document.getElementById('remove-image-button');
 const mainContentArea = document.getElementById('main-content-area');
 const studyModeButton = document.getElementById('study-mode-button');
-// <<< NEW DOM REFERENCE >>>
 const pdfFilenamePreview = document.getElementById('pdf-filename-preview');
+
 
 // --- Configuration ---
 const MAX_FILE_SIZE_MB = 15; // Matches backend limit for inline uploads
@@ -23,7 +72,10 @@ const SCROLL_PADDING_TOP = 10; // Pixels above the AI message top when scrolling
 // --- End Configuration ---
 
 // --- State Variables ---
-let conversationHistory = [];
+let currentUser = null;
+let currentChat = { id: null, isSynced: false, ownerId: null }; // id is the Firestore doc ID
+let conversationHistory = []; // This will now represent the messages of the *current* chat
+let unsubscribeMessages = () => {}; // Function to unsubscribe from Firestore listener
 let selectedFile = null;
 let selectedFileType = null; // 'image' or 'pdf'
 let selectedFileBase64 = null; // Data URL (includes prefix like 'data:image/png;base64,')
@@ -242,7 +294,11 @@ function handleStudyModeToggle() {
 // --- Core Message Sending Logic ---
 
 async function _sendMessageToServer(historyToProcess) {
-    showLoading(); // Show loading at the start of the async operation
+    // If the chat is synced, we don't need to display the AI message here.
+    // The onSnapshot listener will handle it. We just need to save the AI response to Firestore.
+    const shouldDisplayAiMessage = !currentChat.isSynced;
+
+    showLoading();
     try {
         const payload = {
             history: [...historyToProcess],
@@ -272,18 +328,30 @@ async function _sendMessageToServer(historyToProcess) {
         console.log(`AI Response received (using ${data.modelUsed || 'unknown model'})`);
 
         const aiMessageId = Date.now() + '-' + Math.random().toString(36).substring(2, 9);
-        // Update global conversationHistory from within this function
-        conversationHistory.push({ role: 'model', parts: [{ text: aiResponseText }], id: aiMessageId });
-        displayMessage('ai', aiResponseText, null, searchSuggestionHtml, aiMessageId);
+    const aiMessageParts = [{ text: aiResponseText }];
+    if (searchSuggestionHtml) {
+        aiMessageParts.push({ searchSuggestionHtml: searchSuggestionHtml });
+    }
+    const aiMessage = { role: 'model', parts: aiMessageParts, id: aiMessageId };
+
+        if (currentChat.isSynced) {
+            await addDoc(collection(firestore, "chats", currentChat.id, "messages"), {
+                ...aiMessage,
+                createdAt: serverTimestamp()
+            });
+            // The snapshot listener will handle displaying the message.
+        } else {
+            // For local chats, update history and display manually.
+            conversationHistory.push(aiMessage);
+            displayMessage('ai', aiResponseText, null, searchSuggestionHtml, aiMessageId);
+        }
 
     } catch (err) {
         console.error("Error during send/receive:", err);
         showError(err.message || "Failed to get response.");
-        // No history rollback here for now, simplifying error recovery.
-        // The user message that triggered this remains in history and UI.
     } finally {
         hideLoading();
-        sendButton.disabled = false; // Re-enable send button in all cases
+        sendButton.disabled = false;
     }
 }
 
@@ -291,36 +359,68 @@ async function handleSendMessage() {
     const userMessageText = messageInput.value.trim();
     if (!userMessageText && !selectedFile) return;
 
-    sendButton.disabled = true; // Disable here, _sendMessageToServer will re-enable in its finally.
-    // hideError(); // handleRemoveFile called later will hide error.
-    // showLoading(); // _sendMessageToServer will handle its own loading indicator.
+    if (!currentUser && currentChat.isSynced) {
+        showError("You must be logged in to send messages in a synced chat.");
+        return;
+    }
+
+    sendButton.disabled = true;
 
     const messageParts = [];
     let fileInfoForDisplay = null;
 
     if (selectedFileBase64 && selectedFile && selectedFileType) {
-        messageParts.push({
+        // This part sends the raw data to the Gemini API
+        const inlineDataForApi = {
             inlineData: { mimeType: selectedFile.type, data: selectedFileBase64 }
-        });
+        };
+        messageParts.push(inlineDataForApi);
+
+        // This part structures the data for display and saving to Firestore
         if (selectedFileType === 'image') {
             fileInfoForDisplay = { type: 'image', dataUrl: selectedFileBase64, name: selectedFile.name };
         } else if (selectedFileType === 'pdf') {
-             fileInfoForDisplay = { type: 'pdf', name: selectedFile.name };
+            fileInfoForDisplay = { type: 'pdf', name: selectedFile.name };
+        }
+        // Embed the display info directly in a part that gets saved
+        if (fileInfoForDisplay) {
+            messageParts.push({ fileInfoForDisplay: fileInfoForDisplay });
         }
     }
     if (userMessageText) {
         messageParts.push({ text: userMessageText });
     }
 
-    if (messageParts.length === 0) { // Re-check if only file was selected then removed, or text was only spaces
-        sendButton.disabled = false; // Re-enable send button
+    if (messageParts.length === 0) {
+        sendButton.disabled = false;
         console.warn("Message sending aborted: No parts prepared.");
         return;
     }
 
     const userMessageId = Date.now() + '-' + Math.random().toString(36).substring(2, 9);
-    conversationHistory.push({ role: 'user', parts: messageParts, id: userMessageId });
-    displayMessage('user', userMessageText || '', fileInfoForDisplay, null, userMessageId);
+    const userMessage = { role: 'user', parts: messageParts, id: userMessageId };
+
+    // For synced chats, don't display the message immediately. Let the snapshot listener do it.
+    // For local chats, display it right away.
+    if (!currentChat.isSynced) {
+        conversationHistory.push(userMessage);
+        displayMessage('user', userMessageText || '', fileInfoForDisplay, null, userMessageId);
+    }
+
+    // If chat is synced, save user message to Firestore.
+    if (currentChat.isSynced) {
+        try {
+            await addDoc(collection(firestore, "chats", currentChat.id, "messages"), {
+                ...userMessage,
+                createdAt: serverTimestamp()
+            });
+        } catch (error) {
+            console.error("Error saving user message:", error);
+            showError("Failed to send message. " + error.message);
+            sendButton.disabled = false;
+            return;
+        }
+    }
 
     messageInput.value = '';
     handleRemoveFile(); // This also hides error via its own logic, which is fine.
@@ -379,7 +479,7 @@ function displayMessage(role, text, fileInfo = null, searchSuggestionHtml = null
 
     if (text) {
         const paragraph = document.createElement('p');
-        if (role === 'ai' && typeof marked !== 'undefined' && typeof DOMPurify !== 'undefined') {
+        if ((role === 'ai' || role === 'model') && typeof marked !== 'undefined' && typeof DOMPurify !== 'undefined') {
             try {
                 marked.setOptions({ breaks: true, gfm: true });
                 const rawHtml = marked.parse(text);
@@ -389,7 +489,7 @@ function displayMessage(role, text, fileInfo = null, searchSuggestionHtml = null
                 paragraph.textContent = text; // Fallback
             }
         } else {
-            paragraph.textContent = text;
+            paragraph.innerText = text;
         }
         if (paragraph.innerHTML.trim() || paragraph.textContent.trim()) {
              messageBubbleDiv.appendChild(paragraph);
@@ -397,7 +497,7 @@ function displayMessage(role, text, fileInfo = null, searchSuggestionHtml = null
         }
     }
 
-    if (role === 'ai' && searchSuggestionHtml) {
+    if ((role === 'ai' || role === 'model') && searchSuggestionHtml) {
         const suggestionContainer = document.createElement('div');
         suggestionContainer.classList.add('search-suggestion-container');
         try {
@@ -599,6 +699,307 @@ function hideLoading() { loadingIndicator.classList.add('hidden'); }
 function showError(message) { errorDisplay.textContent = message; errorDisplay.classList.remove('hidden'); console.error("Displaying error:", message); errorDisplay.scrollIntoView({ behavior: 'smooth', block: 'center' }); }
 function hideError() { errorDisplay.classList.add('hidden'); errorDisplay.textContent = ''; }
 // --- END UI Utility Functions ---
+
+// --- Authentication UI Logic ---
+function showAuthModal() { authModal.classList.remove('hidden'); }
+function hideAuthModal() { authModal.classList.add('hidden'); }
+
+loginButton.addEventListener('click', showAuthModal);
+modalCloseButton.addEventListener('click', hideAuthModal);
+
+showSignup.addEventListener('click', (e) => {
+    e.preventDefault();
+    loginView.classList.add('hidden');
+    signupView.classList.remove('hidden');
+});
+
+showLogin.addEventListener('click', (e) => {
+    e.preventDefault();
+    signupView.classList.add('hidden');
+    loginView.classList.remove('hidden');
+});
+
+// --- Firebase Authentication ---
+
+function startNewChat() {
+    console.log("Starting new chat.");
+    unsubscribeMessages(); // Stop listening to old chat
+    currentChat = { id: null, isSynced: false, ownerId: null };
+    conversationHistory = [];
+    chatHistory.innerHTML = '';
+    saveChatButton.classList.remove('hidden');
+    shareChatButton.classList.add('hidden');
+    document.querySelectorAll('.chat-list-item').forEach(item => item.classList.remove('active'));
+}
+
+newChatButton.addEventListener('click', startNewChat);
+
+async function saveCurrentChat() {
+    if (!currentUser) {
+        showError("You must be logged in to save a chat.");
+        return;
+    }
+    if (currentChat.isSynced) {
+        showError("This chat is already saved.");
+        return;
+    }
+
+    const chatTitle = prompt("Enter a name for this chat:");
+    if (!chatTitle) return;
+
+    try {
+        // 1. Create the main chat document
+        const chatRef = await addDoc(collection(firestore, "chats"), {
+            title: chatTitle,
+            ownerId: currentUser.uid,
+            collaborators: [currentUser.uid],
+            createdAt: serverTimestamp()
+        });
+
+        console.log("Chat document created with ID:", chatRef.id);
+
+        // 2. Save all existing messages to the messages sub-collection
+        const messagesCol = collection(firestore, "chats", chatRef.id, "messages");
+        for (const message of conversationHistory) {
+            await addDoc(messagesCol, {
+                ...message,
+                createdAt: serverTimestamp() // Add timestamp for ordering
+            });
+        }
+
+        // 3. Update local state
+        currentChat.id = chatRef.id;
+        currentChat.isSynced = true;
+        currentChat.ownerId = currentUser.uid;
+
+        // 4. Update UI
+        saveChatButton.classList.add('hidden');
+        shareChatButton.classList.remove('hidden');
+
+        // TODO: Add chat to sidebar list and attach real-time listener
+        alert("Chat saved successfully!");
+
+    } catch (error) {
+        console.error("Error saving chat:", error);
+        showError("Failed to save chat. " + error.message);
+    }
+}
+
+saveChatButton.addEventListener('click', saveCurrentChat);
+
+
+async function shareChat() {
+    if (!currentChat.isSynced || !currentChat.id) {
+        showError("This chat must be saved to the cloud before it can be shared.");
+        return;
+    }
+
+    const emailToShare = prompt("Enter the email address of the user you want to share with:");
+    if (!emailToShare) return;
+
+    try {
+        // 1. Find the user to share with by their email
+        const usersRef = collection(firestore, "users");
+        const q = query(usersRef, where("email", "==", emailToShare));
+        const querySnapshot = await getDocs(q);
+
+        if (querySnapshot.empty) {
+            showError(`No user found with the email: ${emailToShare}`);
+            return;
+        }
+
+        // 2. Get the collaborator's user ID
+        const collaboratorId = querySnapshot.docs[0].id;
+        const chatRef = doc(firestore, "chats", currentChat.id);
+
+        // 3. Add the collaborator's ID to the chat's 'collaborators' array
+        await updateDoc(chatRef, {
+            collaborators: arrayUnion(collaboratorId)
+        });
+
+        alert(`Chat successfully shared with ${emailToShare}!`);
+
+    } catch (error) {
+        console.error("Error sharing chat:", error);
+        showError("Failed to share chat. " + error.message);
+    }
+}
+
+shareChatButton.addEventListener('click', shareChat);
+
+
+async function loadUserChats(userId) {
+    chatList.innerHTML = ''; // Clear previous list
+    const q = query(collection(firestore, "chats"), where("collaborators", "array-contains", userId));
+    try {
+        const querySnapshot = await getDocs(q);
+        querySnapshot.forEach((doc) => {
+            displayChatInSidebar(doc.id, doc.data());
+        });
+    } catch (error) {
+        console.error("Error loading user chats:", error);
+        showError("Could not load your chats. " + error.message);
+    }
+}
+
+function displayChatInSidebar(chatId, chatData) {
+    const chatItem = document.createElement('div');
+    chatItem.classList.add('chat-list-item');
+    chatItem.textContent = chatData.title;
+    chatItem.dataset.chatId = chatId;
+    chatItem.addEventListener('click', () => loadChat(chatId));
+    chatList.appendChild(chatItem);
+}
+
+async function loadChat(chatId) {
+    console.log(`Loading chat: ${chatId}`);
+    unsubscribeMessages(); // Unsubscribe from any previous chat listener
+
+    // Update active chat in sidebar
+    document.querySelectorAll('.chat-list-item').forEach(item => {
+        item.classList.toggle('active', item.dataset.chatId === chatId);
+    });
+
+    chatHistory.innerHTML = ''; // Clear the display
+    conversationHistory = []; // Clear local history
+
+    try {
+        const chatDoc = await getDoc(doc(firestore, "chats", chatId));
+        if (!chatDoc.exists()) {
+            showError("Chat not found.");
+            return;
+        }
+
+        const chatData = chatDoc.data();
+        currentChat = {
+            id: chatId,
+            isSynced: true,
+            ownerId: chatData.ownerId
+        };
+
+        // Update UI
+        saveChatButton.classList.add('hidden');
+        shareChatButton.classList.remove('hidden');
+
+        // Listen for real-time messages
+        const messagesQuery = query(collection(firestore, "chats", chatId, "messages"), orderBy("createdAt"));
+        unsubscribeMessages = onSnapshot(messagesQuery, (snapshot) => {
+            chatHistory.innerHTML = ''; // Clear display on new snapshot
+            conversationHistory = []; // Clear local history
+            snapshot.forEach(doc => {
+                const message = doc.data();
+                conversationHistory.push(message);
+
+                let textPart = '';
+                let searchSuggestionHtml = null;
+                let fileInfoForDisplay = null;
+
+                if (Array.isArray(message.parts)) {
+                    for (const part of message.parts) {
+                        if (part && typeof part === 'object') {
+                            if ('text' in part) {
+                                textPart = part.text;
+                            }
+                            if ('searchSuggestionHtml' in part) {
+                                searchSuggestionHtml = part.searchSuggestionHtml;
+                            }
+                            if ('fileInfoForDisplay' in part) {
+                                fileInfoForDisplay = part.fileInfoForDisplay;
+                            }
+                        }
+                    }
+                }
+
+                displayMessage(message.role, textPart, fileInfoForDisplay, searchSuggestionHtml, message.id);
+            });
+        }, (error) => {
+            console.error("Error listening to messages:", error);
+            showError("Error loading messages. " + error.message);
+        });
+
+    } catch (error) {
+        console.error("Error loading chat:", error);
+        showError("Could not load chat. " + error.message);
+    }
+}
+
+onAuthStateChanged(auth, user => {
+    if (user) {
+        // User is signed in
+        console.log("User logged in:", user.email);
+        currentUser = user;
+        userInfo.classList.remove('hidden');
+        userEmail.textContent = user.email;
+        loginButton.classList.add('hidden');
+        chatControls.classList.remove('hidden');
+        hideAuthModal();
+        startNewChat();
+        loadUserChats(user.uid);
+    } else {
+        // User is signed out
+        console.log("User logged out.");
+        currentUser = null;
+        userInfo.classList.add('hidden');
+        userEmail.textContent = '';
+        loginButton.classList.remove('hidden');
+        chatControls.classList.add('hidden');
+        chatList.innerHTML = ''; // Clear chat list
+        startNewChat(); // Reset to a clean state
+    }
+});
+
+signupForm.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const email = document.getElementById('signup-email').value;
+    const password = document.getElementById('signup-password').value;
+    try {
+        const userCredential = await createUserWithEmailAndPassword(auth, email, password);
+        const user = userCredential.user;
+        // Create a document in the 'users' collection
+        await setDoc(doc(firestore, "users", user.uid), {
+            email: user.email
+        });
+        console.log("User signed up and document created in Firestore.");
+    } catch (error) {
+        console.error("Error signing up:", error);
+        showError(error.message);
+    }
+});
+
+loginForm.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const email = document.getElementById('login-email').value;
+    const password = document.getElementById('login-password').value;
+    try {
+        await signInWithEmailAndPassword(auth, email, password);
+        console.log("User logged in.");
+    } catch (error) {
+        console.error("Error logging in:", error);
+        showError(error.message);
+    }
+});
+
+logoutButton.addEventListener('click', async () => {
+    try {
+        await signOut(auth);
+        console.log("User logged out.");
+    } catch (error) {
+        console.error("Error logging out:", error);
+        showError(error.message);
+    }
+});
+
+// --- Mobile Sidebar Toggle ---
+menuButton.addEventListener('click', () => {
+    sidebar.classList.add('open');
+    const backdrop = document.createElement('div');
+    backdrop.classList.add('sidebar-backdrop');
+    document.body.appendChild(backdrop);
+    backdrop.addEventListener('click', () => {
+        sidebar.classList.remove('open');
+        document.body.removeChild(backdrop);
+    });
+});
 
 
 // --- Initial Setup ---
