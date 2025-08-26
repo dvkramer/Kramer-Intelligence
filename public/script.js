@@ -20,7 +20,8 @@ const {
     serverTimestamp,
     orderBy,
     updateDoc,
-    arrayUnion
+    arrayUnion,
+    writeBatch
 } = window.firebase;
 
 
@@ -586,34 +587,77 @@ function displayMessage(role, text, fileInfo = null, searchSuggestionHtml = null
                 textarea.disabled = true;
 
                 const newText = textarea.value.trim();
-                let textPartToUpdate = messageObject.parts.find(part => typeof part.text === 'string');
-                if (textPartToUpdate) {
-                    textPartToUpdate.text = newText;
+
+                // If chat is synced, perform an update in Firestore and do not regenerate.
+                if (currentChat.isSynced) {
+                    if (!messageObject.firestoreId) {
+                        console.error("Cannot edit synced message: firestoreId is missing.", messageObject);
+                        showError("Cannot save edit: message is missing its database ID.");
+                        saveButton.disabled = false;
+                        cancelButton.disabled = false;
+                        textarea.disabled = false;
+                        return;
+                    }
+
+                    try {
+                        const messageRef = doc(firestore, "chats", currentChat.id, "messages", messageObject.firestoreId);
+
+                        // Find the text part and update it.
+                        let textPartToUpdate = messageObject.parts.find(part => typeof part.text === 'string');
+                        if (textPartToUpdate) {
+                            textPartToUpdate.text = newText;
+                        } else {
+                            // If for some reason there was no text part, add one.
+                            messageObject.parts.push({ text: newText });
+                        }
+
+                        await updateDoc(messageRef, {
+                            parts: messageObject.parts
+                        });
+
+                        // The onSnapshot listener will handle the UI update automatically.
+                        // The save/cancel buttons will be removed when the chat history is re-rendered.
+                        console.log("Message updated in Firestore.");
+                    } catch (error) {
+                        console.error("Error updating message:", error);
+                        showError("Failed to save edit. " + error.message);
+                        // Re-enable buttons to allow user to try again or cancel.
+                        saveButton.disabled = false;
+                        cancelButton.disabled = false;
+                        textarea.disabled = false;
+                    }
+
                 } else {
-                    messageObject.parts.push({ text: newText });
+                    // This is the existing logic for non-synced chats (edit and regenerate)
+                    let textPartToUpdate = messageObject.parts.find(part => typeof part.text === 'string');
+                    if (textPartToUpdate) {
+                        textPartToUpdate.text = newText;
+                    } else {
+                        messageObject.parts.push({ text: newText });
+                    }
+
+                    if (messageIndex < conversationHistory.length - 1) {
+                        conversationHistory.splice(messageIndex + 1);
+                    }
+
+                    let currentMsgEntry = messageEntry.nextElementSibling;
+                    while (currentMsgEntry) {
+                        const nextEntry = currentMsgEntry.nextElementSibling;
+                        currentMsgEntry.remove();
+                        currentMsgEntry = nextEntry;
+                    }
+
+                    messageBubble.innerHTML = ''; // Clear textarea
+                    const p = document.createElement('p');
+                    p.textContent = newText;
+                    messageBubble.appendChild(p); // Display new text
+
+                    currentActionBar.innerHTML = ''; // Clear save/cancel
+                    currentActionBar.appendChild(originalEditButton);
+                    originalEditButton.style.display = '';
+
+                    await _sendMessageToServer(conversationHistory);
                 }
-
-                if (messageIndex < conversationHistory.length - 1) {
-                    conversationHistory.splice(messageIndex + 1);
-                }
-
-                let currentMsgEntry = messageEntry.nextElementSibling;
-                while (currentMsgEntry) {
-                    const nextEntry = currentMsgEntry.nextElementSibling;
-                    currentMsgEntry.remove();
-                    currentMsgEntry = nextEntry;
-                }
-
-                messageBubble.innerHTML = ''; // Clear textarea
-                const p = document.createElement('p');
-                p.textContent = newText;
-                messageBubble.appendChild(p); // Display new text
-
-                currentActionBar.innerHTML = ''; // Clear save/cancel
-                currentActionBar.appendChild(originalEditButton);
-                originalEditButton.style.display = '';
-
-                await _sendMessageToServer(conversationHistory);
             });
 
             currentActionBar.innerHTML = ''; // Clear Edit button
@@ -643,7 +687,7 @@ function displayMessage(role, text, fileInfo = null, searchSuggestionHtml = null
             button.disabled = true;
 
             const currentActionBar = button.closest('.action-button-bar');
-            if (!currentActionBar) return;
+            if (!currentActionBar) { button.disabled = false; return; }
             const messageIdToRegenerate = currentActionBar.dataset.controlsMessageId;
 
             if (!messageIdToRegenerate) {
@@ -665,14 +709,43 @@ function displayMessage(role, text, fileInfo = null, searchSuggestionHtml = null
                 return;
             }
 
-            conversationHistory.splice(messageIndex, 1);
+            if (currentChat.isSynced) {
+                try {
+                    const historyForRegen = conversationHistory.slice(0, messageIndex);
+                    const messagesToDelete = conversationHistory.slice(messageIndex);
+                    const firestoreIdsToDelete = messagesToDelete.map(msg => msg.firestoreId).filter(id => id);
 
-            const entryToRemove = currentActionBar.closest('.message-entry');
-            if (entryToRemove) {
-                entryToRemove.remove();
+                    if (firestoreIdsToDelete.length > 0) {
+                        const batch = writeBatch(firestore);
+                        firestoreIdsToDelete.forEach(id => {
+                            const msgRef = doc(firestore, "chats", currentChat.id, "messages", id);
+                            batch.delete(msgRef);
+                        });
+                        await batch.commit();
+                        console.log(`Batch deleted ${firestoreIdsToDelete.length} messages for regeneration.`);
+                    }
+
+                    await _sendMessageToServer(historyForRegen);
+                } catch (error) {
+                    console.error("Error during synced regeneration:", error);
+                    showError("Failed to regenerate response. " + error.message);
+                    button.disabled = false;
+                }
+            } else {
+                // Corrected logic for local chats
+                conversationHistory.splice(messageIndex);
+
+                const messageEntryToStartRemoval = document.querySelector(`[data-message-entry-id="${messageIdToRegenerate}"]`);
+                if (messageEntryToStartRemoval) {
+                    let currentMsgEntry = messageEntryToStartRemoval;
+                    while (currentMsgEntry) {
+                        const nextEntry = currentMsgEntry.nextElementSibling;
+                        currentMsgEntry.remove();
+                        currentMsgEntry = nextEntry;
+                    }
+                }
+                await _sendMessageToServer(conversationHistory);
             }
-
-            await _sendMessageToServer(conversationHistory);
         });
         actionButtonBar.appendChild(regenerateButton);
     }
@@ -887,7 +960,7 @@ async function loadChat(chatId) {
             chatHistory.innerHTML = ''; // Clear display on new snapshot
             conversationHistory = []; // Clear local history
             snapshot.forEach(doc => {
-                const message = doc.data();
+                const message = { ...doc.data(), firestoreId: doc.id }; // Add firestoreId
                 conversationHistory.push(message);
 
                 let textPart = '';
