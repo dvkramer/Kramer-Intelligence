@@ -9,4 +9,5 @@ Kramer Intelligence is 100% free of charge. Try it out at [kramer-intelligence.v
 ## Windows App
 
 Kramer Intelligence is finally available on Windows! Download the Electron app from [Releases](../../releases).
-Auto-update and study mode for the Windows app are coming soon.
+I haven't been maintaining the Windows app because it's more fun to vibecode than to vibemaintain. Soon enough I'll maybe come up with a workflow to support auto-updates inherited from the website so it can stay up to date.
+It's still totally functional, supports editing and regen and images and all that, but it does not support cloud features or study mode.
