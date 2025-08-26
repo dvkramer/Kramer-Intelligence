@@ -12,7 +12,7 @@ This app is powered by the Gemini API, so do not put any information in that you
 
 If you do not save your chat to the cloud, there is zero logging on my end.
 
-If you save your chat to the cloud, it is stored in Firebase. It is encrypted in transit but it is not encrypted in Firebase, so theoretically I can read your chats. I am not a weirdo and I don't even know how to do this, but Gemini told me it's possible and so I feel it's only right to disclose this.
+If you save your chat to the cloud, it is stored in Firebase. It is encrypted, so it is safe from the outside world, but as the developer I can theoretically read your chats. I am not a weirdo and I don't even know how to do this, but Gemini told me it's possible and so I feel it's only right to disclose this.
 
 ## Windows App
 
