@@ -755,11 +755,6 @@ function displayMessage(role, text, fileInfo = null, searchSuggestionHtml = null
         messageEntryDiv.appendChild(actionButtonBar);
         chatHistory.appendChild(messageEntryDiv);
 
-        if (role === 'user') {
-            scrollChatToBottom();
-        } else if (role === 'ai') {
-             setTimeout(() => scrollToMessageTop(messageBubbleDiv), 50);
-        }
     } else {
          console.warn("Skipped appending an empty message.");
     }
@@ -955,12 +950,15 @@ async function loadChat(chatId) {
         shareChatButton.classList.remove('hidden');
 
         // Listen for real-time messages
+        let isInitialChatLoad = true;
         const messagesQuery = query(collection(firestore, "chats", chatId, "messages"), orderBy("createdAt"));
         unsubscribeMessages = onSnapshot(messagesQuery, (snapshot) => {
+            const oldMessageCount = conversationHistory.length;
+
             chatHistory.innerHTML = ''; // Clear display on new snapshot
             conversationHistory = []; // Clear local history
             snapshot.forEach(doc => {
-                const message = { ...doc.data(), firestoreId: doc.id }; // Add firestoreId
+                const message = { ...doc.data(), firestoreId: doc.id };
                 conversationHistory.push(message);
 
                 let textPart = '';
@@ -982,9 +980,27 @@ async function loadChat(chatId) {
                         }
                     }
                 }
-
                 displayMessage(message.role, textPart, fileInfoForDisplay, searchSuggestionHtml, message.id);
             });
+
+            const newMessageCount = conversationHistory.length;
+            const wasMessageAdded = newMessageCount > oldMessageCount;
+
+            if (isInitialChatLoad) {
+                scrollChatToBottom();
+            } else if (wasMessageAdded) {
+                const lastMessage = conversationHistory[newMessageCount - 1];
+                const lastMessageBubble = chatHistory.lastElementChild?.querySelector('.message');
+
+                if (lastMessageBubble) {
+                    if (lastMessage.role === 'model' || lastMessage.role === 'ai') {
+                        setTimeout(() => scrollToMessageTop(lastMessageBubble), 100);
+                    } else {
+                        scrollChatToBottom();
+                    }
+                }
+            }
+            isInitialChatLoad = false;
         }, (error) => {
             console.error("Error listening to messages:", error);
             showError("Error loading messages. " + error.message);
