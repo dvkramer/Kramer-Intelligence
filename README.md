@@ -9,7 +9,9 @@ Kramer Intelligence is 100% free of charge. Try it out at [kramer-intelligence.v
 ## Privacy
 
 This app is powered by the Gemini API, so do not put any information in that you are uncomfortable with Google being able to see.
+
 If you do not save your chat to the cloud, there is zero logging on my end.
+
 If you save your chat to the cloud, it is stored in Firebase. It is encrypted in transit but it is not encrypted in Firebase. Theoretically I can read your chats. I am not a weirdo and I don't even know how to do this, but Gemini told me it's possible and so I feel it's only right to disclose this.
 
 ## Windows App
