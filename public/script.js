@@ -479,7 +479,7 @@ function displayMessage(role, text, fileInfo = null, searchSuggestionHtml = null
 
     if (text) {
         const paragraph = document.createElement('p');
-        if (role === 'ai' && typeof marked !== 'undefined' && typeof DOMPurify !== 'undefined') {
+        if ((role === 'ai' || role === 'model') && typeof marked !== 'undefined' && typeof DOMPurify !== 'undefined') {
             try {
                 marked.setOptions({ breaks: true, gfm: true });
                 const rawHtml = marked.parse(text);
@@ -497,7 +497,7 @@ function displayMessage(role, text, fileInfo = null, searchSuggestionHtml = null
         }
     }
 
-    if (role === 'ai' && searchSuggestionHtml) {
+    if ((role === 'ai' || role === 'model') && searchSuggestionHtml) {
         const suggestionContainer = document.createElement('div');
         suggestionContainer.classList.add('search-suggestion-container');
         try {
