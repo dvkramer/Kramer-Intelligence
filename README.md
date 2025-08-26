@@ -12,10 +12,13 @@ This app is powered by the Gemini API, so do not put any information in that you
 
 If you do not save your chat to the cloud, there is zero logging on my end.
 
-If you save your chat to the cloud, it is stored in Firebase. It is encrypted in transit but it is not encrypted in Firebase. Theoretically I can read your chats. I am not a weirdo and I don't even know how to do this, but Gemini told me it's possible and so I feel it's only right to disclose this.
+If you save your chat to the cloud, it is stored in Firebase. It is encrypted in transit but it is not encrypted in Firebase, so theoretically I can read your chats. I am not a weirdo and I don't even know how to do this, but Gemini told me it's possible and so I feel it's only right to disclose this.
 
 ## Windows App
 
 Kramer Intelligence is finally available on Windows! Download the Electron app from [Releases](../../releases).
+
 I haven't been maintaining the Windows app because it's more fun to vibecode than to vibemaintain. Soon enough I'll maybe come up with a workflow to support auto-updates inherited from the website so it can stay up to date.
+
 It's still totally functional, supports editing and regen and images and all that, but it does not support cloud features or study mode.
+
