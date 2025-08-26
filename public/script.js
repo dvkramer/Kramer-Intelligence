@@ -681,12 +681,6 @@ function displayMessage(role, text, fileInfo = null, searchSuggestionHtml = null
 
     // Add Regenerate button for AI messages
     if ((role === 'ai' || role === 'model') && contentAddedToBubble) {
-        // Remove regenerate buttons from previous AI messages' action bars
-        const allActionBars = chatHistory.querySelectorAll('.action-button-bar');
-        allActionBars.forEach(bar => {
-            const oldRegenBtn = bar.querySelector('.regenerate-btn');
-            if (oldRegenBtn) oldRegenBtn.remove();
-        });
 
         const regenerateButton = document.createElement('button');
         regenerateButton.classList.add('regenerate-btn');
