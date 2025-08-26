@@ -356,6 +356,10 @@ async function _sendMessageToServer(historyToProcess, firestoreIdToUpdate = null
             const aiMessage = { role: 'model', parts: aiMessageParts, id: aiMessageId };
             conversationHistory.push(aiMessage);
             displayMessage('ai', aiResponseText, null, searchSuggestionHtml, aiMessageId);
+            const newAiMessageBubble = chatHistory.lastElementChild?.querySelector('.message');
+            if (newAiMessageBubble) {
+                setTimeout(() => scrollToMessageTop(newAiMessageBubble), 50);
+            }
         }
 
     } catch (err) {
@@ -417,6 +421,7 @@ async function handleSendMessage() {
     if (!currentChat.isSynced) {
         conversationHistory.push(userMessage);
         displayMessage('user', userMessageText || '', fileInfoForDisplay, null, userMessageId);
+        scrollChatToBottom();
     }
 
     // If chat is synced, save user message to Firestore.
