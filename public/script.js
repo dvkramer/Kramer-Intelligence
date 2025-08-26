@@ -294,7 +294,7 @@ function handleStudyModeToggle() {
 
 // --- Core Message Sending Logic ---
 
-async function _sendMessageToServer(historyToProcess) {
+async function _sendMessageToServer(historyToProcess, firestoreIdToUpdate = null) {
     // If the chat is synced, we don't need to display the AI message here.
     // The onSnapshot listener will handle it. We just need to save the AI response to Firestore.
     const shouldDisplayAiMessage = !currentChat.isSynced;
@@ -328,21 +328,32 @@ async function _sendMessageToServer(historyToProcess) {
         const searchSuggestionHtml = data.searchSuggestionHtml;
         console.log(`AI Response received (using ${data.modelUsed || 'unknown model'})`);
 
-        const aiMessageId = Date.now() + '-' + Math.random().toString(36).substring(2, 9);
-    const aiMessageParts = [{ text: aiResponseText }];
-    if (searchSuggestionHtml) {
-        aiMessageParts.push({ searchSuggestionHtml: searchSuggestionHtml });
-    }
-    const aiMessage = { role: 'model', parts: aiMessageParts, id: aiMessageId };
+        const aiMessageParts = [{ text: aiResponseText }];
+        if (searchSuggestionHtml) {
+            aiMessageParts.push({ searchSuggestionHtml: searchSuggestionHtml });
+        }
 
         if (currentChat.isSynced) {
-            await addDoc(collection(firestore, "chats", currentChat.id, "messages"), {
-                ...aiMessage,
-                createdAt: serverTimestamp()
-            });
-            // The snapshot listener will handle displaying the message.
+            if (firestoreIdToUpdate) {
+                // This is a surgical regeneration (update)
+                const messageRef = doc(firestore, "chats", currentChat.id, "messages", firestoreIdToUpdate);
+                await updateDoc(messageRef, {
+                    parts: aiMessageParts
+                });
+                console.log("AI message surgically updated in Firestore.");
+            } else {
+                // This is a new message (add)
+                const aiMessageId = Date.now() + '-' + Math.random().toString(36).substring(2, 9);
+                const aiMessage = { role: 'model', parts: aiMessageParts, id: aiMessageId };
+                await addDoc(collection(firestore, "chats", currentChat.id, "messages"), {
+                    ...aiMessage,
+                    createdAt: serverTimestamp()
+                });
+            }
         } else {
-            // For local chats, update history and display manually.
+            // Local chat logic remains the same (always adds a new message)
+            const aiMessageId = Date.now() + '-' + Math.random().toString(36).substring(2, 9);
+            const aiMessage = { role: 'model', parts: aiMessageParts, id: aiMessageId };
             conversationHistory.push(aiMessage);
             displayMessage('ai', aiResponseText, null, searchSuggestionHtml, aiMessageId);
         }
@@ -670,12 +681,6 @@ function displayMessage(role, text, fileInfo = null, searchSuggestionHtml = null
 
     // Add Regenerate button for AI messages
     if ((role === 'ai' || role === 'model') && contentAddedToBubble) {
-        // Remove regenerate buttons from previous AI messages' action bars
-        const allActionBars = chatHistory.querySelectorAll('.action-button-bar');
-        allActionBars.forEach(bar => {
-            const oldRegenBtn = bar.querySelector('.regenerate-btn');
-            if (oldRegenBtn) oldRegenBtn.remove();
-        });
 
         const regenerateButton = document.createElement('button');
         regenerateButton.classList.add('regenerate-btn');
@@ -711,21 +716,15 @@ function displayMessage(role, text, fileInfo = null, searchSuggestionHtml = null
 
             if (currentChat.isSynced) {
                 try {
-                    const historyForRegen = conversationHistory.slice(0, messageIndex);
-                    const messagesToDelete = conversationHistory.slice(messageIndex);
-                    const firestoreIdsToDelete = messagesToDelete.map(msg => msg.firestoreId).filter(id => id);
-
-                    if (firestoreIdsToDelete.length > 0) {
-                        const batch = writeBatch(firestore);
-                        firestoreIdsToDelete.forEach(id => {
-                            const msgRef = doc(firestore, "chats", currentChat.id, "messages", id);
-                            batch.delete(msgRef);
-                        });
-                        await batch.commit();
-                        console.log(`Batch deleted ${firestoreIdsToDelete.length} messages for regeneration.`);
+                    const messageToRegenerate = conversationHistory[messageIndex];
+                    if (!messageToRegenerate.firestoreId) {
+                        throw new Error("Cannot regenerate message without a firestoreId.");
                     }
+                    const historyForRegen = conversationHistory.slice(0, messageIndex);
 
-                    await _sendMessageToServer(historyForRegen);
+                    // Call _sendMessageToServer with the ID of the message to update
+                    await _sendMessageToServer(historyForRegen, messageToRegenerate.firestoreId);
+
                 } catch (error) {
                     console.error("Error during synced regeneration:", error);
                     showError("Failed to regenerate response. " + error.message);
