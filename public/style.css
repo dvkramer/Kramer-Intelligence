@@ -387,8 +387,225 @@ h1 {
 /* --- End Inline Editing UI Styling --- */
 
 
+/* --- App Layout --- */
+#app-wrapper {
+    display: flex;
+    height: 100%;
+}
+
+#sidebar {
+    width: 260px;
+    background-color: #242424;
+    border-right: 1px solid #383838;
+    display: flex;
+    flex-direction: column;
+    flex-shrink: 0;
+}
+
+#main-container {
+    flex-grow: 1;
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    overflow: hidden;
+}
+
+#sidebar-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 15px 20px;
+    border-bottom: 1px solid #383838;
+}
+
+#sidebar-header h2 {
+    margin: 0;
+    font-size: 1.2rem;
+}
+
+#new-chat-button {
+    background: none;
+    border: 1px solid #888;
+    color: #EAEAEA;
+    font-size: 1.5rem;
+    cursor: pointer;
+    width: 30px;
+    height: 30px;
+    border-radius: 50%;
+    line-height: 26px;
+    text-align: center;
+    padding: 0;
+}
+
+#new-chat-button:hover {
+    background-color: #333;
+}
+
+#chat-list {
+    flex-grow: 1;
+    overflow-y: auto;
+}
+
+.chat-list-item {
+    padding: 15px 20px;
+    cursor: pointer;
+    border-bottom: 1px solid #383838;
+}
+
+.chat-list-item:hover {
+    background-color: #333;
+}
+
+.chat-list-item.active {
+    background-color: #007ACC;
+}
+
+#sidebar-footer {
+    padding: 15px 20px;
+    border-top: 1px solid #383838;
+}
+
+#user-info {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+#logout-button, #login-button {
+    width: 100%;
+    padding: 10px;
+    background-color: #007ACC;
+    color: white;
+    border: none;
+    border-radius: 5px;
+    cursor: pointer;
+}
+
+#logout-button:hover, #login-button:hover {
+    background-color: #005C99;
+}
+
+#chat-controls {
+    padding: 10px 20px;
+    border-bottom: 1px solid #383838;
+    display: flex;
+    gap: 10px;
+}
+
+#save-chat-button, #share-chat-button {
+    padding: 8px 12px;
+    background-color: #333;
+    color: white;
+    border: 1px solid #404040;
+    border-radius: 5px;
+    cursor: pointer;
+}
+
+#save-chat-button:hover, #share-chat-button:hover {
+    background-color: #444;
+}
+
+
+/* --- Auth Modal --- */
+.modal-container {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0, 0, 0, 0.7);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 1000;
+}
+
+.modal-content {
+    background-color: #2C2C2C;
+    padding: 30px;
+    border-radius: 10px;
+    width: 100%;
+    max-width: 400px;
+    position: relative;
+}
+
+.modal-close-button {
+    position: absolute;
+    top: 10px;
+    right: 15px;
+    background: none;
+    border: none;
+    font-size: 1.5rem;
+    color: #EAEAEA;
+    cursor: pointer;
+}
+
+#login-form, #signup-form {
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+}
+
+#login-form input, #signup-form input {
+    padding: 10px;
+    border: 1px solid #404040;
+    border-radius: 5px;
+    background-color: #333;
+    color: #EAEAEA;
+}
+
+#login-form button, #signup-form button {
+    padding: 10px;
+    background-color: #007ACC;
+    color: white;
+    border: none;
+    border-radius: 5px;
+    cursor: pointer;
+}
+
+#login-form p, #signup-form p {
+    text-align: center;
+}
+
+#login-form a, #signup-form a {
+    color: #007ACC;
+    cursor: pointer;
+}
+
+
 /* --- Responsive adjustments --- */
 @media (max-width: 850px) {
+    #menu-button {
+        display: block;
+        position: absolute;
+        top: 15px;
+        left: 15px;
+        font-size: 1.5rem;
+        background: none;
+        border: none;
+        color: #EAEAEA;
+        z-index: 300;
+        cursor: pointer;
+    }
+     #sidebar {
+        position: absolute;
+        left: -260px;
+        transition: left 0.3s ease;
+        z-index: 200;
+        height: 100%;
+     }
+     #sidebar.open {
+        left: 0;
+     }
+     .sidebar-backdrop {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: rgba(0,0,0,0.5);
+        z-index: 199;
+     }
      #chat-history { max-width: 95%; }
      #message-input { max-width: none; }
      #image-preview-container > div { max-width: 95%; }
@@ -442,147 +659,4 @@ h1 {
     scrollbar-width: thin;
     scrollbar-color: #555555 #242424;
 }
-/* --- App Container and Sidebar --- */
-#app-container {
-    display: flex;
-    height: calc(100vh - 55px); /* Full height minus auth container */
-}
-
-#sidebar {
-    width: 250px;
-    background-color: #242424;
-    border-right: 1px solid #383838;
-    padding: 15px;
-    display: flex;
-    flex-direction: column;
-    gap: 15px;
-}
-
-#new-chat-button {
-    width: 100%;
-    padding: 10px;
-    background-color: #007ACC;
-    color: white;
-    border: none;
-    border-radius: 6px;
-    cursor: pointer;
-    font-size: 1rem;
-}
-
-#new-chat-button:hover {
-    background-color: #005C99;
-}
-
-#chat-list {
-    list-style: none;
-    padding: 0;
-    margin: 0;
-    overflow-y: auto;
-}
-
-#chat-list li {
-    padding: 10px;
-    border-radius: 6px;
-    cursor: pointer;
-    margin-bottom: 5px;
-}
-
-#chat-list li:hover {
-    background-color: #333;
-}
-
-#chat-list li.active {
-    background-color: #007ACC;
-    color: white;
-}
-
-
-#chat-view-container {
-    flex-grow: 1;
-    display: flex;
-    flex-direction: column;
-    height: 100%;
-}
-
-#chat-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    background-color: #242424;
-    border-bottom: 1px solid #383838;
-}
-
-#chat-header h1 {
-    border-bottom: none;
-}
-
-#chat-actions button {
-    margin-right: 15px;
-    padding: 8px 12px;
-    background-color: #333;
-    color: white;
-    border: 1px solid #404040;
-    border-radius: 6px;
-    cursor: pointer;
-}
-
-#chat-actions button:hover {
-    background-color: #444;
-}
-
-
 /* --- End Custom Scrollbar Styling --- */
-
-/* --- Authentication Container --- */
-#auth-container {
-    background-color: #242424;
-    padding: 10px 20px;
-    border-bottom: 1px solid #383838;
-    display: flex;
-    justify-content: flex-end;
-    align-items: center;
-}
-
-#login-form {
-    display: flex;
-    gap: 10px;
-    align-items: center;
-}
-
-#login-form input {
-    padding: 8px 12px;
-    border: 1px solid #404040;
-    border-radius: 6px;
-    background-color: #2C2C2C;
-    color: #EAEAEA;
-    outline: none;
-}
-
-#login-form input:focus {
-    border-color: #007ACC;
-}
-
-#login-form button, #logout-button {
-    padding: 8px 15px;
-    background-color: #007ACC;
-    color: white;
-    border: none;
-    border-radius: 6px;
-    cursor: pointer;
-    transition: background-color 0.2s ease;
-}
-
-#login-form button:hover, #logout-button:hover {
-    background-color: #005C99;
-}
-
-#user-info {
-    display: flex;
-    align-items: center;
-    gap: 15px;
-}
-
-#user-info p {
-    margin: 0;
-    color: #EAEAEA;
-}
