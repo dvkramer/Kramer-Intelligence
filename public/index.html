@@ -85,6 +85,13 @@
               updateDoc,
               arrayUnion
           };
+
+          // Dynamically load the main script ONLY after Firebase is initialized
+          const script = document.createElement('script');
+          script.src = 'script.js';
+          script.defer = true;
+          document.body.appendChild(script);
+
         } catch (error) {
           console.error("Firebase initialization failed:", error);
           const errorDisplay = document.getElementById('error') || document.createElement('div');
@@ -185,6 +192,5 @@
         </div>
     </div>
 
-    <script src="script.js" defer></script>
 </body>
 </html>
