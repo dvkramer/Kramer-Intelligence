@@ -40,37 +40,61 @@
       import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/12.1.0/firebase-auth.js";
       import { getFirestore, doc, setDoc, getDoc, addDoc, collection, query, where, getDocs, onSnapshot, serverTimestamp, orderBy, updateDoc, arrayUnion } from "https://www.gstatic.com/firebasejs/12.1.0/firebase-firestore.js";
 
-      // Your web app's Firebase configuration
-      const firebaseConfig = {
-        apiKey: "AIzaSyDC_owk2Ug6vPRu-f-Q8h6zR0VgnpQ5rNg",
-        authDomain: "kramer-intelligence-chat.firebaseapp.com",
-        projectId: "kramer-intelligence-chat",
-        storageBucket: "kramer-intelligence-chat.firebasestorage.app",
-        messagingSenderId: "467599486032",
-        appId: "1:467599486032:web:63b0d6510b8cad07477555"
-      };
+      async function initializeFirebase() {
+        try {
+          const response = await fetch('/api/config');
+          if (!response.ok) {
+            const errorText = await response.text();
+            throw new Error(`Failed to fetch Firebase config: ${response.status} ${response.statusText}. Details: ${errorText}`);
+          }
+          const config = await response.json();
+           if (!config.apiKey) {
+            throw new Error("API key not found in the response from /api/config.");
+          }
 
-      // Initialize Firebase
-      const app = initializeApp(firebaseConfig);
-      window.firebase = {
-          auth: getAuth(app),
-          firestore: getFirestore(app),
-          createUserWithEmailAndPassword,
-          signInWithEmailAndPassword,
-          onAuthStateChanged,
-          signOut,
-          doc,
-          setDoc,
-          getDoc,
-          addDoc,
-          collection,
-          query,
-          where,
-          getDocs,
-          onSnapshot,
-          serverTimestamp,
-          orderBy
-      };
+          // Your web app's Firebase configuration
+          const firebaseConfig = {
+            apiKey: config.apiKey,
+            authDomain: "kramer-intelligence-chat.firebaseapp.com",
+            projectId: "kramer-intelligence-chat",
+            storageBucket: "kramer-intelligence-chat.firebasestorage.app",
+            messagingSenderId: "467599486032",
+            appId: "1:467599486032:web:63b0d6510b8cad07477555"
+          };
+
+          // Initialize Firebase
+          const app = initializeApp(firebaseConfig);
+          window.firebase = {
+              auth: getAuth(app),
+              firestore: getFirestore(app),
+              createUserWithEmailAndPassword,
+              signInWithEmailAndPassword,
+              onAuthStateChanged,
+              signOut,
+              doc,
+              setDoc,
+              getDoc,
+              addDoc,
+              collection,
+              query,
+              where,
+              getDocs,
+              onSnapshot,
+              serverTimestamp,
+              orderBy,
+              updateDoc,
+              arrayUnion
+          };
+        } catch (error) {
+          console.error("Firebase initialization failed:", error);
+          const errorDisplay = document.getElementById('error') || document.createElement('div');
+          errorDisplay.textContent = `Critical Error: Could not initialize the application. Please ensure the FIREBASE_API_KEY is set correctly in your Vercel environment variables. (${error.message})`;
+          errorDisplay.style.cssText = "padding: 20px; text-align: center; background-color: #ffdddd; border: 1px solid #ff0000; color: #ff0000; margin: 20px;";
+          document.getElementById('app-wrapper').prepend(errorDisplay);
+        }
+      }
+
+      initializeFirebase();
     </script>
 
 </head>
