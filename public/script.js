@@ -414,7 +414,7 @@ async function handleSendMessage() {
     }
 
     const userMessageId = Date.now() + '-' + Math.random().toString(36).substring(2, 9);
-    const userMessage = { role: 'user', parts: messageParts, id: userMessageId, userId: currentUser.uid };
+    const userMessage = { role: 'user', parts: messageParts, id: userMessageId, userId: currentUser ? currentUser.uid : null };
 
     // For synced chats, don't display the message immediately. Let the snapshot listener do it.
     // For local chats, display it right away.
