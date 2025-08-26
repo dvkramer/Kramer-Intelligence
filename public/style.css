@@ -442,4 +442,147 @@ h1 {
     scrollbar-width: thin;
     scrollbar-color: #555555 #242424;
 }
+/* --- App Container and Sidebar --- */
+#app-container {
+    display: flex;
+    height: calc(100vh - 55px); /* Full height minus auth container */
+}
+
+#sidebar {
+    width: 250px;
+    background-color: #242424;
+    border-right: 1px solid #383838;
+    padding: 15px;
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+}
+
+#new-chat-button {
+    width: 100%;
+    padding: 10px;
+    background-color: #007ACC;
+    color: white;
+    border: none;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 1rem;
+}
+
+#new-chat-button:hover {
+    background-color: #005C99;
+}
+
+#chat-list {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+    overflow-y: auto;
+}
+
+#chat-list li {
+    padding: 10px;
+    border-radius: 6px;
+    cursor: pointer;
+    margin-bottom: 5px;
+}
+
+#chat-list li:hover {
+    background-color: #333;
+}
+
+#chat-list li.active {
+    background-color: #007ACC;
+    color: white;
+}
+
+
+#chat-view-container {
+    flex-grow: 1;
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+}
+
+#chat-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    background-color: #242424;
+    border-bottom: 1px solid #383838;
+}
+
+#chat-header h1 {
+    border-bottom: none;
+}
+
+#chat-actions button {
+    margin-right: 15px;
+    padding: 8px 12px;
+    background-color: #333;
+    color: white;
+    border: 1px solid #404040;
+    border-radius: 6px;
+    cursor: pointer;
+}
+
+#chat-actions button:hover {
+    background-color: #444;
+}
+
+
 /* --- End Custom Scrollbar Styling --- */
+
+/* --- Authentication Container --- */
+#auth-container {
+    background-color: #242424;
+    padding: 10px 20px;
+    border-bottom: 1px solid #383838;
+    display: flex;
+    justify-content: flex-end;
+    align-items: center;
+}
+
+#login-form {
+    display: flex;
+    gap: 10px;
+    align-items: center;
+}
+
+#login-form input {
+    padding: 8px 12px;
+    border: 1px solid #404040;
+    border-radius: 6px;
+    background-color: #2C2C2C;
+    color: #EAEAEA;
+    outline: none;
+}
+
+#login-form input:focus {
+    border-color: #007ACC;
+}
+
+#login-form button, #logout-button {
+    padding: 8px 15px;
+    background-color: #007ACC;
+    color: white;
+    border: none;
+    border-radius: 6px;
+    cursor: pointer;
+    transition: background-color 0.2s ease;
+}
+
+#login-form button:hover, #logout-button:hover {
+    background-color: #005C99;
+}
+
+#user-info {
+    display: flex;
+    align-items: center;
+    gap: 15px;
+}
+
+#user-info p {
+    margin: 0;
+    color: #EAEAEA;
+}

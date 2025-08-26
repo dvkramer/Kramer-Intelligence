@@ -1,5 +1,28 @@
 // public/script.js
 
+// Auth DOM elements
+const authContainer = document.getElementById('auth-container');
+const userInfo = document.getElementById('user-info');
+const userEmail = document.getElementById('user-email');
+const logoutButton = document.getElementById('logout-button');
+const loginForm = document.getElementById('login-form');
+const emailInput = document.getElementById('email-input');
+const passwordInput = document.getElementById('password-input');
+const loginButton = document.getElementById('login-button');
+const signupButton = document.getElementById('signup-button');
+
+// App container and sidebar
+const appContainer = document.getElementById('app-container');
+const sidebar = document.getElementById('sidebar');
+const newChatButton = document.getElementById('new-chat-button');
+const chatList = document.getElementById('chat-list');
+const chatViewContainer = document.getElementById('chat-view-container');
+const chatHeader = document.getElementById('chat-header');
+const chatActions = document.getElementById('chat-actions');
+const saveChatButton = document.getElementById('save-chat-button');
+const shareChatButton = document.getElementById('share-chat-button');
+
+
 // DOM element references
 const chatForm = document.getElementById('chat-form');
 const messageInput = document.getElementById('message-input'); // Textarea
@@ -23,11 +46,13 @@ const SCROLL_PADDING_TOP = 10; // Pixels above the AI message top when scrolling
 // --- End Configuration ---
 
 // --- State Variables ---
-let conversationHistory = [];
+let chats = [];
+let activeChatId = null;
 let selectedFile = null;
 let selectedFileType = null; // 'image' or 'pdf'
 let selectedFileBase64 = null; // Data URL (includes prefix like 'data:image/png;base64,')
 let isStudyModeActive = false;
+let activeChatListener = null;
 // --- End State Variables ---
 
 // --- Event Listeners ---
@@ -43,6 +68,308 @@ removeImageButton.addEventListener('click', handleRemoveFile);
 document.addEventListener('paste', handlePaste);
 messageInput.addEventListener('input', adjustTextareaHeight);
 // --- END Event Listeners ---
+
+// --- Firebase Auth ---
+let auth, firestore;
+let currentUser = null;
+
+// This function will be called once the firebase script is loaded
+function initializeFirebase() {
+    // These are now available on the window object from index.html
+    auth = window.firebase.auth;
+    firestore = window.firebase.firestore;
+
+    const { createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut, onAuthStateChanged } = auth;
+
+    onAuthStateChanged(auth, async (user) => {
+        if (user) {
+            // User is signed in
+            currentUser = user;
+            userInfo.classList.remove('hidden');
+            loginForm.classList.add('hidden');
+            userEmail.textContent = user.email;
+            appContainer.classList.remove('hidden');
+
+            await loadUserChats();
+
+            if (chats.length > 0) {
+                loadChat(chats[0].id);
+            } else {
+                createNewChat();
+            }
+        } else {
+            // User is signed out
+            currentUser = null;
+            chats = [];
+            activeChatId = null;
+            renderChatList();
+            chatHistory.innerHTML = '';
+            userInfo.classList.add('hidden');
+            loginForm.classList.remove('hidden');
+            appContainer.classList.add('hidden');
+        }
+    });
+
+    newChatButton.addEventListener('click', createNewChat);
+
+    saveChatButton.addEventListener('click', async () => {
+        const activeChat = getActiveChat();
+        if (!activeChat || activeChat.isSynced) {
+            return;
+        }
+
+        const chatName = prompt("Enter a name for this chat:");
+        if (!chatName || chatName.trim() === '') {
+            return; // User cancelled or entered an empty name
+        }
+
+        try {
+            const { collection, addDoc, doc, writeBatch, serverTimestamp } = window.firebase.firestore;
+
+            // 1. Create a new chat document in Firestore
+            const chatDocRef = await addDoc(collection(firestore, "chats"), {
+                title: chatName,
+                ownerId: currentUser.uid,
+                collaborators: [currentUser.uid],
+                createdAt: serverTimestamp()
+            });
+
+            // 2. Save all existing messages to a sub-collection
+            const batch = writeBatch(firestore);
+            const messagesColRef = collection(firestore, "chats", chatDocRef.id, "messages");
+            activeChat.conversationHistory.forEach(message => {
+                const messageDocRef = doc(messagesColRef);
+                batch.set(messageDocRef, { ...message, createdAt: serverTimestamp(), senderId: message.role === 'user' ? currentUser.uid : null });
+            });
+            await batch.commit();
+
+            // 3. Update local chat state
+            activeChat.isSynced = true;
+            activeChat.firestoreId = chatDocRef.id;
+            activeChat.title = chatName;
+
+            // 4. Refresh UI
+            loadChat(activeChat.id);
+
+        } catch (error) {
+            console.error("Error saving chat to Firestore:", error);
+            showError("Could not save chat to the cloud. Please try again.");
+        }
+    });
+
+    loginForm.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const email = emailInput.value;
+        const password = passwordInput.value;
+        try {
+            await signInWithEmailAndPassword(auth, email, password);
+        } catch (error) {
+            showError(error.message);
+        }
+    });
+
+    signupButton.addEventListener('click', async () => {
+        const email = emailInput.value;
+        const password = passwordInput.value;
+        try {
+            const userCredential = await createUserWithEmailAndPassword(auth, email, password);
+            const user = userCredential.user;
+
+            // Also create a user document for email lookup
+            const { doc, setDoc } = window.firebase.firestore;
+            await setDoc(doc(firestore, "users", user.uid), {
+                email: user.email
+            });
+
+        } catch (error) {
+            showError(error.message);
+        }
+    });
+
+    logoutButton.addEventListener('click', async () => {
+        try {
+            await signOut(auth);
+        } catch (error) {
+            showError(error.message);
+        }
+    });
+
+    shareChatButton.addEventListener('click', () => {
+        const activeChat = getActiveChat();
+        if (!activeChat || !activeChat.isSynced) {
+            showError("Only saved chats can be shared.");
+            return;
+        }
+        const email = prompt("Enter the email address of the user you want to share this chat with:");
+        if (email) {
+            shareChatWithEmail(email);
+        }
+    });
+}
+
+// --- Chat Management ---
+async function loadUserChats() {
+    if (!currentUser) return;
+
+    const { collection, query, where, orderBy, getDocs } = window.firebase.firestore;
+    const chatsRef = collection(firestore, "chats");
+    const q = query(chatsRef, where("collaborators", "array-contains", currentUser.uid), orderBy("createdAt", "desc"));
+
+    try {
+        const querySnapshot = await getDocs(q);
+        const loadedChats = [];
+        querySnapshot.forEach((doc) => {
+            loadedChats.push({
+                id: doc.id,
+                firestoreId: doc.id,
+                ...doc.data(),
+                isSynced: true,
+                conversationHistory: [] // Will be populated by listener
+            });
+        });
+        chats = loadedChats;
+        renderChatList();
+    } catch (error) {
+        console.error("Error loading user chats:", error);
+        showError("Could not load your chats from the cloud.");
+    }
+}
+
+function getActiveChat() {
+    if (!activeChatId) return null;
+    return chats.find(chat => chat.id === activeChatId);
+}
+
+function createNewChat() {
+    const newChat = {
+        id: `local-${Date.now()}`,
+        title: 'New Chat',
+        conversationHistory: [],
+        isSynced: false,
+        firestoreId: null
+    };
+    chats.unshift(newChat);
+    loadChat(newChat.id);
+}
+
+function renderChatList() {
+    chatList.innerHTML = '';
+    chats.forEach(chat => {
+        const li = document.createElement('li');
+        li.textContent = chat.title;
+        li.dataset.chatId = chat.id;
+        if (chat.id === activeChatId) {
+            li.classList.add('active');
+        }
+        li.addEventListener('click', () => {
+            loadChat(chat.id);
+        });
+        chatList.appendChild(li);
+    });
+}
+
+function loadChat(chatId) {
+    // Detach the old listener if it exists
+    if (activeChatListener) {
+        activeChatListener();
+        activeChatListener = null;
+    }
+
+    activeChatId = chatId;
+    const chat = chats.find(c => c.id === chatId);
+    if (!chat) {
+        console.error("Chat not found:", chatId);
+        return;
+    }
+
+    chatHistory.innerHTML = '';
+
+    // For local chats, just render what's in memory.
+    if (!chat.isSynced) {
+        chat.conversationHistory.forEach(msg => {
+            const textPart = msg.parts.find(p => p.text);
+            const text = textPart ? textPart.text : '';
+            displayMessage(msg.role, text, null, null, msg.id);
+        });
+    }
+
+    // Attach a new listener if the chat is synced
+    if (chat.isSynced) {
+        // Clear local history for synced chats, as the listener will repopulate it
+        chat.conversationHistory = [];
+        const { collection, query, orderBy, onSnapshot } = window.firebase.firestore;
+        const messagesColRef = collection(firestore, "chats", chat.firestoreId, "messages");
+        const q = query(messagesColRef, orderBy("createdAt"));
+
+        activeChatListener = onSnapshot(q, (snapshot) => {
+            snapshot.docChanges().forEach((change) => {
+                if (change.type === "added") {
+                    const newMessage = change.doc.data();
+                    // Avoid duplicating messages from the current user
+                    if (newMessage.senderId === currentUser.uid && chat.conversationHistory.some(m => m.id === newMessage.id)) {
+                        return;
+                    }
+                    if (!chat.conversationHistory.some(m => m.id === newMessage.id)) {
+                        chat.conversationHistory.push(newMessage);
+                        const textPart = newMessage.parts.find(p => p.text);
+                        const text = textPart ? textPart.text : '';
+                        displayMessage(newMessage.role, text, null, null, newMessage.id);
+                    }
+                }
+            });
+        });
+    }
+
+    const chatHeaderH1 = chatHeader.querySelector('h1');
+    chatHeaderH1.textContent = chat.title;
+
+    if (chat.isSynced) {
+        saveChatButton.classList.add('hidden');
+        shareChatButton.classList.remove('hidden');
+    } else {
+        saveChatButton.classList.remove('hidden');
+        shareChatButton.classList.add('hidden');
+    }
+
+    renderChatList();
+}
+
+async function shareChatWithEmail(email) {
+    const activeChat = getActiveChat();
+    if (!activeChat || !activeChat.isSynced) {
+        showError("The active chat is not saved to the cloud and cannot be shared.");
+        return;
+    }
+
+    try {
+        const { collection, query, where, getDocs, doc, updateDoc, arrayUnion } = window.firebase.firestore;
+
+        // 1. Find the user by email
+        const usersRef = collection(firestore, "users");
+        const q = query(usersRef, where("email", "==", email));
+        const querySnapshot = await getDocs(q);
+
+        if (querySnapshot.empty) {
+            showError(`User with email "${email}" not found.`);
+            return;
+        }
+
+        // 2. Get the collaborator's UID
+        const collaboratorUid = querySnapshot.docs[0].id;
+        const chatDocRef = doc(firestore, "chats", activeChat.firestoreId);
+
+        // 3. Add the collaborator's UID to the chat document
+        await updateDoc(chatDocRef, {
+            collaborators: arrayUnion(collaboratorUid)
+        });
+
+        alert(`Chat successfully shared with ${email}.`);
+
+    } catch (error) {
+        console.error("Error sharing chat:", error);
+        showError("An error occurred while trying to share the chat.");
+    }
+}
 
 
 // --- Functions ---
@@ -241,7 +568,14 @@ function handleStudyModeToggle() {
 
 // --- Core Message Sending Logic ---
 
-async function _sendMessageToServer(historyToProcess) {
+async function _sendMessageToServer() {
+    const activeChat = getActiveChat();
+    if (!activeChat) {
+        showError("Cannot send message: No active chat.");
+        return;
+    }
+    const historyToProcess = activeChat.conversationHistory;
+
     showLoading(); // Show loading at the start of the async operation
     try {
         const payload = {
@@ -272,8 +606,11 @@ async function _sendMessageToServer(historyToProcess) {
         console.log(`AI Response received (using ${data.modelUsed || 'unknown model'})`);
 
         const aiMessageId = Date.now() + '-' + Math.random().toString(36).substring(2, 9);
-        // Update global conversationHistory from within this function
-        conversationHistory.push({ role: 'model', parts: [{ text: aiResponseText }], id: aiMessageId });
+        // Update active chat's conversationHistory from within this function
+        const activeChat = getActiveChat();
+        if (activeChat) {
+            activeChat.conversationHistory.push({ role: 'model', parts: [{ text: aiResponseText }], id: aiMessageId });
+        }
         displayMessage('ai', aiResponseText, null, searchSuggestionHtml, aiMessageId);
 
     } catch (err) {
@@ -319,8 +656,27 @@ async function handleSendMessage() {
     }
 
     const userMessageId = Date.now() + '-' + Math.random().toString(36).substring(2, 9);
-    conversationHistory.push({ role: 'user', parts: messageParts, id: userMessageId });
+    const activeChat = getActiveChat();
+    if (!activeChat) {
+        showError("No active chat. Please create a new chat first.");
+        sendButton.disabled = false;
+        return;
+    }
+    const messageObject = { role: 'user', parts: messageParts, id: userMessageId };
+    activeChat.conversationHistory.push(messageObject);
     displayMessage('user', userMessageText || '', fileInfoForDisplay, null, userMessageId);
+
+    if (activeChat.isSynced) {
+        try {
+            const { collection, addDoc, serverTimestamp } = window.firebase.firestore;
+            const messagesColRef = collection(firestore, "chats", activeChat.firestoreId, "messages");
+            await addDoc(messagesColRef, { ...messageObject, createdAt: serverTimestamp(), senderId: currentUser.uid });
+        } catch (error) {
+            console.error("Error saving new message to Firestore:", error);
+            showError("Failed to save message to the cloud.");
+            // Don't block the user from continuing the chat locally
+        }
+    }
 
     messageInput.value = '';
     handleRemoveFile(); // This also hides error via its own logic, which is fine.
@@ -332,7 +688,7 @@ async function handleSendMessage() {
         messageInput.focus();
     }
 
-    await _sendMessageToServer(conversationHistory); // Call the refactored function
+    await _sendMessageToServer(); // Call the refactored function
     // sendButton state will be managed by _sendMessageToServer's finally block.
 }
 // --- END Core Message Sending Logic ---
@@ -602,7 +958,16 @@ function hideError() { errorDisplay.classList.add('hidden'); errorDisplay.textCo
 
 
 // --- Initial Setup ---
-messageInput.focus();
-adjustTextareaHeight();
-console.log("Kramer Intelligence script initialized.");
+document.addEventListener('DOMContentLoaded', () => {
+    // Poll for Firebase to be ready
+    const interval = setInterval(() => {
+        if (window.firebase && window.firebase.auth && window.firebase.firestore) {
+            clearInterval(interval);
+            initializeFirebase();
+            messageInput.focus();
+            adjustTextareaHeight();
+            console.log("Kramer Intelligence script initialized.");
+        }
+    }, 100);
+});
 // --- END Initial Setup ---

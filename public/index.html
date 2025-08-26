@@ -35,45 +35,94 @@
 
 </head>
 <body>
+    <div id="auth-container">
+        <div id="user-info" class="hidden">
+            <p>Welcome, <span id="user-email"></span></p>
+            <button id="logout-button">Logout</button>
+        </div>
+        <form id="login-form">
+            <input type="email" id="email-input" placeholder="Email" required>
+            <input type="password" id="password-input" placeholder="Password" required>
+            <button type="submit" id="login-button">Login</button>
+            <button type="button" id="signup-button">Sign Up</button>
+        </form>
+    </div>
 
-    <!-- NEW WRAPPER for scrollable content -->
-    <div id="main-content-area">
-        <h1>Kramer Intelligence</h1>
+    <div id="app-container" class="hidden">
+        <div id="sidebar">
+            <button id="new-chat-button">New Chat</button>
+            <ul id="chat-list">
+                <!-- Chat list items will be populated here -->
+            </ul>
+        </div>
 
-        <div id="chat-container">
-            <div id="chat-history">
-                <!-- Chat messages will appear here -->
+        <div id="chat-view-container">
+            <!-- Main content area for a single chat -->
+            <div id="main-content-area">
+                 <div id="chat-header">
+                    <h1>Kramer Intelligence</h1>
+                    <div id="chat-actions">
+                        <button id="save-chat-button" class="hidden">Save to Cloud</button>
+                        <button id="share-chat-button" class="hidden">Share</button>
+                    </div>
+                </div>
+                <div id="chat-container">
+                    <div id="chat-history">
+                        <!-- Chat messages will appear here -->
+                    </div>
+                </div>
             </div>
+
+            <div id="loading" class="hidden">Thinking...</div>
+            <div id="error" class="hidden"></div>
+
+            <div id="image-preview-container" class="hidden">
+                <div>
+                     <img id="image-preview" src="#" alt="File preview"/>
+                     <span id="pdf-filename-preview"></span>
+                     <button id="remove-image-button" title="Remove file">×</button>
+                </div>
+            </div>
+
+            <form id="chat-form">
+                <input type="file" id="file-upload-input" accept="image/png, image/jpeg, image/webp, image/heic, image/heif, application/pdf" style="display: none;">
+                <button type="button" id="study-mode-button" title="Toggle Study Mode">Study Mode</button>
+                <button type="button" id="attach-button" title="Attach Image or PDF">
+                    📎
+                </button>
+                <textarea id="message-input" placeholder="Ask me anything..." rows="1" autocomplete="off"></textarea>
+                <button type="submit" id="send-button">Send</button>
+            </form>
         </div>
     </div>
-    <!-- END NEW WRAPPER -->
-
-    <div id="loading" class="hidden">Thinking...</div>
-    <div id="error" class="hidden"></div>
-
-    <!-- Image Preview Area (Stays outside the main scroll area) -->
-    <!-- Shown for images OR PDFs now -->
-    <div id="image-preview-container" class="hidden">
-        <div>  <!-- Inner div for positioning -->
-             <img id="image-preview" src="#" alt="File preview"/>
-             <!-- <<< ADDED SPAN FOR PDF FILENAME >>> -->
-             <span id="pdf-filename-preview"></span>
-             <button id="remove-image-button" title="Remove file">×</button>
-        </div>
-    </div>
-    <!-- END Image Preview Area -->
-
-    <!-- Form Area (Stays outside the main scroll area) -->
-    <form id="chat-form">
-        <input type="file" id="file-upload-input" accept="image/png, image/jpeg, image/webp, image/heic, image/heif, application/pdf" style="display: none;">
-        <button type="button" id="study-mode-button" title="Toggle Study Mode">Study Mode</button>
-        <button type="button" id="attach-button" title="Attach Image or PDF">
-            📎
-        </button>
-        <textarea id="message-input" placeholder="Ask me anything..." rows="1" autocomplete="off"></textarea>
-        <button type="submit" id="send-button">Send</button>
-    </form>
 
     <script src="script.js" defer></script>
+
+    <script type="module">
+      // Import the functions you need from the SDKs you need
+      import { initializeApp } from "https://www.gstatic.com/firebasejs/12.1.0/firebase-app.js";
+      import { getAuth } from "https://www.gstatic.com/firebasejs/12.1.0/firebase-auth.js";
+      import { getFirestore } from "https://www.gstatic.com/firebasejs/12.1.0/firebase-firestore.js";
+      // TODO: Add SDKs for Firebase products that you want to use
+      // https://firebase.google.com/docs/web/setup#available-libraries
+
+      // Your web app's Firebase configuration
+      const firebaseConfig = {
+        apiKey: "AIzaSyDC_owk2Ug6vPRu-f-Q8h6zR0VgnpQ5rNg",
+        authDomain: "kramer-intelligence-chat.firebaseapp.com",
+        projectId: "kramer-intelligence-chat",
+        storageBucket: "kramer-intelligence-chat.firebasestorage.app",
+        messagingSenderId: "467599486032",
+        appId: "1:467599486032:web:63b0d6510b8cad07477555"
+      };
+
+      // Initialize Firebase
+      const app = initializeApp(firebaseConfig);
+      const auth = getAuth(app);
+      const firestore = getFirestore(app);
+
+      // Make auth and firestore globally available
+      window.firebase = { auth, firestore };
+    </script>
 </body>
 </html>
