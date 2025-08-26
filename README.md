@@ -4,7 +4,7 @@ Kramer Intelligence is an experimental AI assistant powered by the Gemini 2.5 se
 
 ## Try it out
 
-Kramer Intelligence is 100% free of charge. Try it out at [kramer-intelligence.vercel.app](https://kramer-intelligence.vercel.app). No API key and no login required.
+Kramer Intelligence is 100% free of charge. Try it out at [kramer-intelligence.vercel.app](https://kramerintel.vercel.app). No API key and no login required.
 
 ## Privacy
 
