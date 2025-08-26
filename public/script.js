@@ -328,7 +328,11 @@ async function _sendMessageToServer(historyToProcess) {
         console.log(`AI Response received (using ${data.modelUsed || 'unknown model'})`);
 
         const aiMessageId = Date.now() + '-' + Math.random().toString(36).substring(2, 9);
-        const aiMessage = { role: 'model', parts: [{ text: aiResponseText }], id: aiMessageId };
+    const aiMessageParts = [{ text: aiResponseText }];
+    if (searchSuggestionHtml) {
+        aiMessageParts.push({ searchSuggestionHtml: searchSuggestionHtml });
+    }
+    const aiMessage = { role: 'model', parts: aiMessageParts, id: aiMessageId };
 
         if (currentChat.isSynced) {
             await addDoc(collection(firestore, "chats", currentChat.id, "messages"), {
@@ -366,13 +370,21 @@ async function handleSendMessage() {
     let fileInfoForDisplay = null;
 
     if (selectedFileBase64 && selectedFile && selectedFileType) {
-        messageParts.push({
+        // This part sends the raw data to the Gemini API
+        const inlineDataForApi = {
             inlineData: { mimeType: selectedFile.type, data: selectedFileBase64 }
-        });
+        };
+        messageParts.push(inlineDataForApi);
+
+        // This part structures the data for display and saving to Firestore
         if (selectedFileType === 'image') {
             fileInfoForDisplay = { type: 'image', dataUrl: selectedFileBase64, name: selectedFile.name };
         } else if (selectedFileType === 'pdf') {
-             fileInfoForDisplay = { type: 'pdf', name: selectedFile.name };
+            fileInfoForDisplay = { type: 'pdf', name: selectedFile.name };
+        }
+        // Embed the display info directly in a part that gets saved
+        if (fileInfoForDisplay) {
+            messageParts.push({ fileInfoForDisplay: fileInfoForDisplay });
         }
     }
     if (userMessageText) {
@@ -477,7 +489,7 @@ function displayMessage(role, text, fileInfo = null, searchSuggestionHtml = null
                 paragraph.textContent = text; // Fallback
             }
         } else {
-            paragraph.textContent = text;
+            paragraph.innerText = text;
         }
         if (paragraph.innerHTML.trim() || paragraph.textContent.trim()) {
              messageBubbleDiv.appendChild(paragraph);
@@ -877,9 +889,13 @@ async function loadChat(chatId) {
             snapshot.forEach(doc => {
                 const message = doc.data();
                 conversationHistory.push(message);
-                const textPart = message.parts.find(p => p.text)?.text || '';
-                const fileInfo = message.parts.find(p => p.inlineData); // Simplified file info handling
-                displayMessage(message.role, textPart, fileInfo, null, message.id);
+                const textPart = message.parts.find(p => 'text' in p)?.text || '';
+                const searchPart = message.parts.find(p => 'searchSuggestionHtml' in p);
+                const searchSuggestionHtml = searchPart ? searchPart.searchSuggestionHtml : null;
+                const fileInfoPart = message.parts.find(p => p.fileInfoForDisplay);
+                const fileInfoForDisplay = fileInfoPart ? fileInfoPart.fileInfoForDisplay : null;
+
+                displayMessage(message.role, textPart, fileInfoForDisplay, searchSuggestionHtml, message.id);
             });
         }, (error) => {
             console.error("Error listening to messages:", error);
