@@ -54,7 +54,7 @@ export default async function handler(req, res) {
             if (geoResponse.ok) {
                 const geoData = await geoResponse.json();
                 if (geoData.status === 'success' && geoData.city && geoData.regionName) {
-                    locationString = ` The user is connecting from approximately ${geoData.city}, ${geoData.regionName}.`;
+                    locationString = ` The user's approximate location is ${geoData.city}, ${geoData.regionName}.`;
                 }
             }
         }
