@@ -501,8 +501,20 @@ function displayMessage(role, text, fileInfo = null, searchSuggestionHtml = null
                 marked.setOptions({ breaks: true, gfm: true });
                 const rawHtml = marked.parse(text);
                 paragraph.innerHTML = DOMPurify.sanitize(rawHtml, { USE_PROFILES: { html: true } });
+
+                // Render LaTeX after markdown
+                if (typeof renderMathInElement !== 'undefined') {
+                    renderMathInElement(paragraph, {
+                        delimiters: [
+                            {left: '$$', right: '$$', display: true},
+                            {left: '$', right: '$', display: false},
+                            {left: '\\(', right: '\\)', display: false},
+                            {left: '\\[', right: '\\]', display: true}
+                        ]
+                    });
+                }
             } catch (error) {
-                console.error("Markdown processing error:", error);
+                console.error("Markdown or LaTeX processing error:", error);
                 paragraph.textContent = text; // Fallback
             }
         } else {
