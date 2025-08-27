@@ -303,11 +303,13 @@ async function _sendMessageToServer(historyToProcess, firestoreIdToUpdate = null
     try {
         const payload = {
             history: [...historyToProcess],
-            isStudyModeActive: isStudyModeActive
+            isStudyModeActive: isStudyModeActive,
+            timezone: Intl.DateTimeFormat().resolvedOptions().timeZone
         };
         console.log("Sending payload to /api/chat:", {
             historyLength: payload.history.length,
-            studyMode: payload.isStudyModeActive
+            studyMode: payload.isStudyModeActive,
+            timezone: payload.timezone
         });
 
         const response = await fetch('/api/chat', {

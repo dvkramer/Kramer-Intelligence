@@ -40,7 +40,7 @@ export default async function handler(req, res) {
     }
 
     // --- Get history and study mode status from request body ---
-    const { history, isStudyModeActive } = req.body;
+    const { history, isStudyModeActive, timezone } = req.body;
 
     if (!history || !Array.isArray(history)) {
         return res.status(400).json({ error: 'Invalid request body: Missing/invalid "history".' });
@@ -87,9 +87,10 @@ export default async function handler(req, res) {
 
 
     // --- System Prompt Generation ---
-    const baseSystemPrompt = "You are Kramer Intelligence, an advanced AI assistant developed by Daniel Vincent Kramer. Kramer Intelligence may be abbreviated as KI.";
+    const baseSystemPrompt = "You are Kramer Intelligence, an advanced AI assistant developed by Daniel Vincent Kramer. Kramer Intelligence may be abbreviated as KI. You can use LaTeX for mathematical expressions. Enclose inline math with \\\\( and \\\\) and display math with \\\\[ and \\\\] (e.g., \\\\( E = mc^2 \\\\) or \\\\[ \\sum_{i=1}^n i = \\frac{n(n+1)}{2} \\\\]).";
     const today = new Date();
-    const dateOptions = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' };
+    // Use the user's timezone, with a fallback to UTC
+    const dateOptions = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric', timeZone: timezone || 'UTC' };
     const formattedDate = today.toLocaleDateString('en-US', dateOptions);
     let systemPrompt = `${baseSystemPrompt} Today's date is ${formattedDate}.\n\n`;
 
