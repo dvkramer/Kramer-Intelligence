@@ -304,7 +304,7 @@ async function _sendMessageToServer(historyToProcess, firestoreIdToUpdate = null
         const payload = {
             history: [...historyToProcess],
             isStudyModeActive: isStudyModeActive,
-            timezone: Intl.DateTimeFormat().resolvedOptions().timeZone
+            timezone: moment.tz.guess()
         };
         console.log("Sending payload to /api/chat:", {
             historyLength: payload.history.length,
