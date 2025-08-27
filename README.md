@@ -1,6 +1,6 @@
 # Kramer Intelligence
 
-Kramer Intelligence is an AI assistant powered by the Gemini 2.5 series of models. It can answer questions, assist with tasks, and read documents.
+Kramer Intelligence is an AI assistant powered by the Gemini 2.5 series of models. It can answer questions, search the web, and read documents.
 
 ## Try it out
 
