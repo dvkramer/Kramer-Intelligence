@@ -40,7 +40,29 @@ export default async function handler(req, res) {
     }
 
     // --- Get history and study mode status from request body ---
-    const { history, isStudyModeActive } = req.body;
+    const { history, isStudyModeActive, timezone } = req.body;
+
+    // --- IP Geolocation ---
+    let locationString = "";
+    try {
+        const ip = (req.headers['x-forwarded-for'] || '').split(',').shift().trim();
+        if (ip) {
+            // NOTE: For local development, this IP will be a private address.
+            // The geolocation service will likely return an error or the location of the server.
+            // This is expected behavior. It will work correctly in a Vercel deployment.
+            const geoResponse = await fetch(`http://ip-api.com/json/${ip}?fields=status,message,city,regionName`);
+            if (geoResponse.ok) {
+                const geoData = await geoResponse.json();
+                if (geoData.status === 'success' && geoData.city && geoData.regionName) {
+                    locationString = ` The user's approximate location is ${geoData.city}, ${geoData.regionName}.`;
+                }
+            }
+        }
+    } catch (error) {
+        console.warn("IP geolocation lookup failed:", error.message);
+        // Fail silently and continue without location data.
+    }
+    // --- END IP Geolocation ---
 
     if (!history || !Array.isArray(history)) {
         return res.status(400).json({ error: 'Invalid request body: Missing/invalid "history".' });
@@ -87,9 +109,10 @@ export default async function handler(req, res) {
 
 
     // --- System Prompt Generation ---
-    const baseSystemPrompt = "You are Kramer Intelligence, an advanced AI assistant developed by Daniel Vincent Kramer. Kramer Intelligence may be abbreviated as KI.";
+    const baseSystemPrompt = `You are Kramer Intelligence, an advanced AI assistant developed by Daniel Vincent Kramer. Kramer Intelligence may be abbreviated as KI. You can use LaTeX for mathematical expressions. Enclose inline math with \\\\( and \\\\) and display math with \\\\[ and \\\\] (e.g., \\\\( E = mc^2 \\\\) or \\\\[ \\sum_{i=1}^n i = \\frac{n(n+1)}{2} \\\\]).${locationString}`;
     const today = new Date();
-    const dateOptions = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' };
+    // Use the user's timezone, with a fallback to UTC
+    const dateOptions = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric', timeZone: timezone || 'UTC' };
     const formattedDate = today.toLocaleDateString('en-US', dateOptions);
     let systemPrompt = `${baseSystemPrompt} Today's date is ${formattedDate}.\n\n`;
 
