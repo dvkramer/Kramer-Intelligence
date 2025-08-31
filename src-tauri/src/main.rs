@@ -14,8 +14,8 @@ fn main() {
       // We perform the initialization in a separate async task
       // so the splashscreen stays visible until the main window is ready
       tauri::async_runtime::spawn(async move {
-        // Wait for 2 seconds to give the main window time to load the remote URL
-        std::thread::sleep(std::time::Duration::from_secs(2));
+        // Wait to give the main window time to load the remote URL
+        std::thread::sleep(std::time::Duration::from_millis(300));
 
         // After the setup is done, close the splashscreen and show the main window
         splashscreen_window.close().unwrap();
