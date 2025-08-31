@@ -2,7 +2,7 @@
 
 This is the official Windows desktop application for Kramer Intelligence.
 
-The application is a simple Webview2 wrapper for the official web application, available at [https://kramerintel.vercel.app/](https://kramerintel.vercel.app/).
+The application is a simple WebView2 wrapper for the official web application, available at [https://kramerintel.vercel.app/](https://kramerintel.vercel.app/).
 
 ## Download (For Users)
 
@@ -15,7 +15,7 @@ To build the application from source, you will need to set up your environment f
 1.  **Install Prerequisites:**
 
     First, ensure you have installed all the necessary prerequisites for your operating system by following the official Tauri guide:
-    [Tauri Prerequisites](https://tauri.app/v1/guides/getting-started/prerequisites/)
+    [Tauri Prerequisites](https://tauri.app/start/prerequisites/)
 
 2.  **Clone the repository:**
 
