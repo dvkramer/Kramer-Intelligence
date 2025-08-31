@@ -16,8 +16,4 @@ If you save your chat to the cloud, it is stored in Firebase. It is encrypted, s
 
 ## Windows App
 
-Kramer Intelligence is finally available on Windows! Download the Electron app from [Releases](../../releases).
-
-I haven't been maintaining the Windows app because it's more fun to vibecode than to vibemaintain. Soon enough I'll maybe come up with a workflow to support auto-updates inherited from the website so it can stay up to date.
-
-It's still totally functional, supports editing and regen and images and all that, but it does not support cloud features, LaTeX, or study mode.
+Kramer Intelligence is finally available on Windows! Download the Webview2 app from [Releases](../../releases).
