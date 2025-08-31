@@ -17,10 +17,6 @@
   "build": {
     "appId": "com.kramer.intelligence",
     "productName": "Kramer Intelligence",
-    "files": [
-      "main.js",
-      "public/**/*"
-    ],
     "win": {
       "target": "nsis",
       "icon": "build/icon.ico"
