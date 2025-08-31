@@ -16,7 +16,12 @@
       "icon": [
         "../build/icon.ico"
       ],
-      "targets": "all"
+      "targets": "all",
+      "windows": {
+        "nsis": {
+          "installerIcon": "../build/icon.ico"
+        }
+      }
     },
     "security": {
       "csp": null
