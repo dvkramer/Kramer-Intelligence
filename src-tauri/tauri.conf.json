@@ -1,0 +1,41 @@
+{
+  "build": {
+    "devPath": "https://kramerintel.vercel.app/",
+    "distDir": "https://kramerintel.vercel.app/",
+    "beforeDevCommand": "",
+    "beforeBuildCommand": ""
+  },
+  "package": {
+    "productName": "Kramer Intelligence",
+    "version": "1.0.1"
+  },
+  "tauri": {
+    "bundle": {
+      "active": true,
+      "identifier": "com.kramer.intelligence",
+      "icon": [
+        "../build/icon.ico"
+      ],
+      "targets": "all",
+      "windows": {
+        "nsis": {
+          "installerIcon": "../build/icon.ico"
+        }
+      }
+    },
+    "security": {
+      "csp": null
+    },
+    "windows": [
+      {
+        "fullscreen": false,
+        "maximized": true,
+        "resizable": true,
+        "title": "Kramer Intelligence",
+        "width": 1280,
+        "height": 720,
+        "theme": "Dark"
+      }
+    ]
+  }
+}
