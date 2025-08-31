@@ -1,9 +1,8 @@
 {
   "build": {
-    "frontendDist": "https://kramerintel.vercel.app/",
+    "frontendDist": "../src",
     "beforeBuildCommand": "",
-    "beforeDevCommand": "",
-    "devUrl": "https://kramerintel.vercel.app/"
+    "beforeDevCommand": ""
   },
   "bundle": {
     "active": true,
@@ -34,6 +33,7 @@
         "height": 720,
         "visible": false,
         "theme": "Dark",
+        "url": "index.html",
         "useHttpsScheme": true
       },
       {
@@ -45,7 +45,8 @@
         "center": true,
         "transparent": true,
         "skipTaskbar": true,
-        "useHttpsScheme": true
+        "useHttpsScheme": true,
+	"visible": false
       }
     ],
     "security": {
