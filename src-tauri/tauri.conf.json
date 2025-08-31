@@ -28,13 +28,26 @@
     },
     "windows": [
       {
+        "label": "main",
         "fullscreen": false,
         "maximized": true,
         "resizable": true,
         "title": "Kramer Intelligence",
         "width": 1280,
         "height": 720,
+        "visible": false,
         "theme": "Dark"
+      },
+      {
+        "label": "splashscreen",
+        "url": "splashscreen.html",
+        "width": 400,
+        "height": 200,
+        "decorations": false,
+        "center": true,
+        "transparent": true,
+        "skipTaskbar": true,
+        "alwaysOnTop": true
       }
     ]
   }

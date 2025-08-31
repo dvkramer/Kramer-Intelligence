@@ -3,8 +3,17 @@
   windows_subsystem = "windows"
 )]
 
+use tauri::Manager;
+
 fn main() {
   tauri::Builder::default()
+    .on_page_load(|window, _payload| {
+      if window.label() == "main" {
+        let splashscreen = window.get_window("splashscreen").unwrap();
+        splashscreen.close().unwrap();
+        window.show().unwrap();
+      }
+    })
     .run(tauri::generate_context!())
     .expect("error while running tauri application");
 }
