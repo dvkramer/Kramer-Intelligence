@@ -2,7 +2,7 @@
 
 This is the official Windows desktop application for Kramer Intelligence.
 
-The application is a simple, lightweight wrapper for the official web application, available at [https://kramerintel.vercel.app/](https://kramerintel.vercel.app/). It provides a native, fullscreen experience for interacting with the AI assistant.
+The application is a simple Webview2 wrapper for the official web application, available at [https://kramerintel.vercel.app/](https://kramerintel.vercel.app/).
 
 ## Download (For Users)
 
@@ -20,7 +20,7 @@ To build the application from source, you will need to set up your environment f
 2.  **Clone the repository:**
 
     ```bash
-    git clone https://github.com/dvkramer/Kramer-Intelligence.git
+    git clone https://github.com/dvkramer/Kramer-Intelligence --branch windows-app
     ```
 
 3.  **Navigate to the project directory:**
