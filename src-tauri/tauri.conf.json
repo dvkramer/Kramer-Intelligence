@@ -7,7 +7,7 @@
   },
   "package": {
     "productName": "Kramer Intelligence",
-    "version": "1.0.0"
+    "version": "1.0.1"
   },
   "tauri": {
     "bundle": {
@@ -24,6 +24,7 @@
     "windows": [
       {
         "fullscreen": false,
+        "maximized": true,
         "resizable": true,
         "title": "Kramer Intelligence",
         "width": 1280,
