@@ -9,7 +9,7 @@ fn main() {
   tauri::Builder::default()
     .on_page_load(|window, _payload| {
       if window.label() == "main" {
-        let splashscreen = window.get_window("splashscreen").unwrap();
+        let splashscreen = window.app_handle().get_webview_window("splashscreen").unwrap();
         splashscreen.close().unwrap();
         window.show().unwrap();
       }
