@@ -18,12 +18,10 @@
     "appId": "com.kramer.intelligence",
     "productName": "Kramer Intelligence",
     "win": {
-      "target": "nsis",
-      "icon": "build/icon.ico"
-    },
-    "nsis": {
-      "oneClick": false,
-      "deleteAppDataOnUninstall": true
+      "target": "portable",
+      "icon": "build/icon.ico",
+      "verifyUpdateCodeSignature": false,
+      "signingHashAlgorithms": null
     }
   }
 }

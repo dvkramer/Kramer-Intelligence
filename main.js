@@ -3,13 +3,11 @@ const path = require('path');
 
 function createWindow() {
   const mainWindow = new BrowserWindow({
-    width: 800,
-    height: 600,
+    fullscreen: true
   });
 
   // This line will load your web app's HTML file
   mainWindow.loadURL('https://kramerintel.vercel.app/');
-  mainWindow.maximize();
   mainWindow.setMenu(null);
 }
 
