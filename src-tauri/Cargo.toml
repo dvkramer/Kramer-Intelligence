@@ -1,6 +1,6 @@
 [package]
 name = "kramer-intelligence-desktop"
-version = "1.0.2"
+version = "1.0.3"
 description = "Kramer Intelligence is an advanced AI assistant built by Daniel Vincent Kramer."
 authors = ["Daniel Vincent Kramer"]
 license = ""
