@@ -7,7 +7,7 @@
   },
   "package": {
     "productName": "Kramer Intelligence",
-    "version": "1.0.1"
+    "version": "1.0.2"
   },
   "tauri": {
     "bundle": {
@@ -16,7 +16,7 @@
       "icon": [
         "../build/icon.ico"
       ],
-      "targets": "all",
+      "targets": "nsis",
       "windows": {
         "nsis": {
           "installerIcon": "../build/icon.ico"
@@ -46,8 +46,7 @@
         "decorations": false,
         "center": true,
         "transparent": true,
-        "skipTaskbar": true,
-        "alwaysOnTop": true
+        "skipTaskbar": true
       }
     ]
   }
