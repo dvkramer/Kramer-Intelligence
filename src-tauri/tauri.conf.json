@@ -33,7 +33,8 @@
         "resizable": true,
         "title": "Kramer Intelligence",
         "width": 1280,
-        "height": 720
+        "height": 720,
+        "theme": "Dark"
       }
     ]
   }
