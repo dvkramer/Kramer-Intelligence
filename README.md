@@ -10,37 +10,42 @@ You can download the latest installer from the [Releases](../../releases) page.
 
 ## For Developers
 
-To build the application from source, you'll need to have Node.js and npm installed on your machine.
+To build the application from source, you will need to set up your environment for Tauri development.
 
-1.  **Clone the repository:**
+1.  **Install Prerequisites:**
+
+    First, ensure you have installed all the necessary prerequisites for your operating system by following the official Tauri guide:
+    [Tauri Prerequisites](https://tauri.app/v1/guides/getting-started/prerequisites/)
+
+2.  **Clone the repository:**
 
     ```bash
     git clone https://github.com/dvkramer/Kramer-Intelligence.git
     ```
 
-2.  **Navigate to the project directory:**
+3.  **Navigate to the project directory:**
 
     ```bash
     cd Kramer-Intelligence
     ```
 
-3.  **Install dependencies:**
+4.  **Install dependencies:**
 
-    This command installs Electron, Electron Builder, and other required packages.
+    This command installs the Tauri CLI, which is the main tool for developing and bundling Tauri applications.
     ```bash
     npm install
     ```
 
-4.  **Run the application in development mode:**
+5.  **Run the application in development mode:**
 
-    This will launch the application on your desktop.
+    This will launch the application with hot-reloading enabled.
     ```bash
     npm start
     ```
 
-5.  **Build the application:**
+6.  **Build the application:**
 
-    This command packages the application into a distributable format (e.g., a portable `.exe`), which will be located in the `dist/` directory.
+    This command bundles the application into a native installer for your platform (e.g., an NSIS installer on Windows). The output will be located in the `src-tauri/target/release/bundle/` directory.
     ```bash
     npm run dist
     ```
