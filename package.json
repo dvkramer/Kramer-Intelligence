@@ -11,5 +11,8 @@
   "license": "ISC",
   "devDependencies": {
     "@tauri-apps/cli": "^2.8.3"
+  },
+  "dependencies": {
+    "@tauri-apps/plugin-global-shortcut": "^2.3.0"
   }
 }
