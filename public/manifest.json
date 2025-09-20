@@ -8,22 +8,22 @@
   "theme_color": "#1f1f1f",
   "icons": [
     {
-      "src": "/icons/icon-192x192.png",  /* Standard size, often used */
+      "src": "/icons/icon-192x192.png",
       "sizes": "192x192",
       "type": "image/png",
       "purpose": "any"
     },
     {
-      "src": "/icons/icon-600x600.png",  /* Your high-res icon */
-      "sizes": "600x600",                   /* Specify its actual size */
+      "src": "/icons/icon-600x600.png",
+      "sizes": "600x600",
       "type": "image/png",
       "purpose": "any"
     },
     {
-      "src": "/icons/icon-600x600.png", // <<< SAME file path
-      "sizes": "600x600",               // <<< Same size
+      "src": "/icons/icon-600x600.png",
+      "sizes": "600x600",
       "type": "image/png",
-      "purpose": "maskable" // <<< BUT *claiming* it's maskable
+      "purpose": "maskable"
     }
   ]
 }
