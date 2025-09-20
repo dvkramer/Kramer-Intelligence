@@ -1,4 +1,5 @@
 # Privacy Policy
+Last Updated: September 20, 2025
 
 ## Introduction
 Welcome to Kramer Intelligence ("we," "us," or "our"). We are committed to protecting your privacy. This Privacy Policy explains how we collect, use, disclose, and safeguard your information when you use our application, Kramer Intelligence. Please read this policy carefully. If you do not agree with the terms of this privacy policy, please do not access the application.
@@ -41,7 +42,7 @@ You have control over your information. You can use the core functionality of Kr
 Kramer Intelligence is not intended for use by children under the age of 13. We do not knowingly collect any personal information from children under 13.
 
 ## Changes to This Privacy Policy
-We may update this Privacy Policy from time to time. We will notify you of any changes by posting the new Privacy Policy within the application and updating the "Last Updated" date.
+We may update this Privacy Policy from time to time. The latest version of this Privacy Policy will always be hosted at: [https://github.com/dvkramer/Kramer-Intelligence/blob/main/privacy.md](https://github.com/dvkramer/Kramer-Intelligence/blob/main/privacy.md). If you have an account, we will notify you of any changes by email.
 
 ## Contact Us
 If you have any questions or concerns about this Privacy Policy, please contact us at **dvkramer@outlook.com**
