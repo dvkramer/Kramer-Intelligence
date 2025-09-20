@@ -15,7 +15,7 @@
     "icon": [
       "../build/icon.ico"
     ],
-    "targets": "nsis"
+    "targets": ["nsis", "msi"]
   },
   "productName": "Kramer Intelligence",
   "mainBinaryName": "Kramer Intelligence",
