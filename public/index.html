@@ -47,7 +47,7 @@
       // Import the functions you need from the SDKs you need
       import { initializeApp } from "https://www.gstatic.com/firebasejs/12.1.0/firebase-app.js";
       import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/12.1.0/firebase-auth.js";
-      import { getFirestore, doc, setDoc, getDoc, addDoc, collection, query, where, getDocs, onSnapshot, serverTimestamp, orderBy, updateDoc, arrayUnion } from "https://www.gstatic.com/firebasejs/12.1.0/firebase-firestore.js";
+      import { getFirestore, doc, setDoc, getDoc, addDoc, collection, query, where, getDocs, onSnapshot, serverTimestamp, orderBy, updateDoc, arrayUnion, writeBatch, deleteDoc } from "https://www.gstatic.com/firebasejs/12.1.0/firebase-firestore.js";
 
       async function initializeFirebase() {
         try {
@@ -92,7 +92,9 @@
               serverTimestamp,
               orderBy,
               updateDoc,
-              arrayUnion
+              arrayUnion,
+              writeBatch,
+              deleteDoc
           };
 
           // Dynamically load the main script ONLY after Firebase is initialized
@@ -201,5 +203,17 @@
         </div>
     </div>
 
+    <!-- Delete Confirmation Modal -->
+    <div id="delete-confirm-modal" class="modal-container hidden">
+        <div class="modal-content">
+            <h2>Confirm Deletion</h2>
+            <p>Are you sure you want to permanently delete "<span id="delete-chat-name"></span>"?</p>
+            <p><strong>This action cannot be undone.</strong></p>
+            <div class="modal-buttons">
+                <button id="confirm-delete-button">Delete</button>
+                <button id="cancel-delete-button">Cancel</button>
+            </div>
+        </div>
+    </div>
 </body>
 </html>

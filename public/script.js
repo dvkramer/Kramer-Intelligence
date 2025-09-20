@@ -21,6 +21,7 @@ const {
     orderBy,
     updateDoc,
     arrayUnion,
+    deleteDoc,
     writeBatch
 } = window.firebase;
 
@@ -41,6 +42,12 @@ const loginView = document.getElementById('login-view');
 const signupView = document.getElementById('signup-view');
 const userInfo = document.getElementById('user-info');
 const userEmail = document.getElementById('user-email');
+
+// Delete Confirmation Modal
+const deleteConfirmModal = document.getElementById('delete-confirm-modal');
+const deleteChatName = document.getElementById('delete-chat-name');
+const confirmDeleteButton = document.getElementById('confirm-delete-button');
+const cancelDeleteButton = document.getElementById('cancel-delete-button');
 
 // Sidebar and Chat Controls
 const sidebar = document.getElementById('sidebar');
@@ -913,6 +920,74 @@ async function shareChat() {
 
 shareChatButton.addEventListener('click', shareChat);
 
+async function deleteChat(chatId) {
+    if (!chatId) {
+        showError("Cannot delete chat: Invalid chat ID.");
+        return;
+    }
+    console.log(`Attempting to delete chat: ${chatId}`);
+
+    try {
+        const chatRef = doc(firestore, "chats", chatId);
+        const messagesQuery = query(collection(firestore, "chats", chatId, "messages"));
+
+        // Get all messages to delete them in a batch
+        const messagesSnapshot = await getDocs(messagesQuery);
+        if (!messagesSnapshot.empty) {
+            const batch = writeBatch(firestore);
+            messagesSnapshot.forEach(doc => {
+                batch.delete(doc.ref);
+            });
+            await batch.commit();
+            console.log(`Deleted ${messagesSnapshot.size} messages for chat ${chatId}.`);
+        }
+
+        // Delete the main chat document
+        await deleteDoc(chatRef);
+        console.log(`Successfully deleted chat document ${chatId}.`);
+
+        // Remove the chat from the sidebar
+        const chatItem = document.querySelector(`.chat-list-item[data-chat-id="${chatId}"]`);
+        if (chatItem) {
+            chatItem.remove();
+        }
+
+        // If the deleted chat was the active one, start a new chat
+        if (currentChat.id === chatId) {
+            startNewChat();
+        }
+
+    } catch (error) {
+        console.error("Error deleting chat:", error);
+        showError(`Failed to delete chat. ${error.message}`);
+    }
+}
+
+function handleDeleteChat(chatId) {
+    const chatItem = document.querySelector(`.chat-list-item[data-chat-id="${chatId}"]`);
+    const chatTitle = chatItem ? chatItem.querySelector('span').textContent : 'this chat';
+
+    deleteChatName.textContent = chatTitle;
+    deleteConfirmModal.classList.remove('hidden');
+
+    // Remove old event listeners by replacing the button with a clone
+    const newConfirmButton = confirmDeleteButton.cloneNode(true);
+    confirmDeleteButton.parentNode.replaceChild(newConfirmButton, confirmDeleteButton);
+
+    const newCancelButton = cancelDeleteButton.cloneNode(true);
+    cancelDeleteButton.parentNode.replaceChild(newCancelButton, cancelDeleteButton);
+
+    // Add new event listeners
+    newConfirmButton.addEventListener('click', () => {
+        deleteChat(chatId);
+        deleteConfirmModal.classList.add('hidden');
+    });
+
+    newCancelButton.addEventListener('click', () => {
+        deleteConfirmModal.classList.add('hidden');
+    });
+}
+
 
 async function loadUserChats(userId) {
     chatList.innerHTML = ''; // Clear previous list
@@ -931,9 +1006,24 @@ async function loadUserChats(userId) {
 function displayChatInSidebar(chatId, chatData) {
     const chatItem = document.createElement('div');
     chatItem.classList.add('chat-list-item');
-    chatItem.textContent = chatData.title;
     chatItem.dataset.chatId = chatId;
-    chatItem.addEventListener('click', () => loadChat(chatId));
+
+    const chatTitle = document.createElement('span');
+    chatTitle.textContent = chatData.title;
+    chatTitle.style.flexGrow = '1'; // Allow title to take up space
+    chatTitle.addEventListener('click', () => loadChat(chatId));
+
+    const deleteButton = document.createElement('button');
+    deleteButton.classList.add('delete-chat-button');
+    deleteButton.innerHTML = '&#128465;'; // Trash can icon
+    deleteButton.title = 'Delete Chat';
+    deleteButton.addEventListener('click', (e) => {
+        e.stopPropagation(); // Prevent chat from loading when delete is clicked
+        handleDeleteChat(chatId);
+    });
+
+    chatItem.appendChild(chatTitle);
+    chatItem.appendChild(deleteButton);
     chatList.appendChild(chatItem);
 }
 
