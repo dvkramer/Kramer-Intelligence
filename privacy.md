@@ -7,7 +7,6 @@ We are committed to protecting your privacy. This Privacy Policy explains how we
 
 Please read this policy carefully. If you do not agree with the terms of this Privacy Policy, please do not access the application.
 
---
 
 ## Information We Collect
 
@@ -24,7 +23,6 @@ When you choose to create an account, we collect:
   - This location is sent to the Gemini API as part of the prompt.  
   - It is **not stored** in our database.
 
----
 
 ## How We Use Your Information
 
@@ -36,7 +34,6 @@ We use your information **only for core functionality** of the Kramer Intelligen
 
 We do **not** use your information for advertising, marketing, or unrelated purposes.
 
----
 
 ## Data Storage, Security, and Retention
 
@@ -53,7 +50,6 @@ We do **not** use your information for advertising, marketing, or unrelated purp
 - You may **delete saved chats at any time**, permanently removing them from our database.
 - We retain saved chats only while your account remains active.
 
----
 
 ## Third-Party Services
 
@@ -69,7 +65,6 @@ We rely on trusted third-party services. Each has its own privacy policy:
   - Location data may be included in saved chats if you choose to save them.
   - If a chat is not saved, no location data is stored by us.
 
----
 
 ## Your Choices and Rights
 
@@ -81,16 +76,13 @@ We rely on trusted third-party services. Each has its own privacy policy:
 **Children under 13**:  
 Kramer Intelligence is **not intended** for children under the age of 13. We do not knowingly collect personal information from children under 13.
 
----
 
 ## Changes to This Privacy Policy
 
 We may update this Privacy Policy from time to time.  
 Updates will be posted within the application along with a revised **"Last Updated"** date.
 
----
 
 ## Contact Us
 
-If you have any questions or concerns about this Privacy Policy, contact us at:  
-📧 **dvkramer@outlook.com**
+If you have any questions or concerns about this Privacy Policy, contact us at **dvkramer@outlook.com**
