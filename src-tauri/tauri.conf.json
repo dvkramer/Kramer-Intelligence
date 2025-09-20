@@ -19,7 +19,7 @@
   },
   "productName": "Kramer Intelligence",
   "mainBinaryName": "Kramer Intelligence",
-  "version": "1.0.4",
+  "version": "1.0.5",
   "identifier": "com.kramer.intelligence",
   "plugins": {},
   "app": {
@@ -32,22 +32,10 @@
         "title": "Kramer Intelligence",
         "width": 1280,
         "height": 720,
-        "visible": false,
+        "visible": true,
         "theme": "Dark",
         "url": "index.html",
         "useHttpsScheme": true
-      },
-      {
-        "label": "splashscreen",
-        "url": "splashscreen.html",
-        "width": 400,
-        "height": 200,
-        "decorations": false,
-        "center": true,
-        "transparent": true,
-        "skipTaskbar": true,
-        "useHttpsScheme": true,
-	"visible": false
       }
     ],
     "security": {

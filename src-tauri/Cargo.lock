@@ -1586,7 +1586,7 @@ dependencies = [
 
 [[package]]
 name = "kramer-intelligence-desktop"
-version = "1.0.4"
+version = "1.0.5"
 dependencies = [
  "serde",
  "serde_json",
