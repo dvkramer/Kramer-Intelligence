@@ -1171,7 +1171,7 @@ forgotPasswordLink.addEventListener('click', async (e) => {
     if (email) {
         try {
             await sendPasswordResetEmail(auth, email);
-            alert("A password reset link has been sent to your email address.");
+            alert("A password reset link has been sent to your email address. If you do not see it, please check your spam folder.");
             hideAuthModal();
         } catch (error) {
             console.error("Error sending password reset email:", error);
