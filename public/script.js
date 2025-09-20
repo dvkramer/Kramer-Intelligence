@@ -8,6 +8,7 @@ const {
     signInWithEmailAndPassword,
     onAuthStateChanged,
     signOut,
+    sendPasswordResetEmail,
     doc,
     setDoc,
     getDoc,
@@ -40,6 +41,7 @@ const showSignup = document.getElementById('show-signup');
 const showLogin = document.getElementById('show-login');
 const loginView = document.getElementById('login-view');
 const signupView = document.getElementById('signup-view');
+const forgotPasswordLink = document.getElementById('forgot-password-link');
 const userInfo = document.getElementById('user-info');
 const userEmail = document.getElementById('user-email');
 
@@ -1160,6 +1162,21 @@ signupForm.addEventListener('submit', async (e) => {
     } catch (error) {
         console.error("Error signing up:", error);
         showError(error.message);
+    }
+});
+
+forgotPasswordLink.addEventListener('click', async (e) => {
+    e.preventDefault();
+    const email = prompt("Please enter your email address to reset your password:");
+    if (email) {
+        try {
+            await sendPasswordResetEmail(auth, email);
+            alert("A password reset link has been sent to your email address. If you do not see it, please check your spam folder.");
+            hideAuthModal();
+        } catch (error) {
+            console.error("Error sending password reset email:", error);
+            showError(error.message);
+        }
     }
 });
 
