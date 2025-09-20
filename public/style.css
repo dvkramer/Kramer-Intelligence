@@ -447,9 +447,31 @@ h1 {
 }
 
 .chat-list-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
     padding: 15px 20px;
     cursor: pointer;
     border-bottom: 1px solid #383838;
+}
+
+.delete-chat-button {
+    background: none;
+    border: none;
+    color: #A0A0A0;
+    font-size: 1.2rem;
+    cursor: pointer;
+    padding: 5px;
+    display: none; /* Hidden by default */
+    transition: color 0.2s;
+}
+
+.chat-list-item:hover .delete-chat-button {
+    display: block; /* Show on hover */
+}
+
+.delete-chat-button:hover {
+    color: #ff4d4d;
 }
 
 .chat-list-item:hover {
@@ -527,6 +549,30 @@ h1 {
     width: 100%;
     max-width: 400px;
     position: relative;
+}
+
+.modal-buttons {
+    display: flex;
+    justify-content: flex-end;
+    gap: 10px;
+    margin-top: 20px;
+}
+
+.modal-buttons button {
+    padding: 10px 20px;
+    border-radius: 5px;
+    border: none;
+    cursor: pointer;
+}
+
+#confirm-delete-button {
+    background-color: #ff4d4d;
+    color: white;
+}
+
+#cancel-delete-button {
+    background-color: #555;
+    color: white;
 }
 
 .modal-close-button {
