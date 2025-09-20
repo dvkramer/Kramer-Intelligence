@@ -7,7 +7,7 @@ We are committed to protecting your privacy. This Privacy Policy explains how we
 
 Please read this policy carefully. If you do not agree with the terms of this Privacy Policy, please do not access the application.
 
----
+--
 
 ## Information We Collect
 
