@@ -1,11 +1,10 @@
 
-// Kramer Intelligence - Backend (OpenAI Compatibility Mode)
+// Kramer Intelligence - Backend (Native Gemini API)
 
 export const config = {
     maxDuration: 60,
 };
 
-// Define the models to try, in order of preference as requested
 const MODELS_TO_TRY = [
     'gemini-3-pro-preview',
     'gemini-pro-latest',
@@ -20,13 +19,7 @@ const getBase64Data = (dataUrl) => {
     return matches[2];
 };
 
-const mapRole = (role) => {
-    if (role === 'model' || role === 'ai') return 'assistant';
-    return 'user';
-};
-
 export default async function handler(req, res) {
-    // CORS Headers
     res.setHeader('Access-Control-Allow-Origin', '*');
     res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
     res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
@@ -39,88 +32,70 @@ export default async function handler(req, res) {
 
     const { history, timezone } = req.body;
 
-    // 1. Convert Gemini History to OpenAI Messages
-    const messages = [];
+    // Prepare Contents for Gemini Native API
+    const contents = [];
 
-    // System Prompt
-    const now = new Date();
-    const dateStr = now.toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric', timeZone: timezone || 'UTC' });
-    messages.push({
-        role: 'system',
-        content: `You are Kramer Intelligence, an advanced AI assistant. Today is ${dateStr}. You can use LaTeX for math.`
-    });
-
-    // User/Assistant Messages
     if (history && Array.isArray(history)) {
         history.forEach(msg => {
-            const role = mapRole(msg.role);
-            const content = [];
-
+            const parts = [];
             msg.parts.forEach(part => {
                 if (part.text) {
-                    content.push({ type: 'text', text: part.text });
+                    parts.push({ text: part.text });
                 }
                 if (part.inlineData) {
                     const base64 = getBase64Data(part.inlineData.data);
                     if (base64) {
-                        content.push({
-                            type: 'image_url',
-                            image_url: {
-                                url: `data:${part.inlineData.mimeType};base64,${base64}`
+                        parts.push({
+                            inlineData: {
+                                mimeType: part.inlineData.mimeType,
+                                data: base64
                             }
                         });
                     }
                 }
             });
 
-            if (content.length > 0) {
-                messages.push({ role, content });
+            if (parts.length > 0) {
+                // Map role: 'model' is standard for Gemini, 'ai' might be from legacy frontend.
+                // 'user' is standard.
+                let role = msg.role;
+                if (role === 'ai') role = 'model';
+                contents.push({ role, parts });
             }
         });
     }
 
-    // 2. Loop through Models
+    // System Prompt
+    const now = new Date();
+    const dateStr = now.toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric', timeZone: timezone || 'UTC' });
+    const systemInstruction = {
+        parts: [{ text: `You are Kramer Intelligence, an advanced AI assistant. Today is ${dateStr}. You can use LaTeX for math.` }]
+    };
+
+    // Loop Models
     let lastError = null;
     let successfulResponse = null;
     let usedModel = null;
 
     for (const model of MODELS_TO_TRY) {
         try {
-            console.log(`Attempting model: ${model}`);
-
-            // Fix for Google Search in OpenAI Compatibility REST API
-            // When using the OpenAI SDK, 'extra_body' merges its content into the root of the request.
-            // For a raw fetch call, we must manually place the Google-specific configuration in the root.
-            // The 'tools' field is standard in OpenAI, but Google Search is a custom tool.
-            // We inject it via the 'tools' array directly, as Google's adapter likely supports it there
-            // OR via the 'google' field if that's how the extension works.
-            // The most robust way for *Gemini* features via OpenAI adapter is usually passing the `tools`
-            // array with the google_search object, even if it violates strict OpenAI schema,
-            // OR using the `google` namespace if documented.
-
-            // Based on documentation for "Function calling" and "Tools", we try standard tools first.
-            // If that fails (validation error), we fallback to the 'google' namespace pattern seen in SDKs.
-            // However, the SDK `extra_body` pattern { google: { ... } } strongly suggests the API expects a "google" key at the root.
+            console.log(`Attempting model (Native): ${model}`);
 
             const requestPayload = {
-                model: model,
-                messages: messages,
-                temperature: 0.7,
-                stream: false,
-                // Injecting Google Search via the 'google' field (mapped from SDK extra_body)
-                // AND/OR via standard tools if supported.
-                // Let's use the 'tools' array with the specific structure Google expects
-                // because 'google_search' is a tool.
+                contents: contents,
+                systemInstruction: systemInstruction,
                 tools: [
-                    { google_search: {} }
-                ]
+                    { google_search: {} } // Native Google Search Tool
+                ],
+                generationConfig: {
+                    temperature: 0.7
+                }
             };
 
-            const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/openai/chat/completions`, {
+            const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`, {
                 method: 'POST',
                 headers: {
-                    'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${apiKey}`
+                    'Content-Type': 'application/json'
                 },
                 body: JSON.stringify(requestPayload)
             });
@@ -135,33 +110,28 @@ export default async function handler(req, res) {
             const data = await response.json();
             successfulResponse = data;
             usedModel = model;
-            break; // Success
+            break;
         } catch (e) {
             console.error(`Model ${model} exception:`, e);
             lastError = e.message;
         }
     }
 
-    // 3. Handle Result
     if (successfulResponse) {
-        const choice = successfulResponse.choices?.[0];
-        const text = choice?.message?.content || "";
+        const candidate = successfulResponse.candidates?.[0];
+        let text = "";
+        if (candidate?.content?.parts) {
+            text = candidate.content.parts.map(p => p.text || "").join("");
+        }
 
-        // Attempt to extract grounding metadata
         let searchSuggestionHtml = null;
-
-        // In a raw REST response from the OpenAI adapter, Google extensions might appear in:
-        // 1. choice.message.content (embedded - unlikely for structured data)
-        // 2. A custom field in 'choice' or 'message'.
-        // We check for common patterns.
-
-        // Note: If 'tools' was used effectively, the model might return a tool_call.
-        // But 'google_search' is often handled internally by the model to produce text.
-        // If it returns text, we use it.
+        if (candidate?.groundingMetadata?.searchEntryPoint?.renderedContent) {
+            searchSuggestionHtml = candidate.groundingMetadata.searchEntryPoint.renderedContent;
+        }
 
         return res.status(200).json({
             text: text,
-            searchSuggestionHtml: searchSuggestionHtml, // Likely null, but text is grounded
+            searchSuggestionHtml: searchSuggestionHtml,
             modelUsed: usedModel
         });
     } else {
