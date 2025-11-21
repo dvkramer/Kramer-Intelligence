@@ -22,6 +22,7 @@ const loginBtn = document.getElementById('login-btn');
 const logoutBtn = document.getElementById('logout-btn');
 const userInfo = document.getElementById('user-info');
 const saveChatBtn = document.getElementById('save-chat-btn');
+const shareChatBtn = document.getElementById('share-chat-btn'); // Added
 const authModal = document.getElementById('auth-modal');
 const closeModalBtn = document.getElementById('close-modal');
 const authForm = document.getElementById('auth-form');
@@ -58,6 +59,8 @@ function startNewChat() {
     history = [];
     clearChat(chatContainer);
     document.querySelectorAll('.chat-item').forEach(el => el.classList.remove('active'));
+    saveChatBtn.classList.remove('hidden');
+    shareChatBtn.classList.add('hidden');
 }
 
 async function loadChatList() {
@@ -75,8 +78,9 @@ async function loadChat(chatId) {
 
     // Highlight active
     document.querySelectorAll('.chat-item').forEach(el => el.classList.remove('active'));
-    // Add active class logic if we had IDs on elements, re-rendering list is easier but costly.
-    // Simplification: just re-render list or handle in UI logic. For now, just load messages.
+
+    saveChatBtn.classList.add('hidden');
+    shareChatBtn.classList.remove('hidden');
 
     const messagesRef = collection(firestore, "chats", chatId, "messages");
     const q = query(messagesRef, orderBy("createdAt", "asc"));
@@ -96,13 +100,11 @@ async function loadChat(chatId) {
 async function deleteChat(chatId) {
     if (!confirm("Delete this chat?")) return;
     try {
-        // Delete messages
         const batch = writeBatch(firestore);
         const messages = await getDocs(collection(firestore, "chats", chatId, "messages"));
         messages.forEach(d => batch.delete(d.ref));
         await batch.commit();
 
-        // Delete chat doc
         await deleteDoc(doc(firestore, "chats", chatId));
         loadChatList();
         if (currentChatId === chatId) startNewChat();
@@ -116,14 +118,10 @@ async function handleSend() {
     const text = chatInput.value.trim();
     if (!text && !selectedFile) return;
 
-    // Prepare User Message
     const parts = [];
-
     if (selectedFile) {
         const { base64, file } = selectedFile;
-        // For Backend
         parts.push({ inlineData: { mimeType: file.type, data: base64 } });
-        // For Display/Storage
         parts.push({
             fileInfoForDisplay: {
                 type: file.type.startsWith('image/') ? 'image' : 'pdf',
@@ -132,35 +130,24 @@ async function handleSend() {
             }
         });
     }
-
     if (text) parts.push({ text });
 
     const userMsg = { role: 'user', parts, createdAt: serverTimestamp() };
 
-    // Clear Input
     chatInput.value = '';
     clearFileSelection();
 
-    // Optimistic UI or Firestore Save
     if (currentChatId) {
-        // Synced Chat
         await addDoc(collection(firestore, "chats", currentChatId, "messages"), userMsg);
     } else {
-        // Local Chat
         history.push(userMsg);
         renderMessage(userMsg, chatContainer);
         chatContainer.scrollTop = chatContainer.scrollHeight;
     }
 
-    // API Call
     showLoading(chatContainer);
     try {
         const timezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
-
-        // If synced, we usually send full history. If local, we send history variable.
-        // For synced, we might need to fetch latest history or just trust local array if kept in sync.
-        // In `loadChat`, we update `history`. So `history` should be up to date.
-
         const response = await sendMessageToBackend(history, timezone);
 
         const aiMsg = {
@@ -209,10 +196,36 @@ async function saveChat() {
 
         currentChatId = chatRef.id;
         loadChatList();
-        loadChat(chatRef.id); // switch to synced mode
+        loadChat(chatRef.id);
     } catch (e) {
         console.error(e);
         alert("Failed to save chat.");
+    }
+}
+
+async function shareChat() {
+    if (!currentChatId) return alert("Chat must be saved before sharing.");
+    const email = prompt("Enter user email to share with:");
+    if (!email) return;
+
+    try {
+        const usersRef = collection(firestore, "users");
+        const q = query(usersRef, where("email", "==", email));
+        const querySnapshot = await getDocs(q);
+
+        if (querySnapshot.empty) {
+            alert("User not found.");
+            return;
+        }
+
+        const userId = querySnapshot.docs[0].id;
+        await updateDoc(doc(firestore, "chats", currentChatId), {
+            collaborators: arrayUnion(userId)
+        });
+        alert("Shared successfully!");
+    } catch (e) {
+        console.error(e);
+        alert("Failed to share.");
     }
 }
 
@@ -277,6 +290,7 @@ sendBtn.onclick = handleSend;
 chatInput.onkeydown = (e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); handleSend(); } };
 newChatBtn.onclick = startNewChat;
 saveChatBtn.onclick = saveChat;
+shareChatBtn.onclick = shareChat;
 loginBtn.onclick = () => authModal.classList.remove('hidden');
 logoutBtn.onclick = () => signOut(auth);
 closeModalBtn.onclick = () => authModal.classList.add('hidden');
