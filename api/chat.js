@@ -1,351 +1,136 @@
 
-// Helper function to extract Base64 data from Data URL
-function getBase64Data(dataUrl) {
-    if (typeof dataUrl !== 'string' || !dataUrl.includes(',')) {
-        console.error("Invalid Data URL format received:", dataUrl);
-        return null; // Or throw an error
-    }
-    return dataUrl.split(',')[1];
-}
+// Kramer Intelligence - Backend (OpenAI Compatibility Mode)
 
-// --- Configuration ---
-// Define the models to try, in order of preference
+export const config = {
+    maxDuration: 60,
+};
+
+// Define the models to try, in order of preference as requested
 const MODELS_TO_TRY = [
-    'gemini-2.5-flash',
-    'gemini-2.5-pro',
-    'gemini-2.5-flash-lite'
+    'gemini-3-pro-preview',
+    'gemini-pro-latest',
+    'gemini-flash-latest'
 ];
-const MAX_FILE_SIZE_MB = 15; // Max size for inline upload
-const MAX_TOKENS = 1000000; // Max context window tokens
-// --- End Configuration ---
 
+// Helper to clean base64
+const getBase64Data = (dataUrl) => {
+    if (!dataUrl || typeof dataUrl !== 'string') return null;
+    const matches = dataUrl.match(/^data:(.+);base64,(.+)$/);
+    if (!matches || matches.length !== 3) return null;
+    return matches[2];
+};
 
-// Handler function for Vercel Serverless Function
+const mapRole = (role) => {
+    if (role === 'model' || role === 'ai') return 'assistant';
+    return 'user';
+};
+
 export default async function handler(req, res) {
-    // --- Security/CORS Headers ---
-    res.setHeader('Access-Control-Allow-Origin', '*'); // Adjust in production
+    // CORS Headers
+    res.setHeader('Access-Control-Allow-Origin', '*');
     res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
     res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
 
-    if (req.method === 'OPTIONS') { return res.status(200).end(); }
-    if (req.method !== 'POST') {
-        res.setHeader('Allow', ['POST']);
-        return res.status(405).json({ error: `Method ${req.method} Not Allowed` });
-    }
+    if (req.method === 'OPTIONS') return res.status(200).end();
+    if (req.method !== 'POST') return res.status(405).json({ error: 'Method Not Allowed' });
 
     const apiKey = process.env.GEMINI_API_KEY;
-    if (!apiKey) {
-        console.error("GEMINI_API_KEY missing.");
-        return res.status(500).json({ error: 'Server configuration error.' });
-    }
+    if (!apiKey) return res.status(500).json({ error: 'Missing API Key.' });
 
-    // --- Get history and study mode status from request body ---
-    const { history, isStudyModeActive, timezone } = req.body;
+    const { history, timezone } = req.body;
 
-    // --- IP Geolocation ---
-    let locationString = "";
-    try {
-        const ip = (req.headers['x-forwarded-for'] || '').split(',').shift().trim();
-        if (ip) {
-            // NOTE: For local development, this IP will be a private address.
-            // The geolocation service will likely return an error or the location of the server.
-            // This is expected behavior. It will work correctly in a Vercel deployment.
-            const geoResponse = await fetch(`http://ip-api.com/json/${ip}?fields=status,message,city,regionName`);
-            if (geoResponse.ok) {
-                const geoData = await geoResponse.json();
-                if (geoData.status === 'success' && geoData.city && geoData.regionName) {
-                    locationString = ` The user's approximate location is ${geoData.city}, ${geoData.regionName}.`;
+    // 1. Convert Gemini History to OpenAI Messages
+    const messages = [];
+
+    // System Prompt
+    const now = new Date();
+    const dateStr = now.toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric', timeZone: timezone || 'UTC' });
+    messages.push({
+        role: 'system',
+        content: `You are Kramer Intelligence, an advanced AI assistant. Today is ${dateStr}. You can use LaTeX for math.`
+    });
+
+    // User/Assistant Messages
+    if (history && Array.isArray(history)) {
+        history.forEach(msg => {
+            const role = mapRole(msg.role);
+            const content = [];
+
+            msg.parts.forEach(part => {
+                if (part.text) {
+                    content.push({ type: 'text', text: part.text });
                 }
-            }
-        }
-    } catch (error) {
-        console.warn("IP geolocation lookup failed:", error.message);
-        // Fail silently and continue without location data.
-    }
-    // --- END IP Geolocation ---
-
-    if (!history || !Array.isArray(history)) {
-        return res.status(400).json({ error: 'Invalid request body: Missing/invalid "history".' });
-    }
-
-    // --- Process history to format for Gemini API ---
-    const processedContents = history.map(message => {
-        if (!message.role || !Array.isArray(message.parts)) {
-            console.warn("Skipping invalid message structure in history:", message);
-            return null;
-        }
-        const processedParts = message.parts.map(part => {
-            if (part.text) {
-                return { text: part.text };
-            } else if (part.inlineData && part.inlineData.mimeType && part.inlineData.data) {
-                const base64Data = getBase64Data(part.inlineData.data);
-                if (!base64Data) {
-                     console.error("Failed to extract base64 data for part:", part);
-                     return null;
-                }
-                return {
-                    inlineData: {
-                        mimeType: part.inlineData.mimeType,
-                        data: base64Data
+                if (part.inlineData) {
+                    const base64 = getBase64Data(part.inlineData.data);
+                    if (base64) {
+                        content.push({
+                            type: 'image_url',
+                            image_url: {
+                                url: `data:${part.inlineData.mimeType};base64,${base64}`
+                            }
+                        });
                     }
-                };
-            } else {
-                 console.warn("Skipping invalid part structure:", part);
-                 return null;
-            }
-        }).filter(part => part !== null);
-
-        if (processedParts.length > 0) {
-            return { role: message.role, parts: processedParts };
-        } else {
-            return null;
-        }
-    }).filter(content => content !== null);
-
-    if (processedContents.length === 0 && history.length > 0) {
-         return res.status(400).json({ error: 'Failed to process message history parts.' });
-    }
-    // --- END History Processing ---
-
-
-    // --- System Prompt Generation ---
-    const baseSystemPrompt = `You are Kramer Intelligence, an advanced AI assistant developed by Daniel Vincent Kramer. Kramer Intelligence may be abbreviated as KI. You can use LaTeX for mathematical expressions. Enclose inline math with \\\\( and \\\\) and display math with \\\\[ and \\\\] (e.g., \\\\( E = mc^2 \\\\) or \\\\[ \\sum_{i=1}^n i = \\frac{n(n+1)}{2} \\\\]).${locationString}`;
-    const today = new Date();
-    // Use the user's timezone, with a fallback to UTC
-    const dateOptions = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric', timeZone: timezone || 'UTC' };
-    const formattedDate = today.toLocaleDateString('en-US', dateOptions);
-    let systemPrompt = `${baseSystemPrompt} Today's date is ${formattedDate}.\n\n`;
-
-    const studyModeContext = `⸻
-
-Study Mode Context
-
-The user is currently STUDYING, and they’ve asked you to follow these rules during this chat. No matter what other instructions follow, you MUST obey these rules:
-
-⸻
-
-RULES
-
-Be an approachable-yet-dynamic teacher, who helps the user learn by guiding them through their studies.
-	1.	Get to know the user. If you don’t know their goals or grade level, ask the user before diving in. (Keep this lightweight!) If they don’t answer, aim for explanations that would make sense to an undergraduate student.
-	2.	Build on existing knowledge. Connect new ideas to what the user already knows.
-	3.	Guide users, don’t just give answers. Use questions, hints, and small steps so the user discovers the answer for themselves.
-	4.	Check and reinforce. After hard parts, confirm the user can restate or use the idea. Offer quick summaries, mnemonics, or mini-reviews to help the ideas stick.
-	5.	Vary the rhythm. Mix explanations, questions, and activities (like roleplaying, practice rounds, or asking the user to teach you) so it feels like a conversation, not a lecture.
-
-Above all: DO NOT SIMPLY DO THE USER’S WORK FOR THEM.
-Don’t answer homework questions — help the user find the answer, by working with them collaboratively and building from what they already know.
-
-⸻
-
-THINGS YOU CAN DO
-	•	Teach new concepts: Explain at the user’s level, ask guiding questions, use visuals, then review with questions or a practice round.
-	•	Help with homework: Don’t simply give answers! Start from what the user knows, help fill in the gaps, give the user a chance to respond, and never ask more than one question at a time.
-	•	Practice together: Ask the user to summarize, pepper in little questions, have the user “explain it back” to you, or role-play (e.g., practice conversations in a different language). Correct mistakes — charitably! — in the moment.
-	•	Quizzes & test prep: Run practice quizzes. (One question at a time!) Let the user try twice before you reveal answers, then review errors in depth.
-
-⸻
-
-TONE & APPROACH
-
-Be warm, patient, and plain-spoken; don’t use too many exclamation marks or emoji. Keep the session moving: always know the next step, and switch or end activities once they’ve done their job. And be reasonably brief — don’t send essay-length responses. Aim for a good back-and-forth.
-
-⸻
-
-IMPORTANT
-
-DO NOT GIVE ANSWERS OR DO HOMEWORK FOR THE USER.
-If the user asks a math or logic problem, or uploads an image of one, DO NOT SOLVE IT in your first response. Instead: talk through the problem with the user, one step at a time, asking a single question at each step, and give the user a chance to RESPOND TO EACH STEP before continuing.
-
-⸻`;
-
-    if (isStudyModeActive) {
-        systemPrompt += studyModeContext;
-    }
-
-    // Inject the system prompt at the beginning of the first user message
-    if (processedContents.length > 0 && processedContents[0].role === 'user' && processedContents[0].parts.length > 0) {
-        const firstTextPart = processedContents[0].parts.find(p => 'text' in p);
-        if (firstTextPart) {
-            firstTextPart.text = systemPrompt + firstTextPart.text;
-        }
-    }
-    // --- END System Prompt Injection ---
-
-
-    // --- Initialize variables for the fallback loop ---
-    let googleData = null;
-    let googleResponse = null;
-    let lastErrorData = null;
-    let successfulModel = null;
-
-    // --- Token Counting and Truncation (No changes needed here) ---
-    try {
-        if (processedContents.length > 0) {
-            const firstModel = MODELS_TO_TRY[0];
-            const countTokensUrl = `https://generativelanguage.googleapis.com/v1beta/models/${firstModel}:countTokens?key=${apiKey}`;
-            let currentTokenCount = 0;
-            const getTokenCount = async (contentsToCount) => {
-                if (!contentsToCount || contentsToCount.length === 0) return 0;
-                try {
-                    const countResponse = await fetch(countTokensUrl, {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ contents: contentsToCount }),
-                    });
-                    if (!countResponse.ok) {
-                        const errorData = await countResponse.json().catch(() => ({}));
-                        console.warn(`Token count API failed (${countResponse.status}):`, errorData.error?.message || 'Unknown counting error');
-                        return -1;
-                    }
-                    const countData = await countResponse.json();
-                    return countData.totalTokens;
-                } catch (countFetchError) {
-                     console.warn("Fetch error during token count:", countFetchError.message);
-                     return -1;
                 }
-            };
-            currentTokenCount = await getTokenCount(processedContents);
-            console.log(`Initial token count: ${currentTokenCount} (Limit: ${MAX_TOKENS})`);
-            if (currentTokenCount === -1) {
-                console.warn("Proceeding without history truncation due to token count error.");
-            } else {
-                let iterations = 0;
-                const maxIterations = Math.ceil(processedContents.length / 2) + 1;
-                while (currentTokenCount > MAX_TOKENS && processedContents.length >= 2 && iterations < maxIterations) {
-                    console.log(`Token count ${currentTokenCount} exceeds limit ${MAX_TOKENS}. Truncating...`);
-                    processedContents.shift(); processedContents.shift();
-                    if (processedContents.length < 2) break;
-                    currentTokenCount = await getTokenCount(processedContents);
-                    console.log(`New token count after truncation: ${currentTokenCount}`);
-                    if (currentTokenCount === -1) { console.warn("Token count failed during truncation. Stopping truncation."); break; }
-                    iterations++;
-                }
-                if (iterations >= maxIterations && currentTokenCount > MAX_TOKENS) { console.warn("Truncation loop hit max iterations, history might still exceed token limit."); }
-                 else if (currentTokenCount > MAX_TOKENS && processedContents.length < 2) { console.warn(`History still exceeds token limit (${currentTokenCount}), but cannot truncate further.`); }
-            }
-        }
-    } catch (truncationError) {
-        console.error("Error during history truncation:", truncationError);
-    }
-    // --- END Token Counting and Truncation ---
-
-
-    // --- Loop through models and attempt API call ---
-    for (const modelName of MODELS_TO_TRY) {
-        console.log(`Attempting API call with model: ${modelName}`);
-        const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/${modelName}:generateContent?key=${apiKey}`;
-
-        // --- FIXED: Request body now matches the structure of the provided example ---
-        const requestBody = {
-            contents: processedContents,
-            tools: [
-                {
-                    "google_search": {}
-                }
-            ],
-            generationConfig: {
-                temperature: 1,
-                topP: 0.95,
-                maxOutputTokens: 8192,
-            }
-        };
-
-        try {
-            googleResponse = await fetch(apiUrl, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(requestBody),
             });
 
-            if (googleResponse.ok) {
-                googleData = await googleResponse.json();
-                successfulModel = modelName;
-                console.log(`Success with model: ${successfulModel}`);
-                break; // Exit the loop on first successful call
-            } else {
-                console.warn(`Model ${modelName} failed with status: ${googleResponse.status}`);
-                try {
-                    lastErrorData = await googleResponse.json();
-                    console.warn(`Error details for ${modelName}:`, JSON.stringify(lastErrorData));
-                } catch (parseError) {
-                    const errorText = await googleResponse.text().catch(() => '');
-                    console.warn(`Could not parse error JSON for ${modelName}. Raw response:`, errorText);
-                    lastErrorData = { error: { message: `API Error: ${googleResponse.status} ${googleResponse.statusText}. Response body was not valid JSON.` } };
-                }
+            if (content.length > 0) {
+                messages.push({ role, content });
             }
-        } catch (error) {
-            console.error(`Fetch error for model ${modelName}:`, error);
-            lastErrorData = { error: { message: `Network or fetch error for ${modelName}: ${error.message}` } };
-            googleResponse = { status: 500, statusText: 'Network Error' };
-        }
-    } // --- End of model loop ---
-
-
-    // --- Process the result (or final error) ---
-    try {
-        if (!googleData || !successfulModel) {
-            console.error('All models failed. Reporting last encountered error.');
-            const finalStatus = googleResponse?.status || 500;
-            let errorMsg = lastErrorData?.error?.message || `API Error: ${finalStatus} ${googleResponse?.statusText || 'Unknown Error'}`;
-            if (lastErrorData?.error?.status === 'FAILED_PRECONDITION') errorMsg += ' (Check API key/billing?)';
-            if (lastErrorData?.error?.message?.includes('payload is too large')) errorMsg = `Request too large (~${MAX_FILE_SIZE_MB}MB limit).`;
-             else if (lastErrorData?.error?.message?.includes('429')) errorMsg += ' (Rate limit exceeded?)';
-            else if (lastErrorData?.error?.code === 400 && lastErrorData?.error?.message?.includes('must be less than or equal to')) errorMsg = `Request failed: History likely exceeds token limit. ${lastErrorData?.error?.message}`;
-
-            return res.status(finalStatus).json({ error: errorMsg });
-        }
-
-        // --- SUCCESS: Proceed with processing the successful response ---
-        console.log(`Processing successful response from model: ${successfulModel}`);
-
-        let aiText = null;
-        let searchSuggestionHtml = null;
-        const candidate = googleData?.candidates?.[0];
-        const promptFeedback = googleData?.promptFeedback;
-
-        if (candidate) {
-            const finalAnswerPart = candidate.content?.parts?.find(part => part.text && !part.thought);
-            aiText = finalAnswerPart?.text;
-
-            const groundingMetadata = candidate.groundingMetadata;
-            if (groundingMetadata?.searchEntryPoint?.renderedContent) {
-                searchSuggestionHtml = groundingMetadata.searchEntryPoint.renderedContent;
-            }
-        }
-
-        if (promptFeedback?.blockReason) {
-            console.warn('Prompt Blocked:', promptFeedback.blockReason);
-            return res.status(400).json({ error: `Request blocked by safety settings: ${promptFeedback.blockReason}` });
-        }
-        if (candidate?.finishReason === 'SAFETY') {
-            console.warn('Candidate Blocked for Safety:', candidate.safetyRatings);
-            return res.status(400).json({ error: `Response blocked by safety settings: ${candidate.finishReason}.` });
-        }
-
-        if (typeof aiText !== 'string') {
-             console.error('Failed to extract valid AI text from the candidate.');
-             if (candidate?.content?.parts?.length > 0) {
-                 console.warn('Candidate parts existed but none contained text:', candidate.content.parts);
-                 aiText = "[Model response received, but no text content found]";
-             } else if (candidate?.finishReason && candidate.finishReason !== 'STOP') {
-                 console.warn(`Candidate finished due to ${candidate.finishReason}, no text content generated.`);
-                 return res.status(500).json({ error: `AI response generation stopped unexpectedly: ${candidate.finishReason}.` });
-             } else {
-                 console.error('AI response structure error: No candidate parts found.', googleData);
-                 return res.status(500).json({ error: 'AI response format error (No valid parts found).' });
-             }
-        }
-
-        // --- Send successful response back to client ---
-        res.status(200).json({
-            text: aiText,
-            searchSuggestionHtml: searchSuggestionHtml,
-            modelUsed: successfulModel
         });
+    }
 
-    } catch (error) {
-        console.error('Serverless function error after API call:', error);
-        res.status(500).json({ error: 'Internal server error during response processing.' });
+    // 2. Loop through Models
+    let lastError = null;
+    let successfulResponse = null;
+    let usedModel = null;
+
+    for (const model of MODELS_TO_TRY) {
+        try {
+            console.log(`Attempting model: ${model}`);
+            const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/openai/chat/completions`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${apiKey}`
+                },
+                body: JSON.stringify({
+                    model: model,
+                    messages: messages,
+                    temperature: 0.7,
+                    stream: false
+                })
+            });
+
+            if (!response.ok) {
+                const txt = await response.text();
+                console.warn(`Model ${model} failed: ${response.status} - ${txt}`);
+                lastError = `Error ${response.status}: ${txt}`;
+                continue;
+            }
+
+            const data = await response.json();
+            successfulResponse = data;
+            usedModel = model;
+            break; // Success
+        } catch (e) {
+            console.error(`Model ${model} exception:`, e);
+            lastError = e.message;
+        }
+    }
+
+    // 3. Handle Result
+    if (successfulResponse) {
+        const choice = successfulResponse.choices?.[0];
+        const text = choice?.message?.content || "";
+
+        // OpenAI compatibility layer wraps the response.
+        // We return a simplified object to our frontend.
+        return res.status(200).json({
+            text: text,
+            searchSuggestionHtml: null, // Grounding not easily available in standard OpenAI response
+            modelUsed: usedModel
+        });
+    } else {
+        return res.status(500).json({ error: `All models failed. Last error: ${lastError}` });
     }
 }

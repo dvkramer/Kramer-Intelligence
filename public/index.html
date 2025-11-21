@@ -3,219 +3,76 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Kramer Intelligence</title>
+    <title>Kramer Intelligence (Gen 3)</title>
+    <link rel="stylesheet" href="css/style.css">
 
-    <!-- SEO Meta Tags -->
-    <meta name="description" content="Chat with Kramer Intelligence, an AI assistant created by Daniel Vincent Kramer. Get answers, engage in conversation, and even upload images or PDFs.">
-    <link rel="canonical" href="https://kramer-intelligence.vercel.app/"> <!-- Adjust if your URL changes -->
-    <!-- End SEO Meta Tags -->
-
-    <!-- Favicon Links - START -->
-    <link rel="icon" href="/icons/icon-192x192.png" type="image/png" sizes="192x192">
-    <link rel="icon" href="/icons/icon-600x600.png" type="image/png" sizes="600x600">
-    <link rel="apple-touch-icon" href="/icons/icon-600x600.png">
-    <!-- Favicon Links - END -->
-
-    <!-- PWA: Link Manifest -->
-    <link rel="manifest" href="/manifest.json">
-
-    <!-- PWA: Theme Color -->
-    <meta name="theme-color" content="#1f1f1f">
-
-    <!-- Your other links -->
-    <link rel="stylesheet" href="style.css">
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500&display=swap" rel="stylesheet">
-
-    <!-- Added Libraries for Markdown/Sanitization/Time -->
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/moment.js/2.30.1/moment.min.js" defer></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/moment-timezone/0.6.0/moment-timezone-with-data.min.js" defer></script>
-    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js" defer></script>
-    <script src="https://cdn.jsdelivr.net/npm/dompurify@latest/dist/purify.min.js" defer></script>
-    <!-- End Added Libraries -->
-
-    <!-- KaTeX for LaTeX Rendering -->
+    <!-- KaTeX -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.16.9/katex.min.css">
     <script defer src="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.16.9/katex.min.js"></script>
     <script defer src="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.16.9/contrib/auto-render.min.js"></script>
-    <!-- End KaTeX -->
 
-
-    <!-- Firebase SDK -->
-    <script type="module">
-      // Import the functions you need from the SDKs you need
-      import { initializeApp } from "https://www.gstatic.com/firebasejs/12.1.0/firebase-app.js";
-      import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, onAuthStateChanged, signOut, sendPasswordResetEmail } from "https://www.gstatic.com/firebasejs/12.1.0/firebase-auth.js";
-      import { getFirestore, doc, setDoc, getDoc, addDoc, collection, query, where, getDocs, onSnapshot, serverTimestamp, orderBy, updateDoc, arrayUnion, writeBatch, deleteDoc } from "https://www.gstatic.com/firebasejs/12.1.0/firebase-firestore.js";
-
-      async function initializeFirebase() {
-        try {
-          const response = await fetch('/api/config');
-          if (!response.ok) {
-            const errorText = await response.text();
-            throw new Error(`Failed to fetch Firebase config: ${response.status} ${response.statusText}. Details: ${errorText}`);
-          }
-          const config = await response.json();
-           if (!config.apiKey) {
-            throw new Error("API key not found in the response from /api/config.");
-          }
-
-          // Your web app's Firebase configuration
-          const firebaseConfig = {
-            apiKey: config.apiKey,
-            authDomain: "kramer-intelligence-chat.firebaseapp.com",
-            projectId: "kramer-intelligence-chat",
-            storageBucket: "kramer-intelligence-chat.firebasestorage.app",
-            messagingSenderId: "467599486032",
-            appId: "1:467599486032:web:63b0d6510b8cad07477555"
-          };
-
-          // Initialize Firebase
-          const app = initializeApp(firebaseConfig);
-          window.firebase = {
-              auth: getAuth(app),
-              firestore: getFirestore(app),
-              createUserWithEmailAndPassword,
-              signInWithEmailAndPassword,
-              onAuthStateChanged,
-              signOut,
-              sendPasswordResetEmail,
-              doc,
-              setDoc,
-              getDoc,
-              addDoc,
-              collection,
-              query,
-              where,
-              getDocs,
-              onSnapshot,
-              serverTimestamp,
-              orderBy,
-              updateDoc,
-              arrayUnion,
-              writeBatch,
-              deleteDoc
-          };
-
-          // Dynamically load the main script ONLY after Firebase is initialized
-          const script = document.createElement('script');
-          script.src = 'script.js';
-          script.defer = true;
-          document.body.appendChild(script);
-
-        } catch (error) {
-          console.error("Firebase initialization failed:", error);
-          const errorDisplay = document.getElementById('error') || document.createElement('div');
-          errorDisplay.textContent = `Critical Error: Could not initialize the application. Please ensure the FIREBASE_API_KEY is set correctly in your Vercel environment variables. (${error.message})`;
-          errorDisplay.style.cssText = "padding: 20px; text-align: center; background-color: #ffdddd; border: 1px solid #ff0000; color: #ff0000; margin: 20px;";
-          document.getElementById('app-wrapper').prepend(errorDisplay);
-        }
-      }
-
-      initializeFirebase();
-    </script>
-
+    <script type="module" src="js/app.js"></script>
 </head>
 <body>
-    <div id="app-wrapper">
-        <!-- Sidebar -->
-        <div id="sidebar">
-            <div id="sidebar-header">
-                <h2>Chats</h2>
-                <button id="new-chat-button" title="New Chat">+</button>
-            </div>
-            <div id="chat-list">
-                <!-- Chat list will be populated here -->
-            </div>
-            <div id="sidebar-footer">
-                <div id="user-info" class="hidden">
-                    <span id="user-email"></span>
-                    <button id="logout-button">Logout</button>
-                </div>
-                <button id="login-button">Login</button>
-            </div>
+
+    <!-- Sidebar -->
+    <div id="sidebar">
+        <h2>
+            Chats
+            <button id="new-chat-btn" title="New Chat">+</button>
+        </h2>
+        <div id="chat-list-items">
+            <!-- Chat items injected here -->
         </div>
-
-        <!-- Main Content -->
-        <div id="main-container">
-            <div id="main-content-area">
-                <button id="menu-button" class="hidden">☰</button>
-                <h1>Kramer Intelligence</h1>
-                <div id="chat-controls" class="hidden">
-                    <button id="save-chat-button">Save to Cloud</button>
-                    <button id="share-chat-button" class="hidden">Share</button>
-                </div>
-                <div id="chat-container">
-                    <div id="chat-history">
-                        <!-- Chat messages will appear here -->
-                    </div>
-                </div>
-            </div>
-
-    <div id="loading" class="hidden">Thinking...</div>
-    <div id="error" class="hidden"></div>
-
-    <!-- Image Preview Area (Stays outside the main scroll area) -->
-    <!-- Shown for images OR PDFs now -->
-    <div id="image-preview-container" class="hidden">
-        <div>  <!-- Inner div for positioning -->
-             <img id="image-preview" src="#" alt="File preview"/>
-             <!-- <<< ADDED SPAN FOR PDF FILENAME >>> -->
-             <span id="pdf-filename-preview"></span>
-             <button id="remove-image-button" title="Remove file">×</button>
+        <div id="user-area">
+            <span id="user-info" class="hidden"></span>
+            <button id="login-btn" class="auth-btn">Login</button>
+            <button id="logout-btn" class="auth-btn hidden">Logout</button>
         </div>
     </div>
-    <!-- END Image Preview Area -->
 
-    <!-- Form Area (Stays outside the main scroll area) -->
-    <form id="chat-form">
-        <input type="file" id="file-upload-input" accept="image/png, image/jpeg, image/webp, image/heic, image/heif, application/pdf" style="display: none;">
-        <button type="button" id="study-mode-button" title="Toggle Study Mode">Study Mode</button>
-        <button type="button" id="attach-button" title="Attach Image or PDF">
-            📎
-        </button>
-        <textarea id="message-input" placeholder="Ask me anything..." rows="1" autocomplete="off"></textarea>
-        <button type="submit" id="send-button">Send</button>
-    </form>
+    <!-- Main Area -->
+    <div id="main">
+        <header>
+            <h1>Kramer Intelligence</h1>
+            <button id="save-chat-btn">Save Chat</button>
+        </header>
 
-    <!-- Auth Modals -->
-    <div id="auth-modal" class="modal-container hidden">
+        <div id="chat-messages">
+            <!-- Messages injected here -->
+             <div class="message ai">
+                 Hello! I am Kramer Intelligence, powered by Gemini 3. How can I help you today?
+             </div>
+        </div>
+
+        <div id="input-area">
+            <div id="file-preview" class="hidden">
+                <img id="file-preview-img" src="" alt="Preview">
+                <span id="file-preview-name"></span>
+                <button id="remove-file-btn">×</button>
+            </div>
+            <div id="input-wrapper">
+                <input type="file" id="file-input" hidden accept="image/*,application/pdf">
+                <button id="attach-btn" title="Attach File">📎</button>
+                <textarea id="chat-input" rows="1" placeholder="Type a message..."></textarea>
+                <button id="send-btn" title="Send">➤</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Auth Modal -->
+    <div id="auth-modal" class="modal hidden">
         <div class="modal-content">
-            <button class="modal-close-button">&times;</button>
-            <div id="login-view">
-                <h2>Login</h2>
-                <form id="login-form">
-                    <input type="email" id="login-email" placeholder="Email" required>
-                    <input type="password" id="login-password" placeholder="Password" required>
-                    <button type="submit">Login</button>
-                    <p><a href="#" id="forgot-password-link">Forgot Password?</a></p>
-                    <p>Don't have an account? <a href="#" id="show-signup">Sign up</a></p>
-                </form>
-            </div>
-            <div id="signup-view" class="hidden">
-                <h2>Sign Up</h2>
-                <form id="signup-form">
-                    <input type="email" id="signup-email" placeholder="Email" required>
-                    <input type="password" id="signup-password" placeholder="Password" required>
-                    <button type="submit">Sign Up</button>
-                    <p>Already have an account? <a href="#" id="show-login">Log in</a></p>
-                </form>
-            </div>
+            <span id="close-modal" class="close">&times;</span>
+            <h2 id="auth-title">Login</h2>
+            <form id="auth-form">
+                <input type="email" name="email" placeholder="Email" required>
+                <input type="password" name="password" placeholder="Password" required>
+                <button type="submit" id="auth-submit">Login</button>
+            </form>
+            <span id="toggle-auth">Need an account? Sign up</span>
         </div>
     </div>
 
-    <!-- Delete Confirmation Modal -->
-    <div id="delete-confirm-modal" class="modal-container hidden">
-        <div class="modal-content">
-            <h2>Confirm Deletion</h2>
-            <p>Are you sure you want to permanently delete "<span id="delete-chat-name"></span>"?</p>
-            <p><strong>This action cannot be undone.</strong></p>
-            <div class="modal-buttons">
-                <button id="confirm-delete-button">Delete</button>
-                <button id="cancel-delete-button">Cancel</button>
-            </div>
-        </div>
-    </div>
 </body>
 </html>
