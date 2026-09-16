@@ -4,7 +4,10 @@
   "description": "Kramer Intelligence - AI Chat interface using Gemini API",
   "main": "api/chat.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "dev": "node scripts/dev-server.js",
+    "test": "node --test",
+    "check": "node scripts/check.js",
+    "vendor": "node scripts/vendor.js"
   },
   "keywords": [
     "ai",
@@ -15,5 +18,12 @@
   ],
   "author": "Daniel Vincent Kramer",
   "license": "ISC",
-  "dependencies": {}
+  "type": "module",
+  "devDependencies": {
+    "dompurify": "3.4.15",
+    "happy-dom": "20.14.5",
+    "jsdom": "30.0.1",
+    "katex": "0.18.7",
+    "marked": "18.0.13"
+  }
 }

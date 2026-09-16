@@ -1,1223 +1,590 @@
-// public/script.js
+import { ChatController } from "./js/chat.js";
+import { messageText } from "./js/model.js";
+import { updateTranscript } from "./js/render.js";
+import { readAttachment } from "./js/attachments.js";
+import { connectCloud } from "./js/cloud.js";
 
-// --- Firebase Services ---
-const {
-    auth,
-    firestore,
-    createUserWithEmailAndPassword,
-    signInWithEmailAndPassword,
-    onAuthStateChanged,
-    signOut,
-    sendPasswordResetEmail,
-    doc,
-    setDoc,
-    getDoc,
-    addDoc,
-    collection,
-    query,
-    where,
-    getDocs,
-    onSnapshot,
-    serverTimestamp,
-    orderBy,
-    updateDoc,
-    arrayUnion,
-    deleteDoc,
-    writeBatch
-} = window.firebase;
-
-
-// --- DOM Element References ---
-const menuButton = document.getElementById('menu-button');
-
-// Auth
-const loginButton = document.getElementById('login-button');
-const logoutButton = document.getElementById('logout-button');
-const authModal = document.getElementById('auth-modal');
-const modalCloseButton = document.querySelector('.modal-close-button');
-const loginForm = document.getElementById('login-form');
-const signupForm = document.getElementById('signup-form');
-const showSignup = document.getElementById('show-signup');
-const showLogin = document.getElementById('show-login');
-const loginView = document.getElementById('login-view');
-const signupView = document.getElementById('signup-view');
-const forgotPasswordLink = document.getElementById('forgot-password-link');
-const userInfo = document.getElementById('user-info');
-const userEmail = document.getElementById('user-email');
-
-// Delete Confirmation Modal
-const deleteConfirmModal = document.getElementById('delete-confirm-modal');
-const deleteChatName = document.getElementById('delete-chat-name');
-const confirmDeleteButton = document.getElementById('confirm-delete-button');
-const cancelDeleteButton = document.getElementById('cancel-delete-button');
-
-// Sidebar and Chat Controls
-const sidebar = document.getElementById('sidebar');
-const chatList = document.getElementById('chat-list');
-const newChatButton = document.getElementById('new-chat-button');
-const chatControls = document.getElementById('chat-controls');
-const saveChatButton = document.getElementById('save-chat-button');
-const shareChatButton = document.getElementById('share-chat-button');
-
-// Existing Chat Elements
-const chatForm = document.getElementById('chat-form');
-const messageInput = document.getElementById('message-input'); // Textarea
-const sendButton = document.getElementById('send-button');
-const chatHistory = document.getElementById('chat-history');
-const loadingIndicator = document.getElementById('loading');
-const errorDisplay = document.getElementById('error');
-const attachButton = document.getElementById('attach-button');
-const fileUploadInput = document.getElementById('file-upload-input');
-const imagePreviewContainer = document.getElementById('image-preview-container');
-const imagePreview = document.getElementById('image-preview');
-const removeImageButton = document.getElementById('remove-image-button');
-const mainContentArea = document.getElementById('main-content-area');
-const studyModeButton = document.getElementById('study-mode-button');
-const pdfFilenamePreview = document.getElementById('pdf-filename-preview');
-
-
-// --- Configuration ---
-const MAX_FILE_SIZE_MB = 15; // Matches backend limit for inline uploads
-const SCROLL_PADDING_TOP = 10; // Pixels above the AI message top when scrolling
-// --- End Configuration ---
-
-// --- State Variables ---
-let currentUser = null;
-let currentChat = { id: null, isSynced: false, ownerId: null }; // id is the Firestore doc ID
-let conversationHistory = []; // This will now represent the messages of the *current* chat
-let unsubscribeMessages = () => {}; // Function to unsubscribe from Firestore listener
-let selectedFile = null;
-let selectedFileType = null; // 'image' or 'pdf'
-let selectedFileBase64 = null; // Data URL (includes prefix like 'data:image/png;base64,')
-let isStudyModeActive = false;
-// --- End State Variables ---
-
-// --- Event Listeners ---
-messageInput.addEventListener('keydown', handleInputKeyDown);
-sendButton.addEventListener('click', handleSendButtonClick);
-studyModeButton.addEventListener('click', handleStudyModeToggle);
-attachButton.addEventListener('click', () => {
-    resetFileInput();
-    fileUploadInput.click();
+const $ = (id) => document.getElementById(id);
+let cloud,
+  chatList = [],
+  retryAction,
+  authMode = "login",
+  authReady = false,
+  fileReading = false,
+  attachmentEpoch = 0,
+  voice = null,
+  voiceStarting = false,
+  renderedKey;
+const settings = () => ({
+  searchEnabled: $("search-button").getAttribute("aria-pressed") === "true",
+  isStudyModeActive:
+    $("study-mode-button").getAttribute("aria-pressed") === "true",
+  timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
 });
-fileUploadInput.addEventListener('change', handleFileSelect);
-removeImageButton.addEventListener('click', handleRemoveFile);
-document.addEventListener('paste', handlePaste);
-messageInput.addEventListener('input', adjustTextareaHeight);
-// --- END Event Listeners ---
-
-
-// --- Functions ---
-
-// --- Mobile Detection Helper ---
-function isMobileDevice() {
-    const hasTouch = ('ontouchstart' in window) || (navigator.maxTouchPoints > 0) || (navigator.msMaxTouchPoints > 0);
-    const isLikelyMobileUA = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
-    return hasTouch && isLikelyMobileUA;
+const chat = new ChatController({
+  request: requestAnswer,
+  changed: render,
+  error: showError,
+  notice: showNotice,
+});
+async function requestAnswer(payload) {
+  const response = await fetch("/api/chat", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload),
+    signal: AbortSignal.timeout(65_000),
+  });
+  const data = await response.json().catch(() => ({}));
+  if (!response.ok)
+    throw new Error(
+      data.error ||
+        (response.status === 413
+          ? "The conversation is too large to send. Use a smaller file or a new chat."
+          : "The request failed. Please try again."),
+    );
+  if (typeof data.text !== "string" || !data.text.trim())
+    throw new Error("Gemini returned an empty answer. Please retry.");
+  return data;
 }
-// --- END Mobile Detection Helper ---
-
-
-// --- Textarea Height Adjustment ---
-function adjustTextareaHeight() {
-    messageInput.style.height = 'auto';
-    messageInput.style.height = `${messageInput.scrollHeight + 2}px`;
+function showError(message, retry) {
+  $("error-text").textContent = message;
+  $("error").classList.remove("hidden");
+  retryAction = retry;
+  $("retry-button").classList.toggle("hidden", !retry);
 }
-
-// --- Scrolling Functions ---
-function scrollChatToBottom() {
+function clearError() {
+  $("error").classList.add("hidden");
+  retryAction = null;
+}
+function showNotice(message) {
+  $("notice").textContent = message;
+  $("notice").classList.remove("hidden");
+}
+function resizeInput() {
+  $("message-input").style.height = "auto";
+  $("message-input").style.height =
+    Math.min($("message-input").scrollHeight, 180) + "px";
+}
+function endVoice() {
+  const session = voice;
+  session?.end();
+  voice = null;
+  voiceStarting = false;
+  render();
+  return session?.turnQueue || Promise.resolve();
+}
+function beforeSwitch() {
+  endVoice();
+  clearError();
+  $("notice").classList.add("hidden");
+  attachmentEpoch++;
+  closeSidebar();
+}
+function closeSidebar() {
+  $("sidebar").classList.remove("open");
+  $("sidebar-backdrop").classList.add("hidden");
+  $("menu-button").setAttribute("aria-expanded", "false");
+}
+function render() {
+  const current = chat.current,
+    scroller = $("main-content-area");
+  const changedChat = renderedKey !== current.key;
+  const nearBottom =
+    scroller.scrollHeight - scroller.scrollTop - scroller.clientHeight < 120;
+  if (changedChat) {
+    $("chat-history").replaceChildren();
+    $("message-input").value = current.draft;
+    resizeInput();
+    renderedKey = current.key;
+    clearError();
+    if (current.pending && !current.busy)
+      showError(current.lastError || "This request did not finish.", () =>
+        chat.run(current),
+      );
+  }
+  const inVoice = voice?.active || voiceStarting;
+  const busy = current.busy || current.loading || inVoice;
+  $("chat-title").textContent = current.isSynced ? current.title : "New chat";
+  $("chat-status").textContent = current.isSynced
+    ? "Saved to cloud"
+    : "Only here until you save";
+  $("empty-state").classList.toggle("hidden", current.messages.length > 0);
+  $("loading").classList.toggle("hidden", !current.busy && !current.loading);
+  $("save-chat-button").classList.toggle("hidden", current.isSynced);
+  $("save-chat-button").disabled = busy || !current.messages.length;
+  $("share-chat-button").classList.toggle("hidden", !current.isSynced);
+  $("share-chat-button").disabled = busy;
+  $("send-button").disabled = busy || fileReading;
+  $("voice-button").disabled = busy || fileReading;
+  $("attach-button").disabled = busy || fileReading;
+  $("study-mode-button").disabled = inVoice;
+  $("message-input").disabled = !!inVoice;
+  updateTranscript($("chat-history"), current.messages, {
+    busy,
+    edit: editMessage,
+    regenerate: (message) =>
+      chat
+        .regenerate(message.id, settings())
+        .catch((error) => showError(error.message)),
+  });
+  const file = current.attachment;
+  $("image-preview-container").classList.toggle("hidden", !file);
+  if (file) {
+    $("filename-preview").textContent = file.name;
+    $("image-preview").classList.toggle(
+      "hidden",
+      file.mimeType === "application/pdf",
+    );
+    if (file.mimeType.startsWith("image/")) $("image-preview").src = file.data;
+  } else $("image-preview").removeAttribute("src");
+  $("user-info").classList.toggle("hidden", !chat.user);
+  $("login-button").classList.toggle("hidden", !!chat.user);
+  $("user-email").textContent = chat.user?.email || "";
+  renderSidebar();
+  if (nearBottom || changedChat)
     requestAnimationFrame(() => {
-        mainContentArea.scrollTo({ top: mainContentArea.scrollHeight, behavior: 'smooth' });
+      scroller.scrollTop = scroller.scrollHeight;
     });
 }
-
-function scrollToMessageTop(messageElement) {
-    const initialScrollTop = mainContentArea.scrollTop;
-    const initialScrollHeight = mainContentArea.scrollHeight;
-    const clientHeight = mainContentArea.clientHeight;
-    const isNearBottomInitially = (initialScrollHeight - initialScrollTop - clientHeight) < 50;
-
-    requestAnimationFrame(() => {
-        const currentScrollTop = mainContentArea.scrollTop;
-        if (isNearBottomInitially && currentScrollTop > initialScrollTop + 10) {
-             console.log(`Scroll jumped down from ${initialScrollTop} to ${currentScrollTop} after adding AI message. Resetting.`);
-             mainContentArea.scrollTop = initialScrollTop;
-        }
-        requestAnimationFrame(() => {
-            const messageTopOffset = messageElement.offsetTop;
-            let desiredScrollTop = Math.max(0, messageTopOffset - SCROLL_PADDING_TOP);
-            const messageBottomOffset = messageTopOffset + messageElement.offsetHeight;
-            const currentViewBottom = mainContentArea.scrollTop + mainContentArea.clientHeight;
-
-            if (!(messageTopOffset >= mainContentArea.scrollTop && messageBottomOffset <= currentViewBottom)) {
-                mainContentArea.scrollTo({ top: desiredScrollTop, behavior: 'smooth' });
-            }
-        });
-    });
+function renderSidebar() {
+  const list = $("chat-list");
+  list.replaceChildren();
+  for (const local of chat.locals.filter(
+    (c) => !c.isSynced && c.messages.length,
+  ))
+    sidebarItem(
+      local.key,
+      messageText(local.messages[0]).slice(0, 60) || "Temporary chat",
+      () => {
+        beforeSwitch();
+        chat.selectLocal(local);
+      },
+      null,
+      true,
+      chat.current === local,
+    );
+  for (const saved of chatList)
+    sidebarItem(
+      saved.id,
+      saved.title || "Untitled chat",
+      () => {
+        beforeSwitch();
+        chat.load(saved.id).catch((error) => showError(error.message));
+      },
+      saved.ownerId === chat.user?.uid ? () => deleteChat(saved) : null,
+      false,
+      chat.current.id === saved.id,
+    );
+  if (!list.children.length) {
+    const p = document.createElement("p");
+    p.className = "sidebar-hint";
+    p.textContent = chat.user
+      ? "Your saved chats will appear here."
+      : "Sign in to save and revisit conversations.";
+    list.append(p);
+  }
 }
-// --- END Scrolling Functions ---
-
-// --- Input Handling ---
-function handleInputKeyDown(event) { if (event.key === 'Enter' && !event.shiftKey) { event.preventDefault(); handleSendMessage(); } }
-function handleSendButtonClick() { handleSendMessage(); }
-// --- END Input Handling ---
-
-// --- File Handling Functions ---
-
-// **************************************************
-// START MODIFIED SECTION for processSelectedFile
-// **************************************************
-function processSelectedFile(file) {
-    if (!file) return false;
-
-    const isImage = file.type.startsWith('image/');
-    const isPdf = file.type === 'application/pdf';
-
-    if (!isImage && !isPdf) {
-        showError('Invalid file type. Please select an image (PNG, JPG, WEBP, HEIC, HEIF) or a PDF.');
-        handleRemoveFile();
-        return false;
+function sidebarItem(id, title, select, remove, temporary, active) {
+  const row = document.createElement("div");
+  row.className = "chat-list-item" + (active ? " active" : "");
+  row.dataset.chatId = id;
+  const label = document.createElement("button");
+  label.className = "chat-select";
+  label.textContent = title;
+  label.title = title;
+  label.addEventListener("click", select);
+  row.append(label);
+  if (temporary) {
+    const tag = document.createElement("span");
+    tag.className = "temporary-tag";
+    tag.textContent = "local";
+    row.append(tag);
+  }
+  if (remove) {
+    const button = document.createElement("button");
+    button.className = "delete-chat-button";
+    button.textContent = "×";
+    button.setAttribute("aria-label", `Delete ${title}`);
+    button.addEventListener("click", remove);
+    row.append(button);
+  }
+  $("chat-list").append(row);
+}
+async function refreshChats() {
+  const uid = chat.user?.uid;
+  if (!uid || !cloud) return;
+  try {
+    const result = await cloud.list(uid);
+    if (chat.user?.uid === uid) {
+      chatList = result;
+      renderSidebar();
     }
-
-    if (file.size > MAX_FILE_SIZE_MB * 1024 * 1024) {
-        showError(`File is too large (> ${MAX_FILE_SIZE_MB} MB). Max size for direct upload is limited.`);
-        handleRemoveFile();
-        return false;
+  } catch {
+    showError("Could not load your saved chats. Try again.", refreshChats);
+  }
+}
+async function submitMessage(event) {
+  event?.preventDefault();
+  if (
+    chat.current.busy ||
+    chat.current.loading ||
+    fileReading ||
+    voice?.active ||
+    voiceStarting
+  )
+    return;
+  clearError();
+  $("notice").classList.add("hidden");
+  const current = chat.current;
+  try {
+    const task = chat.send(
+      $("message-input").value,
+      current.attachment,
+      settings(),
+    );
+    // send() commits the input synchronously after preflight; failed preflight
+    // retains the draft/attachment, including on keyboard submission.
+    $("message-input").value = current.draft;
+    resizeInput();
+    render();
+    await task;
+  } catch (error) {
+    showError(error.message);
+  }
+}
+$("chat-form").addEventListener("submit", submitMessage);
+$("message-input").addEventListener("input", () => {
+  chat.current.draft = $("message-input").value;
+  resizeInput();
+});
+$("message-input").addEventListener("keydown", (event) => {
+  if (
+    event.key === "Enter" &&
+    !event.shiftKey &&
+    !event.isComposing &&
+    !matchMedia("(pointer: coarse)").matches
+  )
+    submitMessage(event);
+});
+for (const id of ["search-button", "study-mode-button"])
+  $(id).addEventListener("click", () => {
+    const enabled = $(id).getAttribute("aria-pressed") !== "true";
+    $(id).setAttribute("aria-pressed", String(enabled));
+    $(id).classList.toggle("active", enabled);
+  });
+$("new-chat-button").addEventListener("click", () => {
+  beforeSwitch();
+  chat.newChat();
+});
+$("menu-button").addEventListener("click", () => {
+  $("sidebar").classList.add("open");
+  $("sidebar-backdrop").classList.remove("hidden");
+  $("menu-button").setAttribute("aria-expanded", "true");
+});
+$("close-sidebar").addEventListener("click", closeSidebar);
+$("sidebar-backdrop").addEventListener("click", closeSidebar);
+document.addEventListener("keydown", (event) => {
+  if (event.key === "Escape") closeSidebar();
+});
+$("dismiss-error").addEventListener("click", clearError);
+$("retry-button").addEventListener("click", async () => {
+  const retry = retryAction;
+  clearError();
+  if (retry) await retry();
+});
+for (const button of document.querySelectorAll("[data-prompt]"))
+  button.addEventListener("click", () => {
+    $("message-input").value = button.dataset.prompt;
+    chat.current.draft = button.dataset.prompt;
+    $("message-input").focus();
+    resizeInput();
+  });
+$("attach-button").addEventListener("click", () => {
+  $("file-upload-input").value = "";
+  $("file-upload-input").click();
+});
+async function selectFile(file) {
+  if (!file || chat.current.busy || voice?.active) return;
+  const current = chat.current,
+    epoch = ++attachmentEpoch;
+  fileReading = true;
+  render();
+  try {
+    const attachment = await readAttachment(file);
+    if (epoch === attachmentEpoch && current === chat.current) {
+      current.attachment = attachment;
+      if (attachment.compressed)
+        showNotice(
+          "Image resized to make sending and cloud saving more reliable.",
+        );
     }
-
-    hideError();
-    const reader = new FileReader();
-
-    reader.onload = (e) => {
-        selectedFileBase64 = e.target.result; // Data URL (image or PDF)
-        selectedFile = file;
-        selectedFileType = isImage ? 'image' : 'pdf';
-
-        // --- MINIMAL CHANGE V3 START (Icon + Filename) ---
-        // Use the red-accented SVG Data URL for PDF icon
-        const pdfSvgDataUrl = 'data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2064%2064%22%20width%3D%2264%22%20height%3D%2264%22%3E%3Cpath%20fill%3D%22%23E2E2E2%22%20d%3D%22M12%200%20H44%20L56%2012%20V60%20H12%20Z%22%2F%3E%3Cpath%20fill%3D%22%23CFCFCF%22%20d%3D%22M44%200%20L56%2012%20H44%20Z%22%2F%3E%3Ctext%20x%3D%2250%25%22%20y%3D%2275%25%22%20font-family%3D%22sans-serif%22%20font-size%3D%2214%22%20fill%3D%22%23D93025%22%20text-anchor%3D%22middle%22%20font-weight%3D%22bold%22%3EPDF%3C%2Ftext%3E%3C%2Fsvg%3E';
-
-        // Configure the preview based on type
-        if (isImage) {
-            imagePreview.src = selectedFileBase64; // Show actual image data URL
-            imagePreview.alt = `Image Preview: ${file.name}`;
-            imagePreview.title = `Selected Image: ${file.name}`;
-            pdfFilenamePreview.textContent = ''; // Clear filename text
-            pdfFilenamePreview.style.display = 'none'; // Hide filename element
-        } else { // For PDF
-            imagePreview.src = pdfSvgDataUrl; // <<< USE SVG DATA URL
-            imagePreview.alt = `PDF Icon: ${file.name}`;
-            imagePreview.title = `Selected PDF: ${file.name}`;
-            pdfFilenamePreview.textContent = file.name; // <<< SET Filename text
-            pdfFilenamePreview.style.display = 'inline'; // <<< SHOW Filename element (CSS handles layout)
-        }
-
-        // Common UI updates: Show the preview container and update attach button
-        imagePreviewContainer.classList.remove('hidden');
-        attachButton.classList.add('has-file');
-        // --- MINIMAL CHANGE V3 END ---
-
-        console.log(`${selectedFileType.toUpperCase()} processed: ${file.name}`);
-    };
-
-    reader.onerror = (e) => {
-        console.error("FileReader error:", e);
-        showError("Error reading the selected file.");
-        handleRemoveFile();
-    };
-
-    reader.readAsDataURL(file);
-    return true;
+  } catch (error) {
+    if (epoch === attachmentEpoch) showError(error.message);
+  } finally {
+    fileReading = false;
+    render();
+  }
 }
-// **************************************************
-// END MODIFIED SECTION for processSelectedFile
-// **************************************************
+$("file-upload-input").addEventListener("change", (event) =>
+  selectFile(event.target.files[0]),
+);
+$("message-input").addEventListener("paste", (event) => {
+  const file = [...(event.clipboardData?.items || [])]
+    .find((item) => item.kind === "file" && item.type.startsWith("image/"))
+    ?.getAsFile();
+  if (file) {
+    event.preventDefault();
+    selectFile(file);
+  }
+});
+$("remove-image-button").addEventListener("click", () => {
+  attachmentEpoch++;
+  chat.current.attachment = null;
+  render();
+});
 
-
-function handleFileSelect(event) {
-    const file = event.target.files[0];
-    if (!file) return;
-    const processed = processSelectedFile(file);
-    if (!processed) {
-        resetFileInput();
-    }
-}
-
-function handlePaste(event) {
-    if (document.activeElement !== messageInput) return;
-    const items = (event.clipboardData || event.originalEvent.clipboardData)?.items;
-    if (!items) return;
-
-    for (let i = 0; i < items.length; i++) {
-        const item = items[i];
-        if (item.kind === 'file' && item.type.startsWith('image/')) {
-            const imageFile = item.getAsFile();
-            if (imageFile) {
-                if (selectedFile) handleRemoveFile(); // Clear previous selection first
-                const processed = processSelectedFile(imageFile);
-                if (processed) {
-                    event.preventDefault();
-                    console.log("Image paste handled successfully.");
-                    break;
-                } else {
-                     console.log("Pasted image processing failed.");
-                }
-            }
-        }
-    }
-}
-
-// **************************************************
-// START MODIFIED SECTION for handleRemoveFile
-// **************************************************
-function handleRemoveFile() {
-    selectedFile = null;
-    selectedFileBase64 = null;
-    selectedFileType = null;
-    imagePreview.src = '#'; // Clear preview src (removes image or SVG)
-    pdfFilenamePreview.textContent = ''; // <<< CLEAR Filename text
-    pdfFilenamePreview.style.display = 'none'; // <<< HIDE Filename element
-    imagePreviewContainer.classList.add('hidden'); // Hide preview container
-    resetFileInput(); // Clear the actual file input element
-    attachButton.classList.remove('has-file'); // Update attach button style
-    hideError(); // Clear any file-related errors
-    console.log("Selected file removed.");
-}
-// **************************************************
-// END MODIFIED SECTION for handleRemoveFile
-// **************************************************
-
-function resetFileInput() {
-    fileUploadInput.value = null;
-}
-// --- END File Handling Functions ---
-
-
-// --- Study Mode ---
-function handleStudyModeToggle() {
-    isStudyModeActive = !isStudyModeActive;
-    studyModeButton.classList.toggle('active', isStudyModeActive);
-    console.log(`Study Mode toggled: ${isStudyModeActive ? 'ON' : 'OFF'}`);
-}
-// --- END Study Mode ---
-
-// --- Core Message Sending Logic ---
-
-async function _sendMessageToServer(historyToProcess, firestoreIdToUpdate = null) {
-    // If the chat is synced, we don't need to display the AI message here.
-    // The onSnapshot listener will handle it. We just need to save the AI response to Firestore.
-    const shouldDisplayAiMessage = !currentChat.isSynced;
-
-    showLoading();
+function actionDialog({
+  title,
+  description = "",
+  label = "",
+  value = "",
+  confirm = "Save",
+  multiline = false,
+  destructive = false,
+  action,
+}) {
+  $("action-title").textContent = title;
+  $("action-description").textContent = description;
+  $("action-label").textContent = label;
+  $("action-label").classList.toggle("hidden", !label);
+  const field = document.createElement(multiline ? "textarea" : "input");
+  field.id = "action-input";
+  field.value = value;
+  field.required = !!label;
+  field.classList.toggle("hidden", !label);
+  $("action-input").replaceWith(field);
+  $("action-error").textContent = "";
+  $("action-confirm").textContent = confirm;
+  $("action-confirm").classList.toggle("danger", destructive);
+  $("action-confirm").disabled = false;
+  $("action-cancel").disabled = false;
+  $("action-form").onsubmit = async (event) => {
+    event.preventDefault();
+    $("action-confirm").disabled = true;
+    $("action-cancel").disabled = true;
     try {
-        const payload = {
-            history: [...historyToProcess],
-            isStudyModeActive: isStudyModeActive,
-            timezone: moment.tz.guess()
-        };
-        console.log("Sending payload to /api/chat:", {
-            historyLength: payload.history.length,
-            studyMode: payload.isStudyModeActive,
-            timezone: payload.timezone
-        });
-
-        const response = await fetch('/api/chat', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(payload),
-        });
-
-        if (!response.ok) {
-            let errorMsg = `API Error: ${response.statusText} (${response.status})`;
-            try { const errorData = await response.json(); errorMsg = errorData.error || errorMsg; } catch (e) { console.warn("Could not parse API error JSON."); try { const txt = await response.text(); if(txt) errorMsg += `\nResponse: ${txt.substring(0,200)}...`; } catch(e2){} }
-            if (response.status === 413) errorMsg = `Request Failed: Payload too large (${response.statusText}). Max file size is ~${MAX_FILE_SIZE_MB}MB.`;
-            throw new Error(errorMsg);
-        }
-
-        const data = await response.json();
-        const aiResponseText = data.text;
-        const searchSuggestionHtml = data.searchSuggestionHtml;
-        console.log(`AI Response received (using ${data.modelUsed || 'unknown model'})`);
-
-        const aiMessageParts = [{ text: aiResponseText }];
-        if (searchSuggestionHtml) {
-            aiMessageParts.push({ searchSuggestionHtml: searchSuggestionHtml });
-        }
-
-        if (currentChat.isSynced) {
-            if (firestoreIdToUpdate) {
-                // This is a surgical regeneration (update)
-                const messageRef = doc(firestore, "chats", currentChat.id, "messages", firestoreIdToUpdate);
-                await updateDoc(messageRef, {
-                    parts: aiMessageParts
-                });
-                console.log("AI message surgically updated in Firestore.");
-            } else {
-                // This is a new message (add)
-                const aiMessageId = Date.now() + '-' + Math.random().toString(36).substring(2, 9);
-                const aiMessage = { role: 'model', parts: aiMessageParts, id: aiMessageId };
-                await addDoc(collection(firestore, "chats", currentChat.id, "messages"), {
-                    ...aiMessage,
-                    createdAt: serverTimestamp()
-                });
-            }
-        } else {
-            // Local chat logic remains the same (always adds a new message)
-            const aiMessageId = Date.now() + '-' + Math.random().toString(36).substring(2, 9);
-            const aiMessage = { role: 'model', parts: aiMessageParts, id: aiMessageId };
-            conversationHistory.push(aiMessage);
-            displayMessage('ai', aiResponseText, null, searchSuggestionHtml, aiMessageId);
-            const newAiMessageBubble = chatHistory.lastElementChild?.querySelector('.message');
-            if (newAiMessageBubble) {
-                setTimeout(() => scrollToMessageTop(newAiMessageBubble), 50);
-            }
-        }
-
-    } catch (err) {
-        console.error("Error during send/receive:", err);
-        showError(err.message || "Failed to get response.");
+      await action(field.value.trim());
+      $("action-modal").close();
+    } catch (error) {
+      $("action-error").textContent = error.message;
     } finally {
-        hideLoading();
-        sendButton.disabled = false;
+      $("action-confirm").disabled = false;
+      $("action-cancel").disabled = false;
     }
+  };
+  $("action-modal").showModal();
 }
-
-async function handleSendMessage() {
-    const userMessageText = messageInput.value.trim();
-    if (!userMessageText && !selectedFile) return;
-
-    if (!currentUser && currentChat.isSynced) {
-        showError("You must be logged in to send messages in a synced chat.");
-        return;
-    }
-
-    sendButton.disabled = true;
-
-    const messageParts = [];
-    let fileInfoForDisplay = null;
-
-    if (selectedFileBase64 && selectedFile && selectedFileType) {
-        // This part sends the raw data to the Gemini API
-        const inlineDataForApi = {
-            inlineData: { mimeType: selectedFile.type, data: selectedFileBase64 }
-        };
-        messageParts.push(inlineDataForApi);
-
-        // This part structures the data for display and saving to Firestore
-        if (selectedFileType === 'image') {
-            fileInfoForDisplay = { type: 'image', dataUrl: selectedFileBase64, name: selectedFile.name };
-        } else if (selectedFileType === 'pdf') {
-            fileInfoForDisplay = { type: 'pdf', name: selectedFile.name };
-        }
-        // Embed the display info directly in a part that gets saved
-        if (fileInfoForDisplay) {
-            messageParts.push({ fileInfoForDisplay: fileInfoForDisplay });
-        }
-    }
-    if (userMessageText) {
-        messageParts.push({ text: userMessageText });
-    }
-
-    if (messageParts.length === 0) {
-        sendButton.disabled = false;
-        console.warn("Message sending aborted: No parts prepared.");
-        return;
-    }
-
-    const userMessageId = Date.now() + '-' + Math.random().toString(36).substring(2, 9);
-    const userMessage = { role: 'user', parts: messageParts, id: userMessageId, userId: currentUser ? currentUser.uid : null };
-
-    // For synced chats, don't display the message immediately. Let the snapshot listener do it.
-    // For local chats, display it right away.
-    if (!currentChat.isSynced) {
-        conversationHistory.push(userMessage);
-        displayMessage('user', userMessageText || '', fileInfoForDisplay, null, userMessageId);
-        scrollChatToBottom();
-    }
-
-    // If chat is synced, save user message to Firestore.
-    if (currentChat.isSynced) {
-        try {
-            await addDoc(collection(firestore, "chats", currentChat.id, "messages"), {
-                ...userMessage,
-                createdAt: serverTimestamp()
-            });
-        } catch (error) {
-            console.error("Error saving user message:", error);
-            showError("Failed to send message. " + error.message);
-            sendButton.disabled = false;
-            return;
-        }
-    }
-
-    messageInput.value = '';
-    handleRemoveFile(); // This also hides error via its own logic, which is fine.
-    adjustTextareaHeight();
-
-    if (isMobileDevice()) {
-        messageInput.blur();
-    } else {
-        messageInput.focus();
-    }
-
-    await _sendMessageToServer(conversationHistory); // Call the refactored function
-    // sendButton state will be managed by _sendMessageToServer's finally block.
-}
-// --- END Core Message Sending Logic ---
-
-
-// --- Display & Formatting ---
-function displayMessage(role, text, fileInfo = null, searchSuggestionHtml = null, messageId) {
-    const messageEntryDiv = document.createElement('div');
-    messageEntryDiv.classList.add('message-entry');
-    if (messageId) {
-        messageEntryDiv.dataset.messageEntryId = messageId;
-    }
-    if (role === 'user') {
-        messageEntryDiv.classList.add('user-message-entry');
-    } else {
-        messageEntryDiv.classList.add('ai-message-entry');
-    }
-
-    const messageBubbleDiv = document.createElement('div');
-    messageBubbleDiv.classList.add('message', role === 'user' ? 'user-message' : 'ai-message');
-    if (messageId) {
-        messageBubbleDiv.dataset.messageId = messageId;
-    }
-    let contentAddedToBubble = false;
-
-    if (fileInfo && role === 'user') {
-        if (fileInfo.type === 'image' && fileInfo.dataUrl) {
-            const imgElement = document.createElement('img');
-            imgElement.classList.add('message-image');
-            imgElement.src = fileInfo.dataUrl;
-            imgElement.alt = `User uploaded image: ${fileInfo.name || 'image'}`;
-            imgElement.title = `Click to view image: ${fileInfo.name || 'image'}`;
-            imgElement.addEventListener('click', () => window.open(fileInfo.dataUrl, '_blank'));
-            messageBubbleDiv.appendChild(imgElement);
-            contentAddedToBubble = true;
-        } else if (fileInfo.type === 'pdf' && fileInfo.name) {
-            const pdfInfoDiv = document.createElement('div');
-            pdfInfoDiv.classList.add('pdf-info');
-            pdfInfoDiv.textContent = `📎 Sent PDF: ${fileInfo.name}`;
-            messageBubbleDiv.appendChild(pdfInfoDiv);
-            contentAddedToBubble = true;
-        }
-    }
-
-    if (text) {
-        const paragraph = document.createElement('p');
-        if ((role === 'ai' || role === 'model') && typeof marked !== 'undefined' && typeof DOMPurify !== 'undefined') {
-            try {
-                marked.setOptions({ breaks: true, gfm: true });
-                const rawHtml = marked.parse(text);
-                paragraph.innerHTML = DOMPurify.sanitize(rawHtml, { USE_PROFILES: { html: true } });
-
-                // Render LaTeX after markdown
-                if (typeof renderMathInElement !== 'undefined') {
-                    renderMathInElement(paragraph, {
-                        delimiters: [
-                            {left: '$$', right: '$$', display: true},
-                            {left: '$', right: '$', display: false},
-                            {left: '\\(', right: '\\)', display: false},
-                            {left: '\\[', right: '\\]', display: true}
-                        ]
-                    });
-                }
-            } catch (error) {
-                console.error("Markdown or LaTeX processing error:", error);
-                paragraph.textContent = text; // Fallback
-            }
-        } else {
-            paragraph.innerText = text;
-        }
-        if (paragraph.innerHTML.trim() || paragraph.textContent.trim()) {
-             messageBubbleDiv.appendChild(paragraph);
-             contentAddedToBubble = true;
-        }
-    }
-
-    if ((role === 'ai' || role === 'model') && searchSuggestionHtml) {
-        const suggestionContainer = document.createElement('div');
-        suggestionContainer.classList.add('search-suggestion-container');
-        try {
-            suggestionContainer.innerHTML = searchSuggestionHtml;
-            if (suggestionContainer.innerHTML.trim()) {
-                 messageBubbleDiv.appendChild(suggestionContainer);
-                 contentAddedToBubble = true;
-            }
-        } catch (error) { console.error("Error setting innerHTML for search suggestions:", error); }
-    }
-
-    const actionButtonBar = document.createElement('div');
-    actionButtonBar.classList.add('action-button-bar'); // Base class
-    actionButtonBar.classList.add('message-action-buttons'); // New generic class for the bar itself
-    if (role === 'user') {
-        actionButtonBar.classList.add('user-actions-align'); // For aligning content (buttons) inside
-    } else {
-        actionButtonBar.classList.add('ai-actions-align');   // For aligning content (buttons) inside
-    }
-    if (messageId) {
-        actionButtonBar.dataset.controlsMessageId = messageId;
-    }
-
-    // Add Edit button for user messages
-    if (role === 'user' && contentAddedToBubble) {
-        const editButton = document.createElement('button');
-        editButton.classList.add('edit-btn');
-        editButton.textContent = '✏️';
-        editButton.title = 'Edit this message';
-
-        editButton.addEventListener('click', (event) => {
-            const originalEditButton = event.currentTarget;
-            const currentActionBar = originalEditButton.closest('.action-button-bar');
-            if (!currentActionBar) return;
-
-            const messageIdForEdit = currentActionBar.dataset.controlsMessageId;
-            if (!messageIdForEdit) {
-                console.error('Could not find message ID for editing from action bar.');
-                return;
-            }
-
-            const messageEntry = currentActionBar.closest('.message-entry');
-            if (!messageEntry) return;
-            const messageBubble = messageEntry.querySelector('.message.user-message');
-            if(!messageBubble) return;
-
-            const messageIndex = conversationHistory.findIndex(msg => msg.id === messageIdForEdit);
-            if (messageIndex === -1) {
-                console.error('Message to edit not found in history.');
-                return;
-            }
-            const messageObject = conversationHistory[messageIndex];
-
-            const textPart = messageObject.parts.find(part => typeof part.text === 'string');
-            const originalText = textPart ? textPart.text : '';
-            const originalBubbleHTML = messageBubble.innerHTML; // Store original HTML
-
-            originalEditButton.style.display = 'none';
-            messageBubble.innerHTML = ''; // Clear the bubble for textarea
-
-            const textarea = document.createElement('textarea');
-            textarea.classList.add('edit-message-textarea');
-            textarea.value = originalText;
-            messageBubble.appendChild(textarea); // Place textarea directly in bubble
-
-            const saveButton = document.createElement('button');
-            saveButton.classList.add('save-edit-btn');
-            saveButton.textContent = '✅';
-            saveButton.title = 'Save changes';
-
-            const cancelButton = document.createElement('button');
-            cancelButton.classList.add('cancel-edit-btn');
-            cancelButton.textContent = '❌';
-            cancelButton.title = 'Cancel edit';
-
-            cancelButton.addEventListener('click', () => {
-                messageBubble.innerHTML = originalBubbleHTML; // Restore original content
-                currentActionBar.innerHTML = ''; // Clear save/cancel
-                currentActionBar.appendChild(originalEditButton); // Add original edit button back
-                originalEditButton.style.display = '';
-            });
-
-            saveButton.addEventListener('click', async () => {
-                saveButton.disabled = true;
-                cancelButton.disabled = true;
-                textarea.disabled = true;
-
-                const newText = textarea.value.trim();
-
-                // If chat is synced, perform an update in Firestore and do not regenerate.
-                if (currentChat.isSynced) {
-                    if (!messageObject.firestoreId) {
-                        console.error("Cannot edit synced message: firestoreId is missing.", messageObject);
-                        showError("Cannot save edit: message is missing its database ID.");
-                        saveButton.disabled = false;
-                        cancelButton.disabled = false;
-                        textarea.disabled = false;
-                        return;
-                    }
-
-                    try {
-                        const messageRef = doc(firestore, "chats", currentChat.id, "messages", messageObject.firestoreId);
-
-                        // Find the text part and update it.
-                        let textPartToUpdate = messageObject.parts.find(part => typeof part.text === 'string');
-                        if (textPartToUpdate) {
-                            textPartToUpdate.text = newText;
-                        } else {
-                            // If for some reason there was no text part, add one.
-                            messageObject.parts.push({ text: newText });
-                        }
-
-                        await updateDoc(messageRef, {
-                            parts: messageObject.parts
-                        });
-
-                        // The onSnapshot listener will handle the UI update automatically.
-                        // The save/cancel buttons will be removed when the chat history is re-rendered.
-                        console.log("Message updated in Firestore.");
-                    } catch (error) {
-                        console.error("Error updating message:", error);
-                        showError("Failed to save edit. " + error.message);
-                        // Re-enable buttons to allow user to try again or cancel.
-                        saveButton.disabled = false;
-                        cancelButton.disabled = false;
-                        textarea.disabled = false;
-                    }
-
-                } else {
-                    // This is the existing logic for non-synced chats (edit and regenerate)
-                    let textPartToUpdate = messageObject.parts.find(part => typeof part.text === 'string');
-                    if (textPartToUpdate) {
-                        textPartToUpdate.text = newText;
-                    } else {
-                        messageObject.parts.push({ text: newText });
-                    }
-
-                    if (messageIndex < conversationHistory.length - 1) {
-                        conversationHistory.splice(messageIndex + 1);
-                    }
-
-                    let currentMsgEntry = messageEntry.nextElementSibling;
-                    while (currentMsgEntry) {
-                        const nextEntry = currentMsgEntry.nextElementSibling;
-                        currentMsgEntry.remove();
-                        currentMsgEntry = nextEntry;
-                    }
-
-                    messageBubble.innerHTML = ''; // Clear textarea
-                    const p = document.createElement('p');
-                    p.textContent = newText;
-                    messageBubble.appendChild(p); // Display new text
-
-                    currentActionBar.innerHTML = ''; // Clear save/cancel
-                    currentActionBar.appendChild(originalEditButton);
-                    originalEditButton.style.display = '';
-
-                    await _sendMessageToServer(conversationHistory);
-                }
-            });
-
-            currentActionBar.innerHTML = ''; // Clear Edit button
-            currentActionBar.appendChild(saveButton);
-            currentActionBar.appendChild(cancelButton);
-            textarea.focus();
-        });
-        actionButtonBar.appendChild(editButton);
-    }
-
-    // Add Regenerate button for AI messages
-    if ((role === 'ai' || role === 'model') && contentAddedToBubble) {
-
-        const regenerateButton = document.createElement('button');
-        regenerateButton.classList.add('regenerate-btn');
-        regenerateButton.textContent = '↺';
-        regenerateButton.title = 'Regenerate this response';
-
-        regenerateButton.addEventListener('click', async (event) => {
-            const button = event.currentTarget;
-            button.disabled = true;
-
-            const currentActionBar = button.closest('.action-button-bar');
-            if (!currentActionBar) { button.disabled = false; return; }
-            const messageIdToRegenerate = currentActionBar.dataset.controlsMessageId;
-
-            if (!messageIdToRegenerate) {
-                console.error('Could not find message ID for regeneration from action bar.');
-                button.disabled = false;
-                return;
-            }
-
-            const messageIndex = conversationHistory.findIndex(msg => msg.id === messageIdToRegenerate);
-            if (messageIndex === -1) {
-                console.error('Message to regenerate not found in history.');
-                button.disabled = false;
-                return;
-            }
-
-            if (conversationHistory[messageIndex].role !== 'model') {
-                console.error('Attempted to regenerate a non-AI message.');
-                button.disabled = false;
-                return;
-            }
-
-            if (currentChat.isSynced) {
-                try {
-                    const messageToRegenerate = conversationHistory[messageIndex];
-                    if (!messageToRegenerate.firestoreId) {
-                        throw new Error("Cannot regenerate message without a firestoreId.");
-                    }
-                    const historyForRegen = conversationHistory.slice(0, messageIndex);
-
-                    // Call _sendMessageToServer with the ID of the message to update
-                    await _sendMessageToServer(historyForRegen, messageToRegenerate.firestoreId);
-
-                } catch (error) {
-                    console.error("Error during synced regeneration:", error);
-                    showError("Failed to regenerate response. " + error.message);
-                    button.disabled = false;
-                }
-            } else {
-                // Corrected logic for local chats
-                conversationHistory.splice(messageIndex);
-
-                const messageEntryToStartRemoval = document.querySelector(`[data-message-entry-id="${messageIdToRegenerate}"]`);
-                if (messageEntryToStartRemoval) {
-                    let currentMsgEntry = messageEntryToStartRemoval;
-                    while (currentMsgEntry) {
-                        const nextEntry = currentMsgEntry.nextElementSibling;
-                        currentMsgEntry.remove();
-                        currentMsgEntry = nextEntry;
-                    }
-                }
-                await _sendMessageToServer(conversationHistory);
-            }
-        });
-        actionButtonBar.appendChild(regenerateButton);
-    }
-
-    if (contentAddedToBubble) {
-        messageEntryDiv.appendChild(messageBubbleDiv);
-        messageEntryDiv.appendChild(actionButtonBar);
-        chatHistory.appendChild(messageEntryDiv);
-
-    } else {
-         console.warn("Skipped appending an empty message.");
-    }
-}
-// --- END Display & Formatting ---
-
-// --- UI Utility Functions ---
-function showLoading() { loadingIndicator.classList.remove('hidden'); }
-function hideLoading() { loadingIndicator.classList.add('hidden'); }
-function showError(message) { errorDisplay.textContent = message; errorDisplay.classList.remove('hidden'); console.error("Displaying error:", message); errorDisplay.scrollIntoView({ behavior: 'smooth', block: 'center' }); }
-function hideError() { errorDisplay.classList.add('hidden'); errorDisplay.textContent = ''; }
-// --- END UI Utility Functions ---
-
-// --- Authentication UI Logic ---
-function showAuthModal() { authModal.classList.remove('hidden'); }
-function hideAuthModal() { authModal.classList.add('hidden'); }
-
-loginButton.addEventListener('click', showAuthModal);
-modalCloseButton.addEventListener('click', hideAuthModal);
-
-showSignup.addEventListener('click', (e) => {
-    e.preventDefault();
-    loginView.classList.add('hidden');
-    signupView.classList.remove('hidden');
+$("action-cancel").addEventListener("click", () => $("action-modal").close());
+$("action-modal").addEventListener("cancel", (event) => {
+  if ($("action-confirm").disabled) event.preventDefault();
 });
-
-showLogin.addEventListener('click', (e) => {
-    e.preventDefault();
-    signupView.classList.add('hidden');
-    loginView.classList.remove('hidden');
+function editMessage(message) {
+  actionDialog({
+    title: "Edit message",
+    description: chat.current.isSynced
+      ? "Update this message. Use Retry answer to regenerate its reply."
+      : "A successful new answer will replace the conversation from this point onward.",
+    label: "Message",
+    value: messageText(message),
+    multiline: true,
+    action: (text) => chat.regenerate(message.id, settings(), text),
+  });
+}
+$("save-chat-button").addEventListener("click", () => {
+  if (!chat.user) {
+    showAuth("login");
+    showNotice(
+      "Sign in, then save this conversation. Your current chat stays here.",
+    );
+    return;
+  }
+  actionDialog({
+    title: "Save to cloud",
+    label: "Chat name",
+    value: messageText(chat.current.messages[0]).slice(0, 60) || "New chat",
+    action: async (title) => {
+      await chat.save(title);
+      await refreshChats();
+    },
+  });
 });
-
-// --- Firebase Authentication ---
-
-function startNewChat() {
-    console.log("Starting new chat.");
-    unsubscribeMessages(); // Stop listening to old chat
-    currentChat = { id: null, isSynced: false, ownerId: null };
-    conversationHistory = [];
-    chatHistory.innerHTML = '';
-    saveChatButton.classList.remove('hidden');
-    shareChatButton.classList.add('hidden');
-    document.querySelectorAll('.chat-list-item').forEach(item => item.classList.remove('active'));
+$("share-chat-button").addEventListener("click", () => {
+  const id = chat.current.id;
+  actionDialog({
+    title: "Share conversation",
+    description:
+      "The person needs an existing account. Shared chats can be read and edited by collaborators.",
+    label: "Their email address",
+    confirm: "Share",
+    action: (email) => cloud.share(id, email),
+  });
+});
+function deleteChat(saved) {
+  if (chat.locals.some((c) => c.id === saved.id && c.busy)) {
+    showError(
+      "Wait for this chat’s current request to finish before deleting it.",
+    );
+    return;
+  }
+  actionDialog({
+    title: "Delete conversation?",
+    description: `“${saved.title}” and all its messages will be permanently deleted for all collaborators.`,
+    confirm: "Delete",
+    destructive: true,
+    action: async () => {
+      if (chat.current.id === saved.id) await endVoice();
+      await cloud.remove(saved.id);
+      chat.locals = chat.locals.filter((c) => c.id !== saved.id);
+      if (chat.current.id === saved.id) chat.newChat();
+      await refreshChats();
+    },
+  });
 }
 
-newChatButton.addEventListener('click', startNewChat);
-
-async function saveCurrentChat() {
-    if (!currentUser) {
-        showError("You must be logged in to save a chat.");
-        return;
-    }
-    if (currentChat.isSynced) {
-        showError("This chat is already saved.");
-        return;
-    }
-
-    const chatTitle = prompt("Enter a name for this chat:");
-    if (!chatTitle) return;
-
-    try {
-        // 1. Create the main chat document
-        const chatRef = await addDoc(collection(firestore, "chats"), {
-            title: chatTitle,
-            ownerId: currentUser.uid,
-            collaborators: [currentUser.uid],
-            createdAt: serverTimestamp()
-        });
-
-        console.log("Chat document created with ID:", chatRef.id);
-
-        // 2. Save all existing messages to the messages sub-collection
-        const messagesCol = collection(firestore, "chats", chatRef.id, "messages");
-        for (const message of conversationHistory) {
-            await addDoc(messagesCol, {
-                ...message,
-                createdAt: serverTimestamp() // Add timestamp for ordering
-            });
-        }
-
-        // 3. Update local state
-        currentChat.id = chatRef.id;
-        currentChat.isSynced = true;
-        currentChat.ownerId = currentUser.uid;
-
-        // 4. Update UI
-        saveChatButton.classList.add('hidden');
-        shareChatButton.classList.remove('hidden');
-
-        // TODO: Add chat to sidebar list and attach real-time listener
-        alert("Chat saved successfully!");
-
-    } catch (error) {
-        console.error("Error saving chat:", error);
-        showError("Failed to save chat. " + error.message);
-    }
+function showAuth(mode) {
+  authMode = mode;
+  $("auth-error").textContent = "";
+  const reset = mode === "reset";
+  $("auth-title").textContent =
+    mode === "signup"
+      ? "Create an account"
+      : reset
+        ? "Reset password"
+        : "Welcome back";
+  $("auth-description").textContent = reset
+    ? "We’ll email you a password reset link."
+    : "Save your conversations and pick up where you left off.";
+  $("auth-submit").textContent =
+    mode === "signup"
+      ? "Create account"
+      : reset
+        ? "Send reset link"
+        : "Sign in";
+  $("auth-password").required = !reset;
+  $("auth-password").classList.toggle("hidden", reset);
+  $("password-label").classList.toggle("hidden", reset);
+  $("auth-password").autocomplete =
+    mode === "signup" ? "new-password" : "current-password";
+  $("auth-toggle").textContent =
+    mode === "login" ? "Create an account" : "Back to sign in";
+  $("forgot-password").classList.toggle("hidden", mode !== "login");
+  if (!$("auth-modal").open) $("auth-modal").showModal();
 }
-
-saveChatButton.addEventListener('click', saveCurrentChat);
-
-
-async function shareChat() {
-    if (!currentChat.isSynced || !currentChat.id) {
-        showError("This chat must be saved to the cloud before it can be shared.");
-        return;
-    }
-
-    const emailToShare = prompt("Enter the email address of the user you want to share with:");
-    if (!emailToShare) return;
-
-    try {
-        // 1. Find the user to share with by their email
-        const usersRef = collection(firestore, "users");
-        const q = query(usersRef, where("email", "==", emailToShare));
-        const querySnapshot = await getDocs(q);
-
-        if (querySnapshot.empty) {
-            showError(`No user found with the email: ${emailToShare}`);
-            return;
-        }
-
-        // 2. Get the collaborator's user ID
-        const collaboratorId = querySnapshot.docs[0].id;
-        const chatRef = doc(firestore, "chats", currentChat.id);
-
-        // 3. Add the collaborator's ID to the chat's 'collaborators' array
-        await updateDoc(chatRef, {
-            collaborators: arrayUnion(collaboratorId)
-        });
-
-        alert(`Chat successfully shared with ${emailToShare}!`);
-
-    } catch (error) {
-        console.error("Error sharing chat:", error);
-        showError("Failed to share chat. " + error.message);
-    }
+$("login-button").addEventListener("click", () => showAuth("login"));
+$("auth-toggle").addEventListener("click", () =>
+  showAuth(authMode === "login" ? "signup" : "login"),
+);
+$("forgot-password").addEventListener("click", () => showAuth("reset"));
+document
+  .querySelector(".dialog-close")
+  .addEventListener("click", () => $("auth-modal").close());
+$("auth-form").addEventListener("submit", async (event) => {
+  event.preventDefault();
+  $("auth-submit").disabled = true;
+  $("auth-error").textContent = "";
+  try {
+    cloud ||= await connectCloud();
+    chat.cloud = cloud;
+    bindAuth();
+    const email = $("auth-email").value.trim(),
+      password = $("auth-password").value;
+    if (authMode === "reset") {
+      await cloud.reset(email);
+      showNotice(
+        "If an account exists for this email, a password reset link has been sent.",
+      );
+    } else if (authMode === "signup") await cloud.signup(email, password);
+    else await cloud.login(email, password);
+    $("auth-password").value = "";
+    $("auth-modal").close();
+  } catch (error) {
+    $("auth-error").textContent =
+      error.code === "auth/invalid-credential"
+        ? "The email or password is incorrect."
+        : error.message;
+  } finally {
+    $("auth-submit").disabled = false;
+  }
+});
+$("logout-button").addEventListener("click", async () => {
+  endVoice();
+  try {
+    await cloud.logout();
+  } catch {
+    showError("Could not sign out. Please try again.");
+  }
+});
+function bindAuth() {
+  if (authReady) return;
+  authReady = true;
+  cloud.onAuth((user) => {
+    if (chat.user?.uid && chat.user.uid !== user?.uid) endVoice();
+    chatList = [];
+    chat.setUser(user);
+    if (user) refreshChats();
+  });
 }
+connectCloud()
+  .then((value) => {
+    cloud = value;
+    chat.cloud = cloud;
+    bindAuth();
+  })
+  .catch(() => {
+    $("login-button").title =
+      "Cloud accounts could not connect. Click to retry.";
+  });
 
-shareChatButton.addEventListener('click', shareChat);
-
-async function deleteChat(chatId) {
-    if (!chatId) {
-        showError("Cannot delete chat: Invalid chat ID.");
-        return;
-    }
-    console.log(`Attempting to delete chat: ${chatId}`);
-
-    try {
-        const chatRef = doc(firestore, "chats", chatId);
-        const messagesQuery = query(collection(firestore, "chats", chatId, "messages"));
-
-        // Get all messages to delete them in a batch
-        const messagesSnapshot = await getDocs(messagesQuery);
-        if (!messagesSnapshot.empty) {
-            const batch = writeBatch(firestore);
-            messagesSnapshot.forEach(doc => {
-                batch.delete(doc.ref);
-            });
-            await batch.commit();
-            console.log(`Deleted ${messagesSnapshot.size} messages for chat ${chatId}.`);
-        }
-
-        // Delete the main chat document
-        await deleteDoc(chatRef);
-        console.log(`Successfully deleted chat document ${chatId}.`);
-
-        // Remove the chat from the sidebar
-        const chatItem = document.querySelector(`.chat-list-item[data-chat-id="${chatId}"]`);
-        if (chatItem) {
-            chatItem.remove();
-        }
-
-        // If the deleted chat was the active one, start a new chat
-        if (currentChat.id === chatId) {
-            startNewChat();
-        }
-
-    } catch (error) {
-        console.error("Error deleting chat:", error);
-        showError(`Failed to delete chat. ${error.message}`);
-    }
-}
-
-function handleDeleteChat(chatId) {
-    const chatItem = document.querySelector(`.chat-list-item[data-chat-id="${chatId}"]`);
-    const chatTitle = chatItem ? chatItem.querySelector('span').textContent : 'this chat';
-
-    deleteChatName.textContent = chatTitle;
-    deleteConfirmModal.classList.remove('hidden');
-
-    // Remove old event listeners by replacing the button with a clone
-    const newConfirmButton = confirmDeleteButton.cloneNode(true);
-    confirmDeleteButton.parentNode.replaceChild(newConfirmButton, confirmDeleteButton);
-
-    const newCancelButton = cancelDeleteButton.cloneNode(true);
-    cancelDeleteButton.parentNode.replaceChild(newCancelButton, cancelDeleteButton);
-
-    // Add new event listeners
-    newConfirmButton.addEventListener('click', () => {
-        deleteChat(chatId);
-        deleteConfirmModal.classList.add('hidden');
+$("voice-button").addEventListener("click", async () => {
+  if (voiceStarting || voice?.active) return;
+  if (!chat.readyForRequest(chat.current)) return;
+  clearError();
+  voiceStarting = true;
+  render();
+  const current = chat.current,
+    uid = chat.user?.uid;
+  try {
+    const { LiveVoice } = await import("./js/voice.js");
+    if (!voiceStarting || current !== chat.current) return;
+    voice = new LiveVoice({
+      state: (state) => {
+        $("voice-panel").classList.toggle("hidden", state === "Ended");
+        $("voice-status").textContent = state;
+        if (state === "Ended") voiceStarting = false;
+        render();
+      },
+      caption: (text) => {
+        $("voice-caption").textContent = text;
+      },
+      turn: (turns) => chat.voiceTurn(current, turns, uid),
+      error: (message) => showError(message),
     });
-
-    newCancelButton.addEventListener('click', () => {
-        deleteConfirmModal.classList.add('hidden');
-    });
-}
-
-
-async function loadUserChats(userId) {
-    chatList.innerHTML = ''; // Clear previous list
-    const q = query(collection(firestore, "chats"), where("collaborators", "array-contains", userId));
-    try {
-        const querySnapshot = await getDocs(q);
-        querySnapshot.forEach((doc) => {
-            displayChatInSidebar(doc.id, doc.data());
-        });
-    } catch (error) {
-        console.error("Error loading user chats:", error);
-        showError("Could not load your chats. " + error.message);
-    }
-}
-
-function displayChatInSidebar(chatId, chatData) {
-    const chatItem = document.createElement('div');
-    chatItem.classList.add('chat-list-item');
-    chatItem.dataset.chatId = chatId;
-
-    const chatTitle = document.createElement('span');
-    chatTitle.textContent = chatData.title;
-    chatTitle.style.flexGrow = '1'; // Allow title to take up space
-    chatTitle.addEventListener('click', () => loadChat(chatId));
-
-    const deleteButton = document.createElement('button');
-    deleteButton.classList.add('delete-chat-button');
-    deleteButton.innerHTML = '&#128465;'; // Trash can icon
-    deleteButton.title = 'Delete Chat';
-    deleteButton.addEventListener('click', (e) => {
-        e.stopPropagation(); // Prevent chat from loading when delete is clicked
-        handleDeleteChat(chatId);
-    });
-
-    chatItem.appendChild(chatTitle);
-    chatItem.appendChild(deleteButton);
-    chatList.appendChild(chatItem);
-}
-
-async function loadChat(chatId) {
-    console.log(`Loading chat: ${chatId}`);
-    unsubscribeMessages(); // Unsubscribe from any previous chat listener
-
-    // Update active chat in sidebar
-    document.querySelectorAll('.chat-list-item').forEach(item => {
-        item.classList.toggle('active', item.dataset.chatId === chatId);
-    });
-
-    chatHistory.innerHTML = ''; // Clear the display
-    conversationHistory = []; // Clear local history
-
-    try {
-        const chatDoc = await getDoc(doc(firestore, "chats", chatId));
-        if (!chatDoc.exists()) {
-            showError("Chat not found.");
-            return;
-        }
-
-        const chatData = chatDoc.data();
-        currentChat = {
-            id: chatId,
-            isSynced: true,
-            ownerId: chatData.ownerId
-        };
-
-        // Update UI
-        saveChatButton.classList.add('hidden');
-        shareChatButton.classList.remove('hidden');
-
-        // Listen for real-time messages
-        let isInitialChatLoad = true;
-        const messagesQuery = query(collection(firestore, "chats", chatId, "messages"), orderBy("createdAt"));
-        unsubscribeMessages = onSnapshot(messagesQuery, (snapshot) => {
-            const oldMessageCount = conversationHistory.length;
-
-            chatHistory.innerHTML = ''; // Clear display on new snapshot
-            conversationHistory = []; // Clear local history
-            snapshot.forEach(doc => {
-                const message = { ...doc.data(), firestoreId: doc.id };
-                conversationHistory.push(message);
-
-                let textPart = '';
-                let searchSuggestionHtml = null;
-                let fileInfoForDisplay = null;
-
-                if (Array.isArray(message.parts)) {
-                    for (const part of message.parts) {
-                        if (part && typeof part === 'object') {
-                            if ('text' in part) {
-                                textPart = part.text;
-                            }
-                            if ('searchSuggestionHtml' in part) {
-                                searchSuggestionHtml = part.searchSuggestionHtml;
-                            }
-                            if ('fileInfoForDisplay' in part) {
-                                fileInfoForDisplay = part.fileInfoForDisplay;
-                            }
-                        }
-                    }
-                }
-                displayMessage(message.role, textPart, fileInfoForDisplay, searchSuggestionHtml, message.id);
-            });
-
-            const newMessageCount = conversationHistory.length;
-            const wasMessageAdded = newMessageCount > oldMessageCount;
-
-            if (isInitialChatLoad) {
-                scrollChatToBottom();
-            } else if (wasMessageAdded) {
-                const lastMessage = conversationHistory[newMessageCount - 1];
-                const lastMessageBubble = chatHistory.lastElementChild?.querySelector('.message');
-
-                if (lastMessageBubble) {
-                    if (lastMessage.role === 'model' || lastMessage.role === 'ai') {
-                        setTimeout(() => scrollToMessageTop(lastMessageBubble), 100);
-                    } else {
-                        scrollChatToBottom();
-                    }
-                }
-            }
-            isInitialChatLoad = false;
-        }, (error) => {
-            console.error("Error listening to messages:", error);
-            showError("Error loading messages. " + error.message);
-        });
-
-    } catch (error) {
-        console.error("Error loading chat:", error);
-        showError("Could not load chat. " + error.message);
-    }
-}
-
-onAuthStateChanged(auth, user => {
-    if (user) {
-        // User is signed in
-        console.log("User logged in:", user.email);
-        currentUser = user;
-        userInfo.classList.remove('hidden');
-        userEmail.textContent = user.email;
-        loginButton.classList.add('hidden');
-        chatControls.classList.remove('hidden');
-        hideAuthModal();
-        startNewChat();
-        loadUserChats(user.uid);
-    } else {
-        // User is signed out
-        console.log("User logged out.");
-        currentUser = null;
-        userInfo.classList.add('hidden');
-        userEmail.textContent = '';
-        loginButton.classList.remove('hidden');
-        chatControls.classList.add('hidden');
-        chatList.innerHTML = ''; // Clear chat list
-        startNewChat(); // Reset to a clean state
-    }
+    $("voice-mute").textContent = "Mute";
+    $("voice-mute").setAttribute("aria-pressed", "false");
+    await voice.start(current.messages, settings());
+  } catch (error) {
+    endVoice();
+    showError(error.message);
+  } finally {
+    voiceStarting = false;
+    render();
+  }
 });
-
-signupForm.addEventListener('submit', async (e) => {
-    e.preventDefault();
-    const email = document.getElementById('signup-email').value;
-    const password = document.getElementById('signup-password').value;
-    try {
-        const userCredential = await createUserWithEmailAndPassword(auth, email, password);
-        const user = userCredential.user;
-        // Create a document in the 'users' collection
-        await setDoc(doc(firestore, "users", user.uid), {
-            email: user.email
-        });
-        console.log("User signed up and document created in Firestore.");
-    } catch (error) {
-        console.error("Error signing up:", error);
-        showError(error.message);
-    }
+$("voice-mute").addEventListener("click", () => {
+  const muted = voice?.mute();
+  $("voice-mute").textContent = muted ? "Unmute" : "Mute";
+  $("voice-mute").setAttribute("aria-pressed", String(!!muted));
 });
-
-forgotPasswordLink.addEventListener('click', async (e) => {
-    e.preventDefault();
-    const email = prompt("Please enter your email address to reset your password:");
-    if (email) {
-        try {
-            await sendPasswordResetEmail(auth, email);
-            alert("A password reset link has been sent to your email address. If you do not see it, please check your spam folder.");
-            hideAuthModal();
-        } catch (error) {
-            console.error("Error sending password reset email:", error);
-            showError(error.message);
-        }
-    }
-});
-
-loginForm.addEventListener('submit', async (e) => {
-    e.preventDefault();
-    const email = document.getElementById('login-email').value;
-    const password = document.getElementById('login-password').value;
-    try {
-        await signInWithEmailAndPassword(auth, email, password);
-        console.log("User logged in.");
-    } catch (error) {
-        console.error("Error logging in:", error);
-        showError(error.message);
-    }
-});
-
-logoutButton.addEventListener('click', async () => {
-    try {
-        await signOut(auth);
-        console.log("User logged out.");
-    } catch (error) {
-        console.error("Error logging out:", error);
-        showError(error.message);
-    }
-});
-
-// --- Mobile Sidebar Toggle ---
-menuButton.addEventListener('click', () => {
-    sidebar.classList.add('open');
-    const backdrop = document.createElement('div');
-    backdrop.classList.add('sidebar-backdrop');
-    document.body.appendChild(backdrop);
-    backdrop.addEventListener('click', () => {
-        sidebar.classList.remove('open');
-        document.body.removeChild(backdrop);
-    });
-});
-
-
-// --- Initial Setup ---
-messageInput.focus();
-adjustTextareaHeight();
-console.log("Kramer Intelligence script initialized.");
-// --- END Initial Setup ---
+$("voice-end").addEventListener("click", endVoice);
+window.addEventListener("pagehide", endVoice);
+render();
