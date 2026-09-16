@@ -1,221 +1,269 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <head>
+    <meta charset="utf-8" />
+    <meta
+      name="viewport"
+      content="width=device-width,initial-scale=1,viewport-fit=cover"
+    />
+    <meta name="theme-color" content="#16181c" />
+    <meta
+      name="description"
+      content="Kramer Intelligence: chat, search, study, and talk with Gemini. Free to use, with optional cloud chat saving."
+    />
     <title>Kramer Intelligence</title>
-
-    <!-- SEO Meta Tags -->
-    <meta name="description" content="Chat with Kramer Intelligence, an AI assistant created by Daniel Vincent Kramer. Get answers, engage in conversation, and even upload images or PDFs.">
-    <link rel="canonical" href="https://kramer-intelligence.vercel.app/"> <!-- Adjust if your URL changes -->
-    <!-- End SEO Meta Tags -->
-
-    <!-- Favicon Links - START -->
-    <link rel="icon" href="/icons/icon-192x192.png" type="image/png" sizes="192x192">
-    <link rel="icon" href="/icons/icon-600x600.png" type="image/png" sizes="600x600">
-    <link rel="apple-touch-icon" href="/icons/icon-600x600.png">
-    <!-- Favicon Links - END -->
-
-    <!-- PWA: Link Manifest -->
-    <link rel="manifest" href="/manifest.json">
-
-    <!-- PWA: Theme Color -->
-    <meta name="theme-color" content="#1f1f1f">
-
-    <!-- Your other links -->
-    <link rel="stylesheet" href="style.css">
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500&display=swap" rel="stylesheet">
-
-    <!-- Added Libraries for Markdown/Sanitization/Time -->
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/moment.js/2.30.1/moment.min.js" defer></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/moment-timezone/0.6.0/moment-timezone-with-data.min.js" defer></script>
-    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js" defer></script>
-    <script src="https://cdn.jsdelivr.net/npm/dompurify@latest/dist/purify.min.js" defer></script>
-    <!-- End Added Libraries -->
-
-    <!-- KaTeX for LaTeX Rendering -->
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.16.9/katex.min.css">
-    <script defer src="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.16.9/katex.min.js"></script>
-    <script defer src="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.16.9/contrib/auto-render.min.js"></script>
-    <!-- End KaTeX -->
-
-
-    <!-- Firebase SDK -->
-    <script type="module">
-      // Import the functions you need from the SDKs you need
-      import { initializeApp } from "https://www.gstatic.com/firebasejs/12.1.0/firebase-app.js";
-      import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, onAuthStateChanged, signOut, sendPasswordResetEmail } from "https://www.gstatic.com/firebasejs/12.1.0/firebase-auth.js";
-      import { getFirestore, doc, setDoc, getDoc, addDoc, collection, query, where, getDocs, onSnapshot, serverTimestamp, orderBy, updateDoc, arrayUnion, writeBatch, deleteDoc } from "https://www.gstatic.com/firebasejs/12.1.0/firebase-firestore.js";
-
-      async function initializeFirebase() {
-        try {
-          const response = await fetch('/api/config');
-          if (!response.ok) {
-            const errorText = await response.text();
-            throw new Error(`Failed to fetch Firebase config: ${response.status} ${response.statusText}. Details: ${errorText}`);
-          }
-          const config = await response.json();
-           if (!config.apiKey) {
-            throw new Error("API key not found in the response from /api/config.");
-          }
-
-          // Your web app's Firebase configuration
-          const firebaseConfig = {
-            apiKey: config.apiKey,
-            authDomain: "kramer-intelligence-chat.firebaseapp.com",
-            projectId: "kramer-intelligence-chat",
-            storageBucket: "kramer-intelligence-chat.firebasestorage.app",
-            messagingSenderId: "467599486032",
-            appId: "1:467599486032:web:63b0d6510b8cad07477555"
-          };
-
-          // Initialize Firebase
-          const app = initializeApp(firebaseConfig);
-          window.firebase = {
-              auth: getAuth(app),
-              firestore: getFirestore(app),
-              createUserWithEmailAndPassword,
-              signInWithEmailAndPassword,
-              onAuthStateChanged,
-              signOut,
-              sendPasswordResetEmail,
-              doc,
-              setDoc,
-              getDoc,
-              addDoc,
-              collection,
-              query,
-              where,
-              getDocs,
-              onSnapshot,
-              serverTimestamp,
-              orderBy,
-              updateDoc,
-              arrayUnion,
-              writeBatch,
-              deleteDoc
-          };
-
-          // Dynamically load the main script ONLY after Firebase is initialized
-          const script = document.createElement('script');
-          script.src = 'script.js';
-          script.defer = true;
-          document.body.appendChild(script);
-
-        } catch (error) {
-          console.error("Firebase initialization failed:", error);
-          const errorDisplay = document.getElementById('error') || document.createElement('div');
-          errorDisplay.textContent = `Critical Error: Could not initialize the application. Please ensure the FIREBASE_API_KEY is set correctly in your Vercel environment variables. (${error.message})`;
-          errorDisplay.style.cssText = "padding: 20px; text-align: center; background-color: #ffdddd; border: 1px solid #ff0000; color: #ff0000; margin: 20px;";
-          document.getElementById('app-wrapper').prepend(errorDisplay);
-        }
-      }
-
-      initializeFirebase();
-    </script>
-
-</head>
-<body>
+    <link rel="canonical" href="https://kramerintel.vercel.app/" />
+    <link rel="icon" href="/icons/icon-192x192.png" />
+    <link rel="apple-touch-icon" href="/icons/icon-600x600.png" />
+    <link rel="manifest" href="/manifest.json" />
+    <link rel="stylesheet" href="/style.css" />
+    <link rel="stylesheet" href="/vendor/katex/katex.min.css" />
+    <script defer src="/vendor/marked.umd.js"></script>
+    <script defer src="/vendor/purify.min.js"></script>
+    <script defer src="/vendor/katex/katex.min.js"></script>
+    <script defer src="/vendor/katex/auto-render.min.js"></script>
+    <script type="module" src="/script.js"></script>
+  </head>
+  <body>
     <div id="app-wrapper">
-        <!-- Sidebar -->
-        <div id="sidebar">
-            <div id="sidebar-header">
-                <h2>Chats</h2>
-                <button id="new-chat-button" title="New Chat">+</button>
-            </div>
-            <div id="chat-list">
-                <!-- Chat list will be populated here -->
-            </div>
-            <div id="sidebar-footer">
-                <div id="user-info" class="hidden">
-                    <span id="user-email"></span>
-                    <button id="logout-button">Logout</button>
-                </div>
-                <button id="login-button">Login</button>
-            </div>
+      <aside id="sidebar" aria-label="Chats">
+        <div class="sidebar-brand">
+          <img
+            src="/icons/icon-192x192.png"
+            alt=""
+            width="28"
+            height="28"
+          /><span>Kramer Intelligence</span
+          ><button
+            id="close-sidebar"
+            class="icon-button"
+            aria-label="Close chats"
+          >
+            ×
+          </button>
         </div>
-
-        <!-- Main Content -->
-        <div id="main-container">
-            <div id="main-content-area">
-                <button id="menu-button" class="hidden">☰</button>
-                <h1>Kramer Intelligence</h1>
-                <div id="chat-controls" class="hidden">
-                    <button id="save-chat-button">Save to Cloud</button>
-                    <button id="share-chat-button" class="hidden">Share</button>
-                </div>
-                <div id="chat-container">
-                    <div id="chat-history">
-                        <!-- Chat messages will appear here -->
-                    </div>
-                </div>
-            </div>
-
-    <div id="loading" class="hidden">Thinking...</div>
-    <div id="error" class="hidden"></div>
-
-    <!-- Image Preview Area (Stays outside the main scroll area) -->
-    <!-- Shown for images OR PDFs now -->
-    <div id="image-preview-container" class="hidden">
-        <div>  <!-- Inner div for positioning -->
-             <img id="image-preview" src="#" alt="File preview"/>
-             <!-- <<< ADDED SPAN FOR PDF FILENAME >>> -->
-             <span id="pdf-filename-preview"></span>
-             <button id="remove-image-button" title="Remove file">×</button>
-        </div>
-    </div>
-    <!-- END Image Preview Area -->
-
-    <!-- Form Area (Stays outside the main scroll area) -->
-    <form id="chat-form">
-        <input type="file" id="file-upload-input" accept="image/png, image/jpeg, image/webp, image/heic, image/heif, application/pdf" style="display: none;">
-        <button type="button" id="study-mode-button" title="Toggle Study Mode">Study Mode</button>
-        <button type="button" id="attach-button" title="Attach Image or PDF">
-            📎
+        <button id="new-chat-button" class="new-chat">
+          <span aria-hidden="true">＋</span> New chat
         </button>
-        <textarea id="message-input" placeholder="Ask me anything..." rows="1" autocomplete="off"></textarea>
-        <button type="submit" id="send-button">Send</button>
-    </form>
-
-    <!-- Auth Modals -->
-    <div id="auth-modal" class="modal-container hidden">
-        <div class="modal-content">
-            <button class="modal-close-button">&times;</button>
-            <div id="login-view">
-                <h2>Login</h2>
-                <form id="login-form">
-                    <input type="email" id="login-email" placeholder="Email" required>
-                    <input type="password" id="login-password" placeholder="Password" required>
-                    <button type="submit">Login</button>
-                    <p><a href="#" id="forgot-password-link">Forgot Password?</a></p>
-                    <p>Don't have an account? <a href="#" id="show-signup">Sign up</a></p>
-                </form>
-            </div>
-            <div id="signup-view" class="hidden">
-                <h2>Sign Up</h2>
-                <form id="signup-form">
-                    <input type="email" id="signup-email" placeholder="Email" required>
-                    <input type="password" id="signup-password" placeholder="Password" required>
-                    <button type="submit">Sign Up</button>
-                    <p>Already have an account? <a href="#" id="show-login">Log in</a></p>
-                </form>
-            </div>
+        <div class="sidebar-label">YOUR CHATS</div>
+        <div id="chat-list">
+          <p class="sidebar-hint">Sign in to save and revisit conversations.</p>
         </div>
-    </div>
-
-    <!-- Delete Confirmation Modal -->
-    <div id="delete-confirm-modal" class="modal-container hidden">
-        <div class="modal-content">
-            <h2>Confirm Deletion</h2>
-            <p>Are you sure you want to permanently delete "<span id="delete-chat-name"></span>"?</p>
-            <p><strong>This action cannot be undone.</strong></p>
-            <div class="modal-buttons">
-                <button id="confirm-delete-button">Delete</button>
-                <button id="cancel-delete-button">Cancel</button>
-            </div>
+        <div id="sidebar-footer">
+          <div id="user-info" class="hidden">
+            <span id="user-email"></span
+            ><button id="logout-button" class="quiet">Sign out</button>
+          </div>
+          <button id="login-button" class="secondary">Sign in</button>
+          <a
+            class="privacy-link"
+            href="https://github.com/dvkramer/Kramer-Intelligence/blob/main/privacy.md"
+            target="_blank"
+            rel="noopener noreferrer"
+            >Privacy</a
+          >
         </div>
+      </aside>
+      <button
+        id="sidebar-backdrop"
+        class="hidden"
+        aria-label="Close chats"
+      ></button>
+      <main id="main-container">
+        <header class="topbar">
+          <button
+            id="menu-button"
+            class="icon-button"
+            aria-label="Open chats"
+            aria-expanded="false"
+          >
+            ☰
+          </button>
+          <div class="chat-heading">
+            <h1 id="chat-title">New chat</h1>
+            <span id="chat-status">Only here until you save</span>
+          </div>
+          <div id="chat-controls">
+            <button id="save-chat-button" class="quiet">Save to cloud</button
+            ><button id="share-chat-button" class="quiet hidden">Share</button>
+          </div>
+        </header>
+        <div id="main-content-area" tabindex="0" aria-label="Conversation">
+          <section id="empty-state">
+            <div class="welcome-mark">KI<span></span></div>
+            <h2>What are you thinking about?</h2>
+            <p>A question, a document, an idea.<br />Start anywhere.</p>
+            <div class="suggestions">
+              <button data-prompt="Help me understand a difficult concept.">
+                Learn something</button
+              ><button data-prompt="Help me think through an idea.">
+                Think it through</button
+              ><button data-prompt="Help me write something clearly.">
+                Find the words
+              </button>
+            </div>
+          </section>
+          <div
+            id="chat-history"
+            aria-live="polite"
+            aria-relevant="additions text"
+          ></div>
+        </div>
+        <div class="composer-area">
+          <div id="loading" class="hidden" role="status">
+            <span class="working-dot"></span> Thinking…
+          </div>
+          <div id="notice" class="notice hidden" role="status"></div>
+          <div id="error" class="error hidden" role="alert">
+            <span id="error-text"></span
+            ><button id="retry-button" class="quiet hidden">Retry</button
+            ><button
+              id="dismiss-error"
+              class="icon-button"
+              aria-label="Dismiss error"
+            >
+              ×
+            </button>
+          </div>
+          <section
+            id="voice-panel"
+            class="voice-panel hidden"
+            aria-label="Voice chat"
+          >
+            <span class="voice-dot"></span
+            ><span id="voice-status" role="status">Connecting…</span
+            ><button id="voice-mute" class="quiet" aria-pressed="false">
+              Mute</button
+            ><button id="voice-end" class="danger-quiet">End call</button>
+            <p id="voice-caption"></p>
+          </section>
+          <form id="chat-form">
+            <div id="image-preview-container" class="attachment hidden">
+              <img id="image-preview" alt="Attachment preview" /><span
+                id="filename-preview"
+              ></span
+              ><button
+                type="button"
+                id="remove-image-button"
+                class="icon-button"
+                aria-label="Remove attachment"
+              >
+                ×
+              </button>
+            </div>
+            <label for="message-input" class="sr-only">Message</label
+            ><textarea
+              id="message-input"
+              placeholder="Ask anything…"
+              rows="1"
+              autocomplete="off"
+            ></textarea>
+            <div class="composer-toolbar">
+              <div class="tools">
+                <input
+                  type="file"
+                  id="file-upload-input"
+                  accept="image/png,image/jpeg,image/webp,image/heic,image/heif,application/pdf"
+                  hidden
+                /><button
+                  type="button"
+                  id="attach-button"
+                  class="tool"
+                  title="Attach image or PDF"
+                  aria-label="Attach image or PDF"
+                >
+                  ＋</button
+                ><button
+                  type="button"
+                  id="search-button"
+                  class="tool active"
+                  aria-pressed="true"
+                  title="Use a free web-search model"
+                >
+                  Search</button
+                ><button
+                  type="button"
+                  id="study-mode-button"
+                  class="tool"
+                  aria-pressed="false"
+                >
+                  Study</button
+                ><button
+                  type="button"
+                  id="voice-button"
+                  class="tool"
+                  title="Start a live voice conversation"
+                >
+                  Voice
+                </button>
+              </div>
+              <button
+                type="submit"
+                id="send-button"
+                class="send"
+                aria-label="Send message"
+              >
+                Send <span aria-hidden="true">↑</span>
+              </button>
+            </div>
+          </form>
+          <p class="composer-note">
+            Kramer Intelligence can make mistakes. Check important information.
+          </p>
+        </div>
+      </main>
     </div>
-</body>
+    <dialog id="auth-modal" aria-labelledby="auth-title">
+      <form id="auth-form">
+        <button
+          type="button"
+          class="dialog-close icon-button"
+          aria-label="Close sign in"
+        >
+          ×
+        </button>
+        <h2 id="auth-title">Welcome back</h2>
+        <p id="auth-description">
+          Save your conversations and pick up where you left off.
+        </p>
+        <label for="auth-email">Email</label
+        ><input
+          id="auth-email"
+          type="email"
+          autocomplete="email"
+          required
+        /><label for="auth-password" id="password-label">Password</label
+        ><input
+          id="auth-password"
+          type="password"
+          autocomplete="current-password"
+          required
+        />
+        <p id="auth-error" class="form-error" role="alert"></p>
+        <button id="auth-submit" type="submit" class="primary">Sign in</button
+        ><button type="button" id="auth-toggle" class="quiet">
+          Create an account</button
+        ><button type="button" id="forgot-password" class="quiet">
+          Forgot password?
+        </button>
+      </form>
+    </dialog>
+    <dialog id="action-modal" aria-labelledby="action-title">
+      <form id="action-form">
+        <h2 id="action-title"></h2>
+        <p id="action-description"></p>
+        <label for="action-input" id="action-label"></label
+        ><input id="action-input" autocomplete="off" />
+        <p id="action-error" class="form-error" role="alert"></p>
+        <div class="dialog-actions">
+          <button type="button" id="action-cancel" class="secondary">
+            Cancel</button
+          ><button type="submit" id="action-confirm" class="primary">
+            Save
+          </button>
+        </div>
+      </form>
+    </dialog>
+    <noscript>Kramer Intelligence needs JavaScript to chat.</noscript>
+  </body>
 </html>

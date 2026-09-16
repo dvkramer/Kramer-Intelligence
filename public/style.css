@@ -1,708 +1,859 @@
-/* public/style.css */
-
-/* General Reset / Base Styles */
+:root {
+  color-scheme: dark;
+  --bg: #16181c;
+  --panel: #1d2025;
+  --panel-hover: #282c33;
+  --border: #30343c;
+  --text: #eceef2;
+  --muted: #979ea9;
+  --accent: #a7c9ff;
+  --blue: #82b1ff;
+  --danger: #ffb4ab;
+  font-family:
+    Inter,
+    ui-sans-serif,
+    system-ui,
+    -apple-system,
+    BlinkMacSystemFont,
+    "Segoe UI",
+    sans-serif;
+  font-synthesis: none;
+}
 * {
-    box-sizing: border-box;
+  box-sizing: border-box;
 }
-
-html {
-    height: 100%;
-    height: -webkit-fill-available; /* Better height handling on mobile Safari */
-}
-
+html,
 body {
-    font-family: 'Roboto', sans-serif;
-    background-color: #1A1A1A; /* Dark background */
-    color: #EAEAEA; /* Light text */
-    font-size: 16px; /* Establish base font size */
-    line-height: 1.6; /* Improved overall readability */
-    margin: 0;
-    padding: 0;
-    display: flex;
-    flex-direction: column; /* Stack content vertically */
-    height: 100vh; /* Fallback for older browsers */
-    height: -webkit-fill-available; /* Fallback for iOS/WebKit */
-    height: 100dvh; /* <<< SOLUTION 1: Use dynamic viewport height if supported */
-    overflow: hidden; /* Prevent body itself from scrolling */
+  height: 100%;
+  margin: 0;
 }
-
-/* Scrollable Main Content Area (Contains H1 + Chat History) */
-#main-content-area {
-    flex-grow: 1; /* Takes up available vertical space */
-    overflow-y: auto; /* Enables vertical scrolling */
-    position: relative; /* Context for potential absolutely positioned children */
-    display: flex; /* Use flex for internal stacking */
-    flex-direction: column; /* Stack H1 above chat container */
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-size: 15px;
+  line-height: 1.6;
 }
-
-
-/* Header Styling (Inside scrollable area) */
+button,
+input,
+textarea {
+  font: inherit;
+}
+button,
+a,
+input,
+textarea {
+  -webkit-tap-highlight-color: transparent;
+}
+button {
+  cursor: pointer;
+  color: inherit;
+}
+button:disabled {
+  cursor: default;
+  opacity: 0.45;
+}
+button:focus-visible,
+a:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 4px;
+}
+button {
+  transition:
+    background 0.15s,
+    color 0.15s;
+}
+a {
+  color: var(--accent);
+}
+.hidden {
+  display: none !important;
+}
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+}
+#app-wrapper {
+  display: flex;
+  height: 100dvh;
+  overflow: hidden;
+}
+#sidebar {
+  width: 264px;
+  background: #111317;
+  display: flex;
+  flex-direction: column;
+  padding: 24px 16px 16px;
+  flex-shrink: 0;
+  border-right: 1px solid #24272d;
+}
+.sidebar-brand {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  font-weight: 600;
+  font-size: 14px;
+  margin-bottom: 28px;
+  white-space: nowrap;
+}
+.sidebar-brand img {
+  border-radius: 8px;
+}
+.new-chat {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  background: var(--panel);
+  border: 1px solid var(--border);
+  border-radius: 11px;
+  padding: 10px 14px;
+  width: 100%;
+  text-align: left;
+}
+.new-chat:hover {
+  background: var(--panel-hover);
+}
+.new-chat span {
+  font-size: 22px;
+  line-height: 1;
+}
+.sidebar-label {
+  font-size: 10px;
+  letter-spacing: 0.14em;
+  font-weight: 600;
+  color: var(--muted);
+  margin: 28px 12px 12px;
+}
+#chat-list {
+  flex: 1;
+  overflow: auto;
+  min-height: 0;
+}
+.sidebar-hint {
+  font-size: 13px;
+  color: var(--muted);
+  padding: 0 12px;
+}
+.chat-list-item {
+  display: flex;
+  align-items: center;
+  border-radius: 9px;
+  margin-bottom: 4px;
+}
+.chat-list-item:hover,
+.chat-list-item.active {
+  background: var(--panel);
+}
+.chat-select {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  text-align: left;
+  border: 0;
+  background: none;
+  padding: 11px;
+  font-size: 13px;
+}
+.delete-chat-button {
+  border: 0;
+  background: none;
+  color: var(--muted);
+  padding: 8px;
+  border-radius: 6px;
+}
+.delete-chat-button:hover {
+  color: var(--danger);
+}
+.temporary-tag {
+  color: var(--muted);
+  font-size: 10px;
+  padding-right: 8px;
+}
+#sidebar-footer {
+  border-top: 1px solid var(--border);
+  padding-top: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+#user-info {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 4px;
+}
+#user-email {
+  font-size: 12px;
+  color: var(--muted);
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.privacy-link {
+  color: var(--muted);
+  text-decoration: none;
+  font-size: 11px;
+  padding-left: 10px;
+}
+#main-container {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  position: relative;
+}
+.topbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  padding: 20px 32px;
+  border-bottom: 1px solid #25282f;
+  min-height: 86px;
+}
+.chat-heading {
+  min-width: 0;
+  flex: 1;
+}
 h1 {
-    text-align: center;
-    color: #FFFFFF;
-    background-color: #242424; /* Slightly lighter dark bg */
-    padding: 15px 20px;
-    margin: 0; /* Remove default margin */
-    font-weight: 500; /* Medium weight */
-    border-bottom: 1px solid #383838; /* Separator line */
-    /* This element will scroll with the content */
+  font-size: 15px;
+  font-weight: 600;
+  margin: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
-
-/* Chat Container (Inside scrollable area) */
-#chat-container {
-    /* No flex-grow or overflow needed, handled by #main-content-area */
-    padding: 20px; /* Spacing around chat history */
-    width: 100%;
+#chat-status {
+  font-size: 11px;
+  color: var(--muted);
 }
-
-/* Chat History (Holds the message bubbles) */
+#chat-controls {
+  display: flex;
+  gap: 6px;
+}
+.quiet,
+.secondary,
+.primary,
+.danger-quiet,
+.tool,
+.icon-button {
+  border-radius: 8px;
+  padding: 8px 12px;
+  border: 1px solid transparent;
+  background: none;
+  font-size: 13px;
+}
+.quiet {
+  color: var(--muted);
+}
+.quiet:hover,
+.tool:hover,
+.icon-button:hover {
+  background: var(--panel-hover);
+  color: var(--text);
+}
+.secondary {
+  border-color: var(--border);
+  background: var(--panel);
+}
+.primary {
+  background: var(--accent);
+  color: #16223a;
+  font-weight: 600;
+}
+.primary:hover {
+  background: #c2d9ff;
+}
+.danger-quiet {
+  color: var(--danger);
+  background: #422d2e;
+}
+.icon-button {
+  padding: 6px 10px;
+  font-size: 20px;
+  line-height: 1.2;
+}
+.danger {
+  background: #ffb4ab;
+  color: #461918;
+}
+#main-content-area {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+  padding: 16px 32px 28px;
+  scrollbar-gutter: stable;
+  outline: none;
+}
 #chat-history {
-    display: flex;
-    flex-direction: column; /* Stack messages vertically */
-    gap: 15px; /* Space between messages */
-    width: 100%;
-    max-width: 800px; /* Limit content width */
-    margin: 0 auto; /* Center the history horizontally */
-    padding-bottom: 20px; /* More space at the very end of the scroll */
+  max-width: 800px;
+  margin: auto;
 }
-
-/* Individual Message Bubble Styling */
-.message {
-    padding: 10px 15px; /* Internal padding */
-    border-radius: 16px; /* Rounded corners */
-    display: inline-grid;   /* CHANGED to inline-grid */
-    grid-template-columns: 1fr; /* Single column for stacking */
-    gap: 8px;               /* RE-ADD gap for internal spacing */
-    max-width: 600px;      /* Pixel-based max-width for the bubble itself */
-    box-sizing: border-box;
-    line-height: 1.5; /* Text line spacing */
-    /* overflow-wrap: break-word; */ /* MOVED to .message p */
-    vertical-align: top; /* Good for inline-block/grid alignment */
-    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
+#empty-state {
+  max-width: 720px;
+  margin: clamp(40px, 10vh, 130px) auto 50px;
+  text-align: center;
 }
-
-/* Ensure child elements of .message take full width of the grid column */
-.message > p,
-.message > img.message-image, /* More specific selector */
-.message > div.pdf-info,    /* More specific selector */
-.message > pre,
-.message > div.search-suggestion-container { /* More specific selector */
-    width: 100%;
-    display: block; /* Ensures elements like <img> behave as blocks in grid cell */
-    box-sizing: border-box; /* If they have padding/border themselves */
+.welcome-mark {
+  font-size: 30px;
+  letter-spacing: -0.06em;
+  font-weight: 700;
+  display: inline-flex;
+  position: relative;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 16px;
 }
-
-
-/* --- MODIFIED PARAGRAPH STYLING --- */
-/* Paragraphs within messages - Keep general reset */
-.message p {
-    margin: 0; /* Remove default margins */
-    overflow-wrap: break-word; /* Ensure wrapping for text content */
-    /* word-break: break-all; */     /* REVERTED - Rely on overflow-wrap */
-    line-height: 1.5; /* Match message bubble */
-    min-width: 0; /* ADDED - Help with overflow in flex/grid items */
+.welcome-mark span {
+  width: 8px;
+  height: 8px;
+  border-radius: 100%;
+  background: var(--accent);
+  align-self: flex-end;
+  margin-bottom: 12px;
 }
-
-/* Apply newline preservation to user message paragraphs */
-.user-message p {
-    white-space: pre-wrap; /* Preserve newlines and wrap text */
+#empty-state h2 {
+  font-size: clamp(25px, 3vw, 36px);
+  line-height: 1.3;
+  font-weight: 500;
+  letter-spacing: -0.035em;
+  margin: 0 0 14px;
 }
-
-/* Add vertical spacing ONLY between consecutive paragraphs in AI messages */
-.ai-message p + p {
-    margin-top: 0.75em; /* Creates the visual paragraph break */
+#empty-state p {
+  color: var(--muted);
+  font-size: 14px;
+  line-height: 1.7;
 }
-/* --- END MODIFIED PARAGRAPH STYLING --- */
-
-/* --- Message Entry Structure & Alignment --- */
+.suggestions {
+  display: flex;
+  justify-content: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-top: 32px;
+}
+.suggestions button {
+  border: 1px solid var(--border);
+  border-radius: 24px;
+  background: none;
+  color: #bac1cc;
+  padding: 9px 15px;
+  font-size: 12px;
+}
+.suggestions button:hover {
+  background: var(--panel);
+}
 .message-entry {
-    /* Behaves like a block, takes width from parent #chat-history context */
-    /* Spacing between entries is handled by #chat-history's gap */
+  margin: 16px 0 28px;
+  min-width: 0;
 }
-
+.message-body {
+  overflow-wrap: anywhere;
+  min-width: 0;
+}
 .user-message-entry {
-    margin-left: auto;
-    max-width: 85%;
-    width: fit-content; /* Make entry only as wide as its content (bubble + action bar) */
-    text-align: left; /* ADDED */
+  margin-left: auto;
+  width: fit-content;
+  max-width: 85%;
+}
+.user-message-entry .message-body {
+  background: #2a2f38;
+  border: 1px solid #363d49;
+  border-radius: 18px 18px 4px 18px;
+  padding: 12px 18px;
+}
+.user-message-entry .message-content {
+  white-space: pre-wrap;
 }
 .ai-message-entry {
-    margin-right: auto;
-    max-width: 85%;
-    width: fit-content; /* Make entry only as wide as its content (bubble + action bar) */
-    text-align: left; /* ADDED */
+  max-width: 100%;
 }
-
-.message-action-buttons { /* The bar itself */
-    display: flex;
-    padding-top: 2px;
-    padding-bottom: 4px;
-    /* width: 100%; */ /* REMOVED - let it be sized by content (buttons) & parent fit-content */
-    box-sizing: border-box;
+.ai-message-entry .message-body {
+  padding: 4px 0;
+  font-size: 15px;
+  line-height: 1.8;
 }
-
-.user-actions-align { /* For content within the bar for user messages */
-    justify-content: flex-end; /* Pushes buttons to the right */
-    gap: 6px; /* Space between buttons */
+.message-content > :first-child {
+  margin-top: 0;
 }
-
-.ai-actions-align { /* For content within the bar for AI messages */
-    justify-content: flex-start; /* Pushes buttons to the left */
-    gap: 6px; /* Space between buttons */
+.message-content > :last-child {
+  margin-bottom: 0;
 }
-/* --- End Message Entry Structure & Alignment --- */
-
-/* User message specific styles */
-.user-message {
-    background-color: #007ACC; /* Blue background */
-    color: white;
-    /* align-self: flex-end; */
-    border-bottom-right-radius: 4px; /* Slightly flattened corner */
-    /* max-width: 80%; */ /* REMOVE - Handled by .message's pixel max-width */
+.message-content p {
+  margin: 0.85em 0;
 }
-
-/* AI message specific styles */
-.ai-message {
-    background-color: #333333; /* Dark grey background */
-    color: #EAEAEA;
-    /* align-self: flex-start; */
-    border-bottom-left-radius: 4px; /* Slightly flattened corner */
-    /* max-width: 80%; */ /* REMOVE - Handled by .message's pixel max-width */
+.message-content h1,
+.message-content h2,
+.message-content h3 {
+  font-size: 1.1em;
+  white-space: normal;
+  line-height: 1.4;
+  margin: 1.3em 0 0.5em;
 }
-
-/* Styling for Images within Messages */
-.message img.message-image {
-    max-width: 100%; /* Don't exceed bubble width */
-    max-height: 300px; /* Limit image display height */
-    border-radius: 8px; /* Rounded corners */
-    object-fit: contain; /* Scale while preserving aspect ratio */
-    cursor: pointer; /* Hint that it might be interactive */
-    margin-top: 5px; /* Space above if text is also present */
+.message-content ul,
+.message-content ol {
+  padding-left: 24px;
 }
-
-/* Styling for PDF Info within Messages */
-.message .pdf-info {
-    font-size: 0.85em;
-    font-style: italic;
-    color: #A0A0A0; /* Updated for new palette */
-    margin-top: 5px;
-    padding: 3px 8px;
-    background-color: rgba(255, 255, 255, 0.05); /* Subtle background */
-    border-radius: 4px;
-    display: inline-block; /* Prevent taking full width */
-    word-break: break-all; /* Break long filenames */
+.message-content pre {
+  position: relative;
+  background: #111317;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  overflow: auto;
+  padding: 42px 16px 16px;
+  white-space: pre;
+  line-height: 1.6;
 }
-
-
-/* --- Google Search Suggestion Styling (Minimal Wrapper Only) --- */
-.search-suggestion-container {
-    margin-top: 12px;
-    overflow-x: auto; /* Enable horizontal scrolling if content overflows */
-    max-width: 100%;  /* Ensure container does not exceed parent's width */
-    box-sizing: border-box; /* Include padding and border in the element's total width and height */
+.message-content code {
+  font-family: ui-monospace, SFMono-Regular, Consolas, monospace;
+  font-size: 0.88em;
 }
-/* --- End Search Suggestion Styling --- */
-
-/* --- Markdown Element Styling --- */
-.message pre { background-color: #2C2C2C; padding: 10px; border-radius: 4px; overflow-x: auto; border: 1px solid #383838; margin-top: 8px; margin-bottom: 8px; white-space: pre; color: #EAEAEA; line-height: 1.4; }
-.message code { font-family: Consolas, Monaco, 'Andale Mono', 'Ubuntu Mono', monospace; font-size: 0.9em; } /* General code styling, color inherited or can be set if needed */
-.message p > code { background-color: #303030; padding: 0.2em 0.4em; border-radius: 3px; font-size: 0.85em; color: #EAEAEA; }
-.message pre code { background-color: transparent; padding: 0; font-size: inherit; border-radius: 0; color: inherit; } /* Ensure pre code inherits pre's color */
-.message ul, .message ol { padding-left: 25px; margin-top: 8px; margin-bottom: 8px; color: #EAEAEA; }
-.message li { margin-bottom: 4px; }
-.message blockquote { border-left: 3px solid #555555; padding-left: 10px; margin-left: 0; margin-top: 8px; margin-bottom: 8px; color: #A0A0A0; font-style: italic; }
-.message blockquote p { margin: 0; } /* Keep margin 0 for p inside blockquote */
-.message p a { color: #007ACC; text-decoration: underline; }
-.message p a:hover { color: #3399DD; } /* Lighter shade of accent for hover */
-.message h1, .message h2, .message h3, .message h4, .message h5, .message h6 { margin-top: 1em; margin-bottom: 0.5em; font-weight: 500; color: #FFFFFF; }
-.message h1 { font-size: 1.5em; } .message h2 { font-size: 1.3em; } .message h3 { font-size: 1.15em; } .message h4 { font-size: 1em; } .message h5 { font-size: 0.9em; } .message h6 { font-size: 0.85em; color: #A0A0A0; }
-.message hr { border: 0; border-top: 1px solid #383838; margin: 1em 0; }
-/* --- End Markdown Element Styling --- */
-
-
-/* Loading / Error Indicators */
-#loading, #error { text-align: center; padding: 10px; font-style: italic; color: #A0A0A0; width: 100%; max-width: 800px; margin: 5px auto; flex-shrink: 0; }
-#error { color: #ff4d4d; font-weight: bold; background-color: #2C2C2C; border-radius: 4px; border: 1px solid #555555; padding: 10px 15px; }
-
-
-/* Image Preview Area Styling */
-#image-preview-container { background-color: #242424; padding: 8px 20px; display: flex; justify-content: center; align-items: center; position: relative; flex-shrink: 0; width: 100%; }
-#image-preview-container > div { position: relative; display: flex; align-items: center; gap: 10px; max-width: 750px; margin: 0 auto; }
-#image-preview { display: block; max-height: 50px; max-width: 50px; object-fit: contain; border: 1px solid #404040; border-radius: 6px; flex-shrink: 0; }
-#pdf-filename-preview { font-size: 0.85em; color: #A0A0A0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: calc(100% - 70px); display: none; }
-#remove-image-button { position: absolute; top: -8px; right: -8px; width: 22px; height: 22px; background-color: rgba(50, 50, 50, 0.8); color: #A0A0A0; border: 1px solid #555555; border-radius: 50%; cursor: pointer; font-size: 16px; font-weight: bold; line-height: 18px; text-align: center; padding: 0; transition: background-color 0.2s, color 0.2s; }
-#remove-image-button:hover { background-color: rgba(255, 77, 77, 0.8); color: white; border-color: rgba(255, 77, 77, 0.9); }
-
-
-/* Input Form Styling */
-#chat-form { display: flex; align-items: flex-end; padding: 15px 20px; background-color: #242424; flex-shrink: 0; width: 100%; justify-content: center; gap: 10px; }
-#image-preview-container.hidden + #chat-form { border-top: 1px solid #383838; }
-#image-preview-container:not(.hidden) + #chat-form { border-top: none; }
-
-
-/* Attach Button Styling */
-#attach-button { background: none; border: none; color: #A0A0A0; font-size: 1.4rem; cursor: pointer; padding: 8px; line-height: 1; transition: color 0.2s; flex-shrink: 0; align-self: flex-end; margin-bottom: 8px; }
-#attach-button:hover { color: #EAEAEA; }
-#attach-button.has-file { color: #007ACC; }
-
-
-/* Textarea Input Styling */
-#message-input { flex-grow: 1; max-width: 700px; padding: 10px 15px; border: 1px solid #404040; border-radius: 10px; box-sizing: border-box; display: block; min-height: 42px; max-height: 25vh; background-color: #2C2C2C; color: #EAEAEA; outline: none; font-family: inherit; font-size: 1rem; line-height: 1.5; white-space: pre-wrap; overflow-wrap: break-word; resize: none; overflow-y: auto; }
-#message-input::placeholder { color: #A0A0A0; }
-#message-input:focus { border-color: #007ACC; box-shadow: 0 0 0 2px rgba(0, 122, 204, 0.3); }
-
-/* Study Mode Button Styling */
-#study-mode-button {
-    padding: 10px 20px;
-    background-color: #333333; /* Dark grey background for OFF state */
-    color: white;
-    border: 1px solid #404040;
-    border-radius: 10px;
-    cursor: pointer;
-    font-size: 1rem;
-    font-weight: 500;
-    transition: background-color 0.2s ease, color 0.2s ease;
-    flex-shrink: 0;
-    align-self: flex-end;
-    margin-bottom: 8px;
+.message-content :not(pre) > code {
+  background: var(--panel-hover);
+  padding: 2px 5px;
+  border-radius: 4px;
 }
-
-#study-mode-button.active {
-    background-color: #B0B0B0; /* Light grey background for ON state */
-    color: #1A1A1A; /* Dark text for ON state */
-    border-color: #909090;
+.copy-code {
+  position: absolute;
+  top: 6px;
+  right: 8px;
+  border: 0;
+  background: var(--panel);
+  font-size: 11px;
+  border-radius: 5px;
+  padding: 4px 8px;
 }
-
-/* Send Button Styling */
-#send-button { padding: 10px 20px; background-color: #007ACC; color: white; border: none; border-radius: 10px; cursor: pointer; font-size: 1rem; font-weight: 500; transition: background-color 0.2s ease; flex-shrink: 0; align-self: flex-end; margin-bottom: 8px; }
-#send-button:disabled { background-color: #004C80; cursor: not-allowed; opacity: 0.7; }
-#send-button:hover:not(:disabled) { background-color: #005C99; }
-
-
-/* Utility class to hide elements */
-.hidden { display: none !important; }
-
-/* --- Action Button Styling (Tag-like) --- */
-.regenerate-btn,
-.edit-btn,
-.save-edit-btn,
-.cancel-edit-btn {
-    background: none;
-    border: none;
-    color: #888; /* Slightly darker grey for less prominence */
-    padding: 1px 3px;   /* Minimal padding */
-    margin: 0 2px;      /* Small horizontal margin for spacing if side-by-side */
-    font-size: 0.75em;  /* Significantly smaller */
-    line-height: 1;       /* Compact */
-    cursor: pointer;
-    border-radius: 3px;   /* Subtle rounding */
-    transition: color 0.2s, opacity 0.2s;
-    vertical-align: middle;
-    -webkit-appearance: none;
-    -moz-appearance: none;
-    appearance: none;
+.message-content blockquote {
+  margin-left: 0;
+  border-left: 3px solid var(--border);
+  padding-left: 16px;
+  color: #b5bdc9;
 }
-
-.regenerate-btn:hover,
-.edit-btn:hover,
-.save-edit-btn:hover,
-.cancel-edit-btn:hover {
-    color: #E0E0E0; /* Brighter on hover */
-    opacity: 0.85;
+.message-content table {
+  display: block;
+  overflow: auto;
+  border-collapse: collapse;
+  max-width: 100%;
+  font-size: 13px;
 }
-
-.regenerate-btn:focus,
-.edit-btn:focus,
-.save-edit-btn:focus,
-.cancel-edit-btn:focus {
-    outline: 1px solid #007ACC;
-    outline-offset: 1px;
+.message-content th,
+.message-content td {
+  border: 1px solid var(--border);
+  padding: 8px 12px;
+  text-align: left;
 }
-
-.regenerate-btn:disabled,
-.edit-btn:disabled,
-.save-edit-btn:disabled,
-.cancel-edit-btn:disabled {
-    opacity: 0.4 !important;
-    cursor: not-allowed !important;
-    color: #666 !important;
+.message-content th {
+  background: var(--panel);
 }
-
-/* Specific positioning for Edit and Regenerate buttons (now within .message-action-buttons) */
-/* Their alignment (flex-start/flex-end) is handled by .ai-actions-align / .user-actions-align on the parent */
-/* So, explicit align-self here might not be needed if the parent exclusively handles it. */
-/* However, if they are the *only* child, align-self on item is fine. */
-/* Let's rely on parent justify-content for now and remove individual align-self. */
-/* margin-top is also handled by padding on .message-action-buttons */
-
-/* --- End Action Button Styling (Tag-like) --- */
-
-
-/* --- Inline Editing UI Styling (Textarea and Action Buttons Container) --- */
-.edit-controls-container {
-    margin-top: 8px;
-    display: flex;
-    flex-direction: column;
-    gap: 8px;
+.message-content img {
+  max-width: 100%;
 }
-
-.edit-message-textarea {
-    width: 100%;
-    min-height: 60px;
-    background-color: #2C2C2C;
-    color: #EAEAEA;
-    border: 1px solid #404040;
-    border-radius: 6px;
-    padding: 8px 10px;
-    font-family: inherit;
-    font-size: 1em; /* Match message font size */
-    line-height: 1.5;
-    resize: vertical;
-    box-sizing: border-box;
-    margin-bottom: 8px; /* Space below textarea, before action bar with save/cancel */
+.message-content .katex-display {
+  overflow: auto;
+  padding: 8px 0;
 }
-
-.edit-message-textarea:focus {
-    border-color: #007ACC;
-    outline: 1px solid #007ACC;
-    outline-offset: -1px;
+.message-actions {
+  display: flex;
+  gap: 4px;
+  margin-top: 7px;
 }
-
-.edit-message-textarea:disabled { /* Added specific disabled style for textarea */
-    opacity: 0.6;
-    cursor: not-allowed;
-    background-color: #252525; /* Slightly different background when disabled */
+.user-message-entry .message-actions {
+  justify-content: flex-end;
 }
-
-
-/* Container for Save/Cancel buttons to sit side-by-side */
-.edit-action-buttons {
-    display: flex;
-    justify-content: flex-end;
-    gap: 8px;
+.message-action {
+  border: 0;
+  background: none;
+  border-radius: 5px;
+  color: var(--muted);
+  font-size: 11px;
+  padding: 5px 8px;
 }
-/* Note: .save-edit-btn and .cancel-edit-btn inherit from base action button style now. */
-/* Their specific background colors and text colors are removed for colorless icon look. */
-/* Their :disabled states are covered by the shared .action-button:disabled style. */
-/* --- End Inline Editing UI Styling --- */
-
-
-/* --- App Layout --- */
-#app-wrapper {
-    display: flex;
-    height: 100%;
+.message-action:hover {
+  background: var(--panel-hover);
+  color: var(--text);
 }
-
-#sidebar {
-    width: 260px;
-    background-color: #242424;
-    border-right: 1px solid #383838;
-    display: flex;
-    flex-direction: column;
-    flex-shrink: 0;
+.message-image {
+  max-width: 100%;
+  max-height: 350px;
+  border-radius: 10px;
+  display: block;
+  margin-bottom: 10px;
 }
-
-#main-container {
-    flex-grow: 1;
-    display: flex;
-    flex-direction: column;
-    height: 100%;
-    overflow: hidden;
+.message-file {
+  font-size: 12px;
+  color: var(--accent);
+  padding-bottom: 8px;
 }
-
-#sidebar-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    padding: 15px 20px;
-    border-bottom: 1px solid #383838;
+.search-suggestions {
+  width: 100%;
+  height: 130px;
+  border: 0;
+  margin-top: 16px;
+  border-radius: 8px;
 }
-
-#sidebar-header h2 {
-    margin: 0;
-    font-size: 1.2rem;
+.composer-area {
+  width: 100%;
+  max-width: 864px;
+  align-self: center;
+  padding: 4px 32px max(12px, env(safe-area-inset-bottom));
+  flex-shrink: 0;
 }
-
-#new-chat-button {
-    background: none;
-    border: 1px solid #888;
-    color: #EAEAEA;
-    font-size: 1.5rem;
-    cursor: pointer;
-    width: 30px;
-    height: 30px;
-    border-radius: 50%;
-    line-height: 26px;
-    text-align: center;
-    padding: 0;
+#chat-form {
+  background: #22262d;
+  border: 1px solid #3a404a;
+  border-radius: 18px;
+  padding: 12px 14px 10px;
+  box-shadow: 0 8px 40px #0002;
 }
-
-#new-chat-button:hover {
-    background-color: #333;
+#chat-form:focus-within {
+  border-color: #57687f;
 }
-
-#chat-list {
-    flex-grow: 1;
-    overflow-y: auto;
-}
-
-.chat-list-item {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    padding: 15px 20px;
-    cursor: pointer;
-    border-bottom: 1px solid #383838;
-}
-
-.delete-chat-button {
-    background: none;
-    border: none;
-    color: #A0A0A0;
-    font-size: 1.2rem;
-    cursor: pointer;
-    padding: 5px;
-    display: none; /* Hidden by default */
-    transition: color 0.2s;
-}
-
-.chat-list-item:hover .delete-chat-button {
-    display: block; /* Show on hover */
-}
-
-.delete-chat-button:hover {
-    color: #ff4d4d;
-}
-
-.chat-list-item:hover {
-    background-color: #333;
-}
-
-.chat-list-item.active {
-    background-color: #007ACC;
-}
-
-#sidebar-footer {
-    padding: 15px 20px;
-    border-top: 1px solid #383838;
-}
-
-#user-info {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-}
-
-#logout-button, #login-button {
-    width: 100%;
-    padding: 10px;
-    background-color: #007ACC;
-    color: white;
-    border: none;
-    border-radius: 5px;
-    cursor: pointer;
-}
-
-#logout-button:hover, #login-button:hover {
-    background-color: #005C99;
-}
-
-#chat-controls {
-    padding: 10px 20px;
-    border-bottom: 1px solid #383838;
-    display: flex;
-    gap: 10px;
-}
-
-#save-chat-button, #share-chat-button {
-    padding: 8px 12px;
-    background-color: #333;
-    color: white;
-    border: 1px solid #404040;
-    border-radius: 5px;
-    cursor: pointer;
-}
-
-#save-chat-button:hover, #share-chat-button:hover {
-    background-color: #444;
-}
-
-
-/* --- Auth Modal --- */
-.modal-container {
-    position: fixed;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
-    background-color: rgba(0, 0, 0, 0.7);
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    z-index: 1000;
-}
-
-.modal-content {
-    background-color: #2C2C2C;
-    padding: 30px;
-    border-radius: 10px;
-    width: 100%;
-    max-width: 400px;
-    position: relative;
-}
-
-.modal-buttons {
-    display: flex;
-    justify-content: flex-end;
-    gap: 10px;
-    margin-top: 20px;
-}
-
-.modal-buttons button {
-    padding: 10px 20px;
-    border-radius: 5px;
-    border: none;
-    cursor: pointer;
-}
-
-#confirm-delete-button {
-    background-color: #ff4d4d;
-    color: white;
-}
-
-#cancel-delete-button {
-    background-color: #555;
-    color: white;
-}
-
-.modal-close-button {
-    position: absolute;
-    top: 10px;
-    right: 15px;
-    background: none;
-    border: none;
-    font-size: 1.5rem;
-    color: #EAEAEA;
-    cursor: pointer;
-}
-
-#login-form, #signup-form {
-    display: flex;
-    flex-direction: column;
-    gap: 15px;
-}
-
-#login-form input, #signup-form input {
-    padding: 10px;
-    border: 1px solid #404040;
-    border-radius: 5px;
-    background-color: #333;
-    color: #EAEAEA;
-}
-
-#login-form button, #signup-form button {
-    padding: 10px;
-    background-color: #007ACC;
-    color: white;
-    border: none;
-    border-radius: 5px;
-    cursor: pointer;
-}
-
-#login-form p, #signup-form p {
-    text-align: center;
-}
-
-#login-form a, #signup-form a {
-    color: #007ACC;
-    cursor: pointer;
-}
-
-
-/* --- Responsive adjustments --- */
-@media (max-width: 850px) {
-    #menu-button {
-        display: block;
-        position: absolute;
-        top: 15px;
-        left: 15px;
-        font-size: 1.5rem;
-        background: none;
-        border: none;
-        color: #EAEAEA;
-        z-index: 300;
-        cursor: pointer;
-    }
-     #sidebar {
-        position: absolute;
-        left: -260px;
-        transition: left 0.3s ease;
-        z-index: 200;
-        height: 100%;
-     }
-     #sidebar.open {
-        left: 0;
-     }
-     .sidebar-backdrop {
-        position: fixed;
-        top: 0;
-        left: 0;
-        width: 100%;
-        height: 100%;
-        background: rgba(0,0,0,0.5);
-        z-index: 199;
-     }
-     #chat-history { max-width: 95%; }
-     #message-input { max-width: none; }
-     #image-preview-container > div { max-width: 95%; }
-     #chat-form { padding: 15px; gap: 8px;}
-     #pdf-filename-preview { max-width: calc(95% - 70px); }
-}
-
-@media (max-width: 600px) {
-    h1 { font-size: 1.2rem; padding: 12px 15px; }
-    #chat-container { padding: 10px; }
-    #chat-history { gap: 12px; }
-    .message { max-width: 100%; /* On mobile, let bubble take full width of its fit-content entry */ font-size: 0.95rem; padding: 8px 12px; }
-    #chat-form { padding: 10px; gap: 5px; }
-    #message-input { padding: 8px 12px; font-size: 0.95rem; min-height: 38px; }
-    #send-button { padding: 8px 15px; font-size: 0.95rem; margin-bottom: 6px;}
-    #attach-button { font-size: 1.2rem; padding: 6px; margin-bottom: 6px;} /* Adjusted for mobile */
-    #loading, #error { max-width: 95%; font-size: 0.9rem; }
-    #image-preview { max-height: 40px; max-width: 40px; }
-    #pdf-filename-preview { font-size: 0.8em; max-width: calc(100% - 60px); }
-    #image-preview-container > div { gap: 5px; }
-    #remove-image-button { width: 20px; height: 20px; font-size: 14px; line-height: 18px; top: -5px; right: -5px;}
-}
-
-/* --- Custom Scrollbar Styling --- */
-/* For WebKit-based browsers (Chrome, Safari, Edge) */
-#main-content-area::-webkit-scrollbar,
-#message-input::-webkit-scrollbar {
-    width: 8px;
-    height: 8px;
-}
-
-#main-content-area::-webkit-scrollbar-track,
-#message-input::-webkit-scrollbar-track {
-    background: #242424; /* Slightly lighter than main background */
-}
-
-#main-content-area::-webkit-scrollbar-thumb,
-#message-input::-webkit-scrollbar-thumb {
-    background: #555555;
-    border-radius: 4px;
-}
-
-#main-content-area::-webkit-scrollbar-thumb:hover,
-#message-input::-webkit-scrollbar-thumb:hover {
-    background: #777777;
-}
-
-/* For Firefox */
-#main-content-area,
 #message-input {
-    scrollbar-width: thin;
-    scrollbar-color: #555555 #242424;
+  display: block;
+  width: 100%;
+  background: none;
+  color: var(--text);
+  border: 0;
+  outline: 0;
+  resize: none;
+  min-height: 38px;
+  max-height: 180px;
+  padding: 3px 3px 10px;
+  line-height: 1.65;
 }
-/* --- End Custom Scrollbar Styling --- */
+#message-input::placeholder {
+  color: #929ba9;
+}
+.composer-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+.tools {
+  display: flex;
+  gap: 4px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+.tool {
+  padding: 5px 9px;
+  color: #b6bfcc;
+  font-size: 12px;
+  white-space: nowrap;
+}
+.tool.active {
+  background: #33415a;
+  color: #c5dcff;
+}
+.send {
+  border: 0;
+  border-radius: 10px;
+  padding: 7px 12px;
+  background: var(--accent);
+  color: #172338;
+  font-weight: 600;
+  font-size: 12px;
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+.send span {
+  font-size: 19px;
+  line-height: 1;
+}
+.send:hover {
+  background: #c2d9ff;
+}
+.composer-note {
+  text-align: center;
+  color: #7f8895;
+  font-size: 10px;
+  margin: 8px 0 0;
+}
+.attachment {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  background: #2d333d;
+  border-radius: 9px;
+  padding: 7px 10px;
+  margin-bottom: 8px;
+  width: fit-content;
+  max-width: 100%;
+  font-size: 12px;
+}
+.attachment img {
+  width: 34px;
+  height: 34px;
+  object-fit: cover;
+  border-radius: 4px;
+}
+.attachment span {
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+.attachment .icon-button {
+  font-size: 18px;
+}
+#loading {
+  font-size: 12px;
+  color: var(--muted);
+  padding: 7px 2px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.working-dot,
+.voice-dot {
+  height: 7px;
+  width: 7px;
+  display: inline-block;
+  border-radius: 100%;
+  background: var(--accent);
+}
+.working-dot {
+  animation: pulse 1.5s ease-in-out infinite;
+}
+@keyframes pulse {
+  50% {
+    opacity: 0.25;
+  }
+}
+.notice,
+.error {
+  border-radius: 9px;
+  font-size: 12px;
+  padding: 10px 12px;
+  margin: 6px 0;
+}
+.notice {
+  background: #263240;
+  color: #bed2ea;
+}
+.error {
+  background: #3a292b;
+  color: var(--danger);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.error span {
+  flex: 1;
+}
+.error .quiet {
+  color: var(--danger);
+}
+.voice-panel {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  border: 1px solid #415476;
+  background: #253044;
+  border-radius: 13px;
+  padding: 12px;
+  margin-bottom: 10px;
+}
+.voice-panel > span:nth-child(2) {
+  flex: 1;
+  font-size: 13px;
+}
+#voice-caption {
+  flex-basis: 100%;
+  font-size: 12px;
+  color: #b7c9e4;
+  margin: 0;
+  max-height: 90px;
+  overflow: auto;
+  white-space: pre-wrap;
+}
+#voice-caption:empty {
+  display: none;
+}
+dialog {
+  border: 1px solid #414650;
+  border-radius: 18px;
+  padding: 28px;
+  background: var(--panel);
+  color: var(--text);
+  width: calc(100% - 32px);
+  max-width: 420px;
+  box-shadow: 0 24px 100px #0008;
+}
+dialog::backdrop {
+  background: #0009;
+  backdrop-filter: blur(5px);
+}
+dialog h2 {
+  font-size: 21px;
+  line-height: 1.3;
+  margin: 0 0 12px;
+  font-weight: 550;
+}
+dialog p {
+  color: var(--muted);
+  font-size: 13px;
+  margin: 8px 0 16px;
+}
+dialog form {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+dialog label {
+  font-size: 12px;
+  margin-top: 4px;
+}
+dialog input,
+dialog textarea {
+  border: 1px solid #434a55;
+  background: #15181d;
+  color: var(--text);
+  padding: 10px 12px;
+  border-radius: 8px;
+  width: 100%;
+  outline: none;
+}
+dialog input:focus,
+dialog textarea:focus {
+  border-color: var(--accent);
+}
+dialog textarea {
+  min-height: 130px;
+  resize: vertical;
+}
+dialog .primary {
+  padding: 10px;
+}
+.dialog-close {
+  position: absolute;
+  right: 16px;
+  top: 15px;
+}
+.dialog-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-top: 12px;
+}
+.form-error {
+  color: var(--danger);
+  margin: 0;
+}
+.form-error:empty {
+  display: none;
+}
+#auth-submit {
+  margin-top: 12px;
+}
+#menu-button,
+#close-sidebar {
+  display: none;
+}
+@media (max-width: 850px) {
+  #sidebar {
+    position: fixed;
+    inset: 0 auto 0 0;
+    z-index: 30;
+    transform: translateX(-100%);
+    transition: transform 0.2s;
+  }
+  #sidebar.open {
+    transform: translateX(0);
+  }
+  #menu-button,
+  #close-sidebar {
+    display: block;
+  }
+  #close-sidebar {
+    margin-left: auto;
+  }
+  #sidebar-backdrop {
+    display: block;
+    position: fixed;
+    inset: 0;
+    background: #0008;
+    border: 0;
+    z-index: 20;
+  }
+  .topbar {
+    padding: 14px 20px;
+    min-height: 76px;
+  }
+  #main-content-area {
+    padding: 16px 22px 24px;
+  }
+  .composer-area {
+    padding-left: 20px;
+    padding-right: 20px;
+  }
+  #empty-state {
+    margin-top: 12vh;
+  }
+}
+@media (max-width: 480px) {
+  .topbar {
+    padding: 12px;
+    gap: 8px;
+  }
+  h1 {
+    font-size: 14px;
+  }
+  #chat-controls .quiet {
+    font-size: 11px;
+    padding: 6px;
+  }
+  #main-content-area {
+    padding: 12px 16px;
+  }
+  .composer-area {
+    padding-left: 10px;
+    padding-right: 10px;
+  }
+  .user-message-entry {
+    max-width: 92%;
+  }
+  #chat-form {
+    padding: 10px;
+  }
+  #message-input {
+    font-size: 16px;
+  }
+  .tool {
+    padding: 5px 7px;
+    font-size: 11px;
+  }
+  .send {
+    padding: 7px 9px;
+  }
+  .tools {
+    gap: 1px;
+  }
+  .suggestions {
+    gap: 6px;
+  }
+  .suggestions button {
+    font-size: 11px;
+    padding: 8px 12px;
+  }
+  #empty-state h2 {
+    font-size: 25px;
+  }
+  .composer-note {
+    font-size: 9px;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation: none !important;
+    transition: none !important;
+    scroll-behavior: auto !important;
+  }
+}
